@@ -18,6 +18,8 @@ internal static class TemplateRepo
     public static string SentruxJson => Path.Combine(TemplateDir, "rules", "sentrux.json");
     public static string SentruxRulesToml => Path.Combine(TemplateDir, ".sentrux", "rules.toml");
     public static string SentruxIgnore => Path.Combine(TemplateDir, ".sentruxignore");
+    public static string GitIgnore => Path.Combine(TemplateDir, ".gitignore");
+    public static string GitAttributes => Path.Combine(TemplateDir, ".gitattributes");
 
     private static string FindRoot()
     {

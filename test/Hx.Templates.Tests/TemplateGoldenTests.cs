@@ -133,6 +133,22 @@ public sealed class TemplateGoldenTests
     }
 
     [Fact]
+    public void Template_ships_git_hygiene_files()
+    {
+        // The generated repo must come with .gitignore + .gitattributes so the first commit is clean
+        // (no bin/obj or vendored binaries staged) and line endings are pinned across platforms.
+        Assert.True(File.Exists(TemplateRepo.GitIgnore), "template must ship .gitignore");
+        Assert.True(File.Exists(TemplateRepo.GitAttributes), "template must ship .gitattributes");
+
+        string ignore = File.ReadAllText(TemplateRepo.GitIgnore);
+        Assert.Contains("bin/", ignore);
+        Assert.Contains("obj/", ignore);
+        Assert.Contains("tools/sentrux/bin/", ignore); // vendored binaries are not committed
+
+        Assert.Contains("eol=lf", File.ReadAllText(TemplateRepo.GitAttributes));
+    }
+
+    [Fact]
     public void Template_cli_is_agent_first_and_declares_the_envelope_contract()
     {
         // Always-on guard: the generated CLI renders through the Agent host (returns CliResult,
