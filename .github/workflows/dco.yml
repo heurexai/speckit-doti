@@ -25,6 +25,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          # Automated dependency PRs (Dependabot) are not signed off; don't block them.
+          if [ "${GITHUB_ACTOR:-}" = "dependabot[bot]" ]; then
+            echo "Actor is dependabot[bot]; sign-off not required for automated dependency PRs."
+            exit 0
+          fi
           fail=0
           for c in $(git rev-list "$BASE_SHA..$HEAD_SHA"); do
             # Skip merge commits (more than one parent).
