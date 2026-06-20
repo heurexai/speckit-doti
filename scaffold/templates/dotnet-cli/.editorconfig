@@ -1,0 +1,88 @@
+# ============================================================================
+# scaffold-dotnet — analyzer + code-style baseline (generic, paradigm-safe)
+#
+# Philosophy:
+#   - CORRECTNESS bites. Security, nullable, and NuGet package-audit stay
+#     build-failing (Directory.Build.props: AnalysisModeSecurity=All,
+#     Nullable=enable, NuGetAudit, TreatWarningsAsErrors). Real bugs, not taste.
+#   - DESIGN OPINION is silenced. The rules below fight MVVM / ASP.NET / DTOs /
+#     reactive, so they are off by default. Re-enable per project if you want them.
+#   - CODE STYLE is guidance (suggestion), never a build breaker.
+#   - Scope relaxations per project type in the per-path blocks at the bottom,
+#     instead of weakening this global baseline.
+# ============================================================================
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{cs,csx,vb}]
+indent_size = 4
+end_of_line = crlf
+
+# ----------------------------------------------------------------------------
+# Design opinion — SILENCED so it never fights a UI / web / reactive paradigm
+# (Avalonia, MVVM/CommunityToolkit, ASP.NET, Rx/ReactiveUI all trip these).
+# ----------------------------------------------------------------------------
+dotnet_diagnostic.CA1002.severity = none   # do not expose List<T>          (DTOs, view models)
+dotnet_diagnostic.CA2227.severity = none   # collection props read-only     (MVVM bindables, model binding)
+dotnet_diagnostic.CA1819.severity = none   # arrays as properties           (DTOs)
+dotnet_diagnostic.CA1031.severity = none   # do not catch general Exception (resilience, Rx error pipelines, handlers)
+dotnet_diagnostic.CA1062.severity = none   # validate public arguments      (nullable already covers this)
+dotnet_diagnostic.CA1303.severity = none   # localize literal strings       (noisy for most apps)
+dotnet_diagnostic.CA1051.severity = none   # no visible instance fields
+dotnet_diagnostic.CA1822.severity = none   # mark members static            (controllers, VM methods, handlers)
+dotnet_diagnostic.CA2007.severity = none   # ConfigureAwait                 (paradigm-sensitive: ASP.NET vs desktop — let the project decide)
+dotnet_diagnostic.CA1812.severity = none   # uninstantiated internal class  (DI / reflection / XAML)
+dotnet_diagnostic.CA1014.severity = none   # CLSCompliant assembly attribute
+dotnet_diagnostic.CA1016.severity = none   # assembly version attribute
+dotnet_diagnostic.CA1054.severity = none   # URI parameter as string
+dotnet_diagnostic.CA1055.severity = none   # URI return as string
+dotnet_diagnostic.CA1056.severity = none   # URI property as string
+dotnet_diagnostic.CA1716.severity = none   # identifier matches reserved keyword
+dotnet_diagnostic.CA1720.severity = none   # identifier contains type name
+dotnet_diagnostic.CA1724.severity = none   # type name conflicts with namespace
+
+# ----------------------------------------------------------------------------
+# Code style — GUIDANCE only (never breaks a build, even with
+# EnforceCodeStyleInBuild + TreatWarningsAsErrors). Re-elevate any you want enforced.
+# ----------------------------------------------------------------------------
+dotnet_analyzer_diagnostic.category-Style.severity = suggestion
+dotnet_diagnostic.IDE0005.severity = suggestion          # unused usings (noisy with ImplicitUsings)
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_prefer_braces = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_sort_system_directives_first = true
+
+# ----------------------------------------------------------------------------
+# Correctness — already enforced via Directory.Build.props (security + nullable
+# + package audit, all build-failing). To make a SPECIFIC correctness rule bite,
+# add it here as `warning` and verify the build stays green, e.g.:
+#   dotnet_diagnostic.CA2016.severity = warning   # forward CancellationToken
+#   dotnet_diagnostic.CA2201.severity = warning   # do not raise reserved exception types
+#   dotnet_diagnostic.CA1001.severity = warning   # a type owning IDisposable fields is IDisposable
+# Left at SDK default here so this baseline cannot red-bar an existing build.
+# ----------------------------------------------------------------------------
+
+# ============================================================================
+# Per-path overrides
+# ============================================================================
+
+# Generated code — do not analyze.
+[*.{g,g.i,designer}.cs]
+generated_code = true
+
+[**/{obj,bin}/**]
+generated_code = true
+
+# Test projects — underscores in test method names are conventional.
+[**/*Tests/**.cs]
+dotnet_diagnostic.CA1707.severity = none
+
+# UI / web projects — when you add Avalonia / ASP.NET / etc., scope relaxations
+# here instead of weakening the global baseline, e.g.:
+# [**/{*.UI,*.Web,*.Desktop}/**.cs]
+#     dotnet_diagnostic.CA1812.severity = none   # XAML/DI-instantiated types

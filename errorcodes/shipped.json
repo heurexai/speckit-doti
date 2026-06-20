@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "_comment": "The FROZEN shipped error-code baseline. `errorcodes check` fails closed if any of these is removed or its name/exitClass changes — shipped codes are a stable contract for consumers. Append a code to registry.json + here when it first ships; never edit/remove an existing entry.",
+  "codes": [
+    { "code": "INT0001", "name": "internal.unhandled", "exitClass": "Internal" },
+    { "code": "USG0001", "name": "usage.invalid-arguments", "exitClass": "Usage" },
+    { "code": "VAL0001", "name": "validation.failed", "exitClass": "Validation" },
+    { "code": "ITG0001", "name": "integrity.verification-failed", "exitClass": "Integrity" }
+  ]
+}

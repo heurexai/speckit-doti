@@ -1,0 +1,2 @@
+All clean. Reference: https://github.com/heurexai/sentrux for details.
+No secrets, no developer-local paths, no runners here.

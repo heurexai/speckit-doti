@@ -1,0 +1,64 @@
+# Sentrux architectural rules for scaffold-dotnet (authored directly).
+# Validated by `sentrux check` once the fork binary + grammars are vendored.
+# Layer `order` is the primary direction enforcement (higher order may depend on lower only).
+# Explicit per-project paths are used because mid-segment glob support (e.g. Hx.*.Core)
+# is not yet confirmed against the pinned Sentrux release (T04).
+
+[constraints]
+max_cycles = 0           # the solution is currently acyclic; keep it so
+max_cc = 25              # max cyclomatic complexity per function
+max_fn_lines = 120       # max function length
+no_god_files = false     # tighten once the runner surface stabilizes
+
+# contracts (lowest) → core → cli (highest). Higher order may depend on lower only.
+[[layers]]
+name = "contracts"
+paths = ["tools/Hx.Tooling.Contracts/*"]
+order = 0
+
+[[layers]]
+name = "core"
+paths = [
+  "src/Hx.Scaffold.Core/*",
+  "tools/Hx.Runner.Core/*",
+  "tools/Hx.Impact.Core/*",
+  "tools/Hx.Sentrux.Core/*",
+  "tools/Hx.Doti.Core/*",
+  "tools/Hx.Gate.Core/*",
+  "tools/Hx.Version.Core/*",
+  "tools/Hx.Security.Core/*",
+  "tools/Hx.Cycle.Core/*",
+  "tools/Hx.Cli.Kernel/*",
+]
+order = 1
+
+[[layers]]
+name = "cli"
+paths = [
+  "tools/Hx.Runner.Cli/*",
+  "tools/Hx.Impact.Cli/*",
+  "tools/Hx.Scaffold.Cli/*",
+]
+order = 2
+
+# Illustrative explicit boundaries (single-level globs, no mid-segment wildcard).
+# The layer order above already forbids core -> cli; these document the intent and
+# are extended once glob semantics are confirmed.
+[[boundaries]]
+from = "tools/Hx.Runner.Core/*"
+to = "tools/Hx.Runner.Cli/*"
+reason = "Runner core must not depend on the runner CLI"
+
+[[boundaries]]
+from = "tools/Hx.Sentrux.Core/*"
+to = "tools/Hx.Runner.Cli/*"
+reason = "Sentrux core must not depend on any CLI"
+
+[[boundaries]]
+from = "tools/Hx.Cli.Kernel/*"
+to = "tools/Hx.Runner.Cli/*"
+reason = "The CLI kernel (core) must not depend on any CLI — rendering stays one-way CLI -> kernel"
+
+# Note: Hx.Sentrux.Core -> Hx.Runner.Core is an intentional within-core dependency
+# (shared process/platform/io). It is allowed; the reverse must never appear, and
+# max_cycles = 0 catches any Sentrux <-> Runner cycle.

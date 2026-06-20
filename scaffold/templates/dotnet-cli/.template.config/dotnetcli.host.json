@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json.schemastore.org/dotnetcli.host",
+  "symbolInfo": {
+    "company": {
+      "longName": "company",
+      "shortName": "co"
+    },
+    "framework": {
+      "longName": "framework",
+      "shortName": "f"
+    },
+    "includeArchitectureTests": {
+      "longName": "arch-tests",
+      "shortName": "a"
+    }
+  }
+}

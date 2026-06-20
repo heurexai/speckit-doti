@@ -1,0 +1,23 @@
+# Generated from rules/hygiene.json by Hx.Runner.Cli.
+# Do not edit by hand; edit rules/hygiene.json and re-render.
+title = "scaffold-dotnet hygiene"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "scaffold-dotnet allowlist rendered from rules/hygiene.json"
+paths = [
+  '''^\.git''',
+  '''^bin''',
+  '''^obj''',
+  '''^tools/gitleaks/bin''',
+  '''^tools/sentrux/bin''',
+  '''^tools/sentrux/grammars''',
+  '''^tools/gitversion/bin''',
+  '''^rules/hygiene\.json''',
+  '''^tools/Hx\.Runner\.Core/Hygiene/HygienePolicy\.cs''',
+  '''^test/Hx\.Runner\.Tests/Fixtures''',
+  '''^fixtures/hygiene''',
+  '''^scaffold/templates''',
+]

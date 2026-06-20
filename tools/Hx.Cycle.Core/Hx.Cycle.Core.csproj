@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- Within-core: reuses FileHashing/ProcessRunner (Runner.Core) + ImpactChangeCollector (Impact.Core)
+         for the change-set identity + git. No cycle: Runner.Core references Contracts only; Impact.Core
+         references Runner.Core + Contracts; neither references Cycle.Core. -->
+    <ProjectReference Include="..\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+    <ProjectReference Include="..\Hx.Impact.Core\Hx.Impact.Core.csproj" />
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The stage model lives in workflow.yml. -->
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+</Project>

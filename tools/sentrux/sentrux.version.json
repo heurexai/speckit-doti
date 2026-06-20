@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "tool": "sentrux",
+  "license": "MIT",
+  "sourceRemote": "https://github.com/heurexai/sentrux",
+  "releaseTag": "v0.5.10",
+  "sourceCommit": "",
+  "distributionIdentity": "Heurex fork",
+  "updateChannel": "stable",
+  "vendoredAt": "2026-06-20",
+  "assets": [
+    {
+      "rid": "win-x64",
+      "assetName": "sentrux-windows-x86_64.exe",
+      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.10/sentrux-windows-x86_64.exe",
+      "archiveSha256": null,
+      "executablePath": "tools/sentrux/bin/win-x64/sentrux.exe",
+      "executableSha256": "52bc5902b69ed594c0d440e7eac449ea12b0f5a0926828564d5112cfcc7b8974",
+      "executableName": "sentrux.exe",
+      "supportLevel": "active"
+    }
+  ],
+  "grammars": [
+    {
+      "name": "csharp",
+      "rid": "win-x64",
+      "path": "tools/sentrux/grammars/csharp/grammars/windows-x86_64.dll",
+      "sha256": "b582b14030e2c6245fdc7200b48d918075186caa05fcc5cbd840f62bc2d07a45"
+    }
+  ],
+  "requiredFeatures": ["check-include-untracked", "gate-save"]
+}

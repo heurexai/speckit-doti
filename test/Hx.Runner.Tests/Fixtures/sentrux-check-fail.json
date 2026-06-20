@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "quality": 6100,
+  "violations": [
+    { "rule": "max_cycles", "message": "1 cycle found", "severity": "Error" }
+  ]
+}

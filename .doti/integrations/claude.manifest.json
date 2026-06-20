@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "agent": "claude",
+  "skillRoot": ".claude/skills",
+  "entrypoint": "CLAUDE.md",
+  "sharedContext": ".doti/agent-context.md",
+  "maturity": "command-aware-advisory",
+  "renderedFrom": "doti/core/templates/commands"
+}

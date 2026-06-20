@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sentruxEnabled": true,
+  "baselinePath": ".sentrux/baseline.json",
+  "rulesConfigPath": ".sentrux/rules.toml",
+  "signalToleranceBand": 100,
+  "forkStamp": "Heurex fork",
+  "firstSmokeBaseline": true,
+  "requiredFeatures": ["check-include-untracked", "gate-save"],
+  "requiredGrammars": ["csharp"]
+}

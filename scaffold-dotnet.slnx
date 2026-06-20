@@ -1,0 +1,31 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hx.Scaffold.Core/Hx.Scaffold.Core.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Hx.Impact.Tests/Hx.Impact.Tests.csproj" />
+    <Project Path="test/Hx.Runner.Tests/Hx.Runner.Tests.csproj" />
+    <Project Path="test/Hx.Scaffold.Tests/Hx.Scaffold.Tests.csproj" />
+    <Project Path="test/Hx.Doti.Tests/Hx.Doti.Tests.csproj" />
+    <Project Path="test/Hx.Templates.Tests/Hx.Templates.Tests.csproj" />
+    <Project Path="test/Hx.Cli.Kernel.Tests/Hx.Cli.Kernel.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Hx.Impact.Cli/Hx.Impact.Cli.csproj" />
+    <Project Path="tools/Hx.Impact.Core/Hx.Impact.Core.csproj" />
+    <Project Path="tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj" />
+    <Project Path="tools/Hx.Runner.Core/Hx.Runner.Core.csproj" />
+    <Project Path="tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj" />
+    <Project Path="tools/Hx.Sentrux.Core/Hx.Sentrux.Core.csproj" />
+    <Project Path="tools/Hx.Doti.Core/Hx.Doti.Core.csproj" />
+    <Project Path="tools/Hx.Gate.Core/Hx.Gate.Core.csproj" />
+    <Project Path="tools/Hx.Version.Core/Hx.Version.Core.csproj" />
+    <Project Path="tools/Hx.Security.Core/Hx.Security.Core.csproj" />
+    <Project Path="tools/Hx.Cycle.Core/Hx.Cycle.Core.csproj" />
+    <Project Path="tools/Hx.Cli.Kernel/Hx.Cli.Kernel.csproj" />
+    <Project Path="tools/Hx.Tooling.Contracts/Hx.Tooling.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/scaffold/">
+    <Project Path="scaffold/Hx.Scaffold.Templates.csproj" />
+  </Folder>
+</Solution>

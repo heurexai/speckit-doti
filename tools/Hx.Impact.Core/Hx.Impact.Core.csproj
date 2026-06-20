@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- Within-core (the Hx.Sentrux.Core -> Hx.Runner.Core precedent): reuse ProcessRunner/ToolCommand for
+         git. No cycle: Hx.Runner.Core references Contracts only. -->
+    <ProjectReference Include="..\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+  </ItemGroup>
+</Project>

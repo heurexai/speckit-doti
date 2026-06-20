@@ -1,0 +1,47 @@
+# Build output
+**/bin/
+**/obj/
+artifacts/
+publish/
+
+# Vendored tool binaries — NOT committed (kept lean). They are fetched operationally
+# per the pinned manifests under tools/*/ (gitleaks.version.json, sentrux.version.json,
+# gitversion.version.json) and verified by SHA-256. Gates fail closed until vendored.
+tools/gitleaks/bin/
+tools/sentrux/bin/
+tools/sentrux/grammars/
+tools/gitversion/bin/
+
+# Doti cycle working state (local; the durable proof is the commit)
+.doti/cycle-state.json
+.doti/gate-proof.json
+
+# Test and coverage output
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet / package output
+*.nupkg
+*.snupkg
+packages/
+
+# IDE and local user state
+.vs/
+.idea/
+*.user
+*.suo
+*.rsuser
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini

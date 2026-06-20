@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "tool": "gitleaks",
+  "license": "MIT",
+  "repository": "https://github.com/gitleaks/gitleaks",
+  "version": "8.30.1",
+  "releaseUrl": "https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1",
+  "releasePublishedAt": "2026-03-21T02:17:58Z",
+  "checksumUrl": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt",
+  "checksumSha256": null,
+  "configPath": "tools/gitleaks/config/gitleaks.toml",
+  "configSha256": "7095646a6896c27b4a43db308281e3277955acf588e78228ececd7aafc895b2a",
+  "vendoredAt": "2026-06-17",
+  "updateChannel": "stable",
+  "assets": [
+    {
+      "rid": "win-x64",
+      "assetName": "gitleaks_8.30.1_windows_x64.zip",
+      "downloadUrl": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip",
+      "archiveSha256": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e",
+      "executablePath": "tools/gitleaks/bin/win-x64/gitleaks.exe",
+      "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+      "executableName": "gitleaks.exe",
+      "supportLevel": "active"
+    }
+  ]
+}

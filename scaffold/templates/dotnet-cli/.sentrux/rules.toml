@@ -1,0 +1,26 @@
+# Sentrux architectural rules for the generated solution (authored directly; presence-checked).
+# Layer `order` is the primary direction enforcement (higher order may depend on lower only).
+# Vendored tooling under tools/ is excluded from the graph via .sentruxignore.
+
+[constraints]
+max_cycles = 0           # the solution is acyclic; keep it so
+max_cc = 25              # max cyclomatic complexity per function
+max_fn_lines = 120       # max function length
+no_god_files = false
+
+# library (lowest) -> cli (highest). Higher order may depend on lower only.
+[[layers]]
+name = "library"
+paths = ["src/HxScaffoldSample/*"]
+order = 0
+
+[[layers]]
+name = "cli"
+paths = ["src/HxScaffoldSample.Cli/*"]
+order = 1
+
+# The library must not depend on the CLI (matches rules/architecture.json: library mayDependOn []).
+[[boundaries]]
+from = "src/HxScaffoldSample/*"
+to = "src/HxScaffoldSample.Cli/*"
+reason = "Domain library must not depend on the CLI"

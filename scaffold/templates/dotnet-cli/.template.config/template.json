@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Heurex",
+  "classifications": ["Console", "Library", "CLI", "Solution"],
+  "identity": "Hx.Scaffold.DotnetCli",
+  "name": "Heurex .NET CLI scaffold (library + CLI + tests)",
+  "shortName": "hx-dotnet-cli",
+  "sourceName": "HxScaffoldSample",
+  "defaultName": "HxApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "symbols": {
+    "company": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "Heurex",
+      "replaces": "ACME_COMPANY",
+      "description": "Company name stamped into the generated projects."
+    },
+    "framework": {
+      "type": "parameter",
+      "datatype": "choice",
+      "choices": [
+        { "choice": "net10.0", "description": ".NET 10" }
+      ],
+      "defaultValue": "net10.0",
+      "replaces": "net10.0",
+      "description": "Target framework for the generated projects."
+    },
+    "includeArchitectureTests": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "description": "Include the ArchUnitNET architecture test project (a default gate; set false to omit it)."
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!includeArchitectureTests)",
+          "exclude": [
+            "test/HxScaffoldSample.Architecture.Tests/**"
+          ]
+        }
+      ]
+    }
+  ],
+  "primaryOutputs": [
+    { "path": "HxScaffoldSample.slnx" }
+  ],
+  "postActions": [
+    {
+      "id": "restore",
+      "condition": "true",
+      "description": "Restore NuGet packages required by this project.",
+      "manualInstructions": [
+        { "text": "Run 'dotnet restore'" }
+      ],
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true
+    }
+  ]
+}

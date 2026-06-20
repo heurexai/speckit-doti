@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "scaffold-dotnet",
+  "profile": "dotnet-cli",
+  "maturity": "command-aware-advisory",
+  "agents": [
+    "codex",
+    "claude"
+  ],
+  "context": ".doti/agent-context.md",
+  "workflow": ".doti/workflows/doti/workflow.yml",
+  "constitution": ".doti/memory/constitution.md",
+  "generatedBy": {
+    "phase": 1,
+    "mode": "manual-bootstrap",
+    "futureRenderer": "Hx.Runner.Cli doti render-skills --repo . --agents codex,claude --check --json"
+  },
+  "updatedBy": {
+    "phase": 3,
+    "mode": "manual-command-aware-update"
+  }
+}

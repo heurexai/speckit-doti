@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "doti",
+  "source": "doti/",
+  "installedLayout": ".doti/",
+  "maturity": "command-aware-advisory",
+  "commands": [
+    "doti-specify",
+    "doti-clarify",
+    "doti-plan",
+    "doti-tasks",
+    "doti-analyze",
+    "doti-arch-review",
+    "doti-implement",
+    "doti-drift-review",
+    "doti-commit",
+    "doti-release"
+  ]
+}

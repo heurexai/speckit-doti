@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hx.Cli.Kernel\Hx.Cli.Kernel.csproj" />
+    <ProjectReference Include="..\Hx.Doti.Core\Hx.Doti.Core.csproj" />
+    <ProjectReference Include="..\Hx.Gate.Core\Hx.Gate.Core.csproj" />
+    <ProjectReference Include="..\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+    <ProjectReference Include="..\Hx.Sentrux.Core\Hx.Sentrux.Core.csproj" />
+    <ProjectReference Include="..\Hx.Version.Core\Hx.Version.Core.csproj" />
+    <ProjectReference Include="..\Hx.Security.Core\Hx.Security.Core.csproj" />
+    <ProjectReference Include="..\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+  </ItemGroup>
+</Project>

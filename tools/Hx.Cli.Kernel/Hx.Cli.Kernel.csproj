@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The agent-first CLI kernel: output envelope rendering (LF-normalized JSON / human), the describe walker over
+       System.CommandLine's symbol tree, the error-code registry loader, and the thin-command host helpers.
+       Core layer (depends on Contracts only); no CLI dependency. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+</Project>

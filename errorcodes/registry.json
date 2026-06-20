@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "_comment": "Single source of truth for error codes. Append entries (never reorder/delete a shipped one). `Hx.Runner.Cli errorcodes render` assigns the per-category number, composes the code <PREFIX><NNNN>, and regenerates tools/Hx.Cli.Kernel/ErrorCodes.g.cs; `errorcodes check` freezes the shipped set (errorcodes/shipped.json).",
+  "categories": {
+    "internal": { "prefix": "INT", "exitClass": "Internal" },
+    "usage": { "prefix": "USG", "exitClass": "Usage" },
+    "validation": { "prefix": "VAL", "exitClass": "Validation" },
+    "integrity": { "prefix": "ITG", "exitClass": "Integrity" }
+  },
+  "codes": [
+    { "category": "internal", "suffix": "unhandled", "severity": "Error", "message": "An unhandled internal error occurred.", "remediation": "This is a bug — report it with the command and inputs." },
+    { "category": "usage", "suffix": "invalid-arguments", "severity": "Error", "message": "Invalid command arguments.", "remediation": "Run the command with --help to see valid usage." },
+    { "category": "validation", "suffix": "failed", "severity": "Error", "message": "Validation failed.", "remediation": "Fix the reported issues and re-run." },
+    { "category": "integrity", "suffix": "verification-failed", "severity": "Error", "message": "An integrity verification failed.", "remediation": "Re-vendor or re-verify the tool/proof; do not bypass the gate." }
+  ]
+}

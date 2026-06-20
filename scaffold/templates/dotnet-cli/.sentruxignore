@@ -1,0 +1,3 @@
+# Vendored tooling is infrastructure, not the generated repo's own architecture or quality signal.
+# Sentrux enumerates via `git ls-files`, so tracked vendored files are excluded here.
+tools/

@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest an improvement for speckit-doti.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please keep the request focused and avoid sharing private project details.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow, limitation, or user need should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to change or add?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - scaffold generation
+        - doti workflow
+        - gate or hygiene
+        - architecture tests
+        - templates
+        - documentation
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider?
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, examples, or constraints that would help maintainers evaluate the request.
+

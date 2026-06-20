@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "profile": "dotnet-cli",
+  "agents": [
+    "codex",
+    "claude"
+  ],
+  "maturity": "command-aware-advisory",
+  "source": "doti/profiles/dotnet-cli/profile.json"
+}

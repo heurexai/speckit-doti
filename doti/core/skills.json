@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "maturity": "command-aware-advisory",
+  "commandTemplateDir": "doti/core/templates/commands",
+  "agentContextRef": ".doti/agent-context.md",
+  "introTemplate": "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
+  "operatorQuestionProtocol": "## Asking the operator a question (required format)\n\nAny operator-facing question — at any stage, for Claude or Codex — uses this fixed format, presented immediately before the question:\n\n- **Context** — the full background. Assume the operator has not re-read the material; restate what is unclear and the relevant facts.\n- **Why it matters** — the concrete impact and why it needs a decision now.\n- **Options** — for each option: **Pros**, **Cons**, and **Consequence** (what becomes true downstream if chosen).\n- **Recommendation** — the option you recommend and the reasoning; list it first and label it \"(Recommended)\".\n- **Assumptions** — the assumptions behind the recommendation.\n- **Confidence** — High / Medium / Low, with a one-line reason.\n\nEvidence requirement: every question, option, recommendation, and assumption must rest on verified facts. Verify each premise first (read the code, run the tool, observe the output) and cite that evidence; never present options whose premises you have not confirmed. An assumption is allowed only when the fact cannot be obtained from this environment — then label it UNVERIFIED, state why it cannot be verified and what would verify it. Prove claims (reproduce/RCA); never assert them. Do not use \"assume\" to defer work you could do — an unproven premise is a defect that can ruin the design.",
+  "skills": [
+    {
+      "name": "doti-specify",
+      "description": "Create or refine a scaffold-dotnet specification in command-aware-advisory mode.",
+      "argumentHint": "[feature or goal]",
+      "highlights": [],
+      "nextStage": "Run `/doti-clarify` to resolve ambiguities, then `/doti-plan`."
+    },
+    {
+      "name": "doti-clarify",
+      "description": "Clarify scaffold-dotnet requirements while preserving command availability boundaries.",
+      "argumentHint": "[question or request]",
+      "highlights": [
+        "Clarify specifics: ask blocking questions one at a time via the `AskUserQuestion` tool, fold each answer into the spec's `## Clarifications` before asking the next, and let the operator stop at any point. Use the shared operator-question format above (Context / Why it matters / Options / Recommendation / Assumptions / Confidence + the evidence requirement) for every question."
+      ],
+      "nextStage": "Run `/doti-plan` to author the implementation plan."
+    },
+    {
+      "name": "doti-plan",
+      "description": "Plan scaffold-dotnet work with phase, gate, and advisory-gap awareness.",
+      "argumentHint": "[implementation goal]",
+      "highlights": [],
+      "nextStage": "Run `/doti-tasks` to break the plan into executable tasks."
+    },
+    {
+      "name": "doti-tasks",
+      "description": "Convert scaffold-dotnet plans into executable tasks without hiding missing gates.",
+      "argumentHint": "[plan or scope]",
+      "highlights": [],
+      "nextStage": "Run `/doti-analyze` for a cross-artifact consistency review."
+    },
+    {
+      "name": "doti-analyze",
+      "description": "Analyze scaffold-dotnet source, installed assets, docs, and advisory gaps.",
+      "argumentHint": "[files or topic]",
+      "highlights": [],
+      "nextStage": "Run `/doti-arch-review` to review architecture impacts and rule coverage."
+    },
+    {
+      "name": "doti-arch-review",
+      "description": "Review scaffold-dotnet architecture impacts and ArchUnitNET gate coverage.",
+      "argumentHint": "[architecture change]",
+      "highlights": [
+        "Validate that the ArchUnitNET config (`rules/architecture.json`, eight rule families: six structural plus a security/capability-confinement family and an agent-first output-confinement family) and the Sentrux config (`.sentrux/rules.toml` layers/boundaries/constraints, baseline, `rules/sentrux.json` mapping) measure the intended architecture and stay mutually consistent. The command template seeds the specific items to check so they are not re-derived each run. The architecture gate (`architecture test` per-family proof) and the Sentrux gate are command-backed; this cross-engine consistency review is an advisory judgment."
+      ],
+      "nextStage": "Run `/doti-implement` to implement the tasks."
+    },
+    {
+      "name": "doti-implement",
+      "description": "Implement scoped scaffold-dotnet tasks with advisory-gap handoff.",
+      "argumentHint": "[task]",
+      "highlights": [
+        "Engineering discipline (required): RCA root causes — don't patch symptoms; validate every assumption by reading the code, running the command, or observing the output (never assume; prove claims with evidence); take no shortcuts (don't silence checks, hard-code around problems, or declare done without proof); hold a 95%-confidence bar — if not ≥95% confident the solution and code are correct, keep finding better approaches or validating until you are; if truly blocked, surface it with what you tried rather than guess; report honestly (what was validated, what remains, deferrals with rationale)."
+      ],
+      "nextStage": "Run `/doti-drift-review` to check the diff against the approved design."
+    },
+    {
+      "name": "doti-drift-review",
+      "description": "Review drift between scaffold-dotnet source assets and installed bootstrap files.",
+      "argumentHint": "[optional scope]",
+      "highlights": [],
+      "nextStage": "Run `/doti-commit` to prepare the scoped commit."
+    },
+    {
+      "name": "doti-commit",
+      "description": "Prepare scoped scaffold-dotnet commits with advisory and command-backed checks separated.",
+      "argumentHint": "[commit scope]",
+      "highlights": [],
+      "nextStage": "Run `/doti-release` to cut a version, or `/doti-specify` to start the next feature."
+    },
+    {
+      "name": "doti-release",
+      "description": "Guide scaffold-dotnet release thinking until the command-backed release lane exists.",
+      "argumentHint": "[release intent]",
+      "highlights": [],
+      "nextStage": "Cycle complete - start the next feature with `/doti-specify`."
+    }
+  ]
+}

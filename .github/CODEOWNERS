@@ -1,0 +1,7 @@
+# Code owners for speckit-doti.
+# Routes review requests automatically and, with branch protection's
+# "Require review from Code Owners", requires owner approval before merge.
+# Swap @dbchandra23 for an org team (e.g. @heurexai/maintainers) if this repo
+# is owned by the Heurex organisation.
+
+* @dbchandra23

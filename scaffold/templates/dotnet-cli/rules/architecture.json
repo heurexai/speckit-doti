@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "description": "Architecture contract for HxScaffoldSample. Enforced by the ArchUnitNET tests in test/HxScaffoldSample.Architecture.Tests (the families below are default gates run by `dotnet test`). This file is the human-readable contract and the cross-engine reference; it does not configure the tests (ArchUnitNET rules are expressed in code). Code-level security is additionally enforced by the .NET analyzer security rules in Directory.Build.props.",
+  "layers": {
+    "library": {
+      "namespace": "HxScaffoldSample",
+      "mayDependOn": []
+    },
+    "cli": {
+      "namespace": "HxScaffoldSample.Cli",
+      "mayDependOn": ["library"]
+    }
+  },
+  "families": [
+    {
+      "id": "namespaceDependency",
+      "intent": "The library namespace must not depend on the CLI namespace."
+    },
+    {
+      "id": "classDependency",
+      "intent": "The library must not depend on the System.CommandLine CLI framework."
+    },
+    {
+      "id": "inheritanceNaming",
+      "intent": "Implementations of IGreetingService are named *Service."
+    },
+    {
+      "id": "classNamespaceContainment",
+      "intent": "Classes named *Service reside in the library namespace."
+    },
+    {
+      "id": "attributeAccess",
+      "intent": "[SerializableContract] DTOs reside in the library, not the CLI."
+    },
+    {
+      "id": "cycle",
+      "intent": "The namespaces are free of dependency cycles."
+    },
+    {
+      "id": "capabilityConfinement",
+      "intent": "Security architecture / least privilege: the domain library must not depend on dangerous capabilities (process execution, networking, dynamic code generation). Those belong in the CLI or dedicated adapters."
+    },
+    {
+      "id": "outputConfinement",
+      "intent": "Agent-first output: command logic returns the CliResult envelope and renders only through the Agent host (JSON-first); no CLI type except Agent writes to the console directly, so output stays one machine-consumable chokepoint."
+    }
+  ]
+}

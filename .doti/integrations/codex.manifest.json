@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "agent": "codex",
+  "skillRoot": ".agents/skills",
+  "entrypoint": "AGENTS.md",
+  "sharedContext": ".doti/agent-context.md",
+  "maturity": "command-aware-advisory",
+  "renderedFrom": "doti/core/templates/commands"
+}

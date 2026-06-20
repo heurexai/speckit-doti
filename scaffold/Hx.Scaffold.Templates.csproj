@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Packs the template CONTENT under ./templates into a `dotnet new` template pack.
+         Co-located with ./templates so Content includes stay inside the project cone — an
+         out-of-cone (..\) include flattens the packed paths and loses .template.config. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageType>Template</PackageType>
+    <PackageId>Hx.Scaffold.Templates</PackageId>
+    <Version>0.1.0</Version>
+    <Title>Heurex .NET scaffold templates</Title>
+    <Authors>Heurex</Authors>
+    <Description>dotnet new templates for Heurex deterministic .NET scaffolds (hx-dotnet-cli).</Description>
+    <PackageTags>dotnet-new;templates;cli;scaffold</PackageTags>
+
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="templates\**\*"
+             Exclude="templates\**\bin\**;templates\**\obj\**" />
+    <Compile Remove="**\*" />
+  </ItemGroup>
+
+</Project>

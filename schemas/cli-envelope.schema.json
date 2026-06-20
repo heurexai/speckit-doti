@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heurex.dev/schemas/cli-envelope.schema.json",
+  "title": "Hx CLI envelope (CliResult)",
+  "description": "The agent-first output envelope every Hx CLI command emits. One compact, LF-terminated JSON object per invocation; for a streaming command the final line of an NDJSON stream. Camel-cased (System.Text.Json Web defaults); enums are camelCase strings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "tool", "version", "command", "outcome", "ok", "exitCode",
+    "summary", "errors", "warnings", "info", "nextActions", "requiresOperator", "elapsedMs"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "description": "Envelope schema version (Status ring)." },
+    "tool": { "type": "string", "description": "Emitting tool id (Identity ring)." },
+    "version": { "type": "string", "description": "Emitting tool version (Identity ring)." },
+    "command": { "type": "string", "description": "The full command path that ran." },
+    "outcome": {
+      "type": "string",
+      "enum": ["success", "partial", "failed", "blocked", "skipped", "timedOut", "cancelled"],
+      "description": "Richer-than-boolean command outcome (Status ring)."
+    },
+    "ok": { "type": "boolean", "description": "True iff there are no blocking errors." },
+    "exitCode": { "type": "integer", "description": "The ExitClass value the process returned." },
+    "severityRollup": {
+      "type": ["string", "null"],
+      "enum": ["error", "warning", "info", null],
+      "description": "Highest diagnostic severity, or null."
+    },
+    "summary": { "type": "string", "description": "One-line human summary." },
+    "errors": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" }, "description": "Blocking diagnostics (Diagnostics ring)." },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "info": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "nextActions": { "type": "array", "items": { "$ref": "#/$defs/nextAction" }, "description": "Machine-readable next steps (Direction ring)." },
+    "requiresOperator": { "type": "boolean", "description": "True when the command is blocked pending operator action." },
+    "decision": { "type": ["object", "null"], "description": "A structured multiple-choice OperatorQuestion, or null." },
+    "data": { "description": "The domain payload (Result ring); any JSON value or null." },
+    "elapsedMs": { "type": "integer", "description": "Wall-clock duration in milliseconds." },
+    "runId": { "type": ["string", "null"] },
+    "timestamp": { "type": ["string", "null"] },
+    "target": { "type": ["string", "null"] },
+    "dataSchemaRef": { "type": ["string", "null"] },
+    "effects": { "type": ["array", "null"], "items": { "$ref": "#/$defs/effect" }, "description": "World effects the command had (Effects ring)." },
+    "progress": { "type": ["object", "null"], "description": "Progress for a long-running command (Progress ring)." }
+  },
+  "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "blocking"],
+      "properties": {
+        "code": { "type": "string", "description": "Structured <PREFIX><NNNN> registry code." },
+        "severity": { "type": "string", "enum": ["error", "warning", "info"] },
+        "message": { "type": "string" },
+        "target": { "type": ["string", "null"] },
+        "location": { "type": ["object", "null"] },
+        "hint": { "type": ["string", "null"] },
+        "blocking": { "type": "boolean" }
+      }
+    },
+    "nextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "why"],
+      "properties": {
+        "label": { "type": "string" },
+        "why": { "type": "string" },
+        "command": { "type": ["string", "null"] }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "target"],
+      "properties": {
+        "kind": { "type": "string" },
+        "target": { "type": "string" },
+        "detail": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

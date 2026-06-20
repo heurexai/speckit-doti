@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\tools\Hx.Runner.Cli\Hx.Runner.Cli.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Sentrux.Core\Hx.Sentrux.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Gate.Core\Hx.Gate.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Version.Core\Hx.Version.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Security.Core\Hx.Security.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

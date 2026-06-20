@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <!-- The gate runner aggregates every gate, so it sits above the gate cores (within-core edges, the
+         Hx.Scaffold.Core precedent). It cannot live in Hx.Runner.Core: calling Hx.Sentrux.Core would
+         cycle with the existing Hx.Sentrux.Core -> Hx.Runner.Core (doti-arch-review A1). -->
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+    <ProjectReference Include="..\Hx.Impact.Core\Hx.Impact.Core.csproj" />
+    <ProjectReference Include="..\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+    <ProjectReference Include="..\Hx.Version.Core\Hx.Version.Core.csproj" />
+    <ProjectReference Include="..\Hx.Security.Core\Hx.Security.Core.csproj" />
+    <ProjectReference Include="..\Hx.Sentrux.Core\Hx.Sentrux.Core.csproj" />
+    <ProjectReference Include="..\Hx.Doti.Core\Hx.Doti.Core.csproj" />
+  </ItemGroup>
+</Project>

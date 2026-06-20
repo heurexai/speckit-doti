@@ -1,0 +1,2 @@
+developer path: C:\Users\dev\AppData\Local\Temp\output
+another: /home/dev/.config/app

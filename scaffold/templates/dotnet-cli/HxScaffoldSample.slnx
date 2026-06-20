@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HxScaffoldSample/HxScaffoldSample.csproj" />
+    <Project Path="src/HxScaffoldSample.Cli/HxScaffoldSample.Cli.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/HxScaffoldSample.Tests/HxScaffoldSample.Tests.csproj" />
+    <!--#if (includeArchitectureTests) -->
+    <Project Path="test/HxScaffoldSample.Architecture.Tests/HxScaffoldSample.Architecture.Tests.csproj" />
+    <!--#endif -->
+  </Folder>
+</Solution>

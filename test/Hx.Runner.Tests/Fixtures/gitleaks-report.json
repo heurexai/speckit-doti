@@ -1,0 +1,12 @@
+[
+  {
+    "Description": "AWS Access Key",
+    "StartLine": 12,
+    "EndLine": 12,
+    "File": "src/config.txt",
+    "Match": "AKIAIOSFODNN7EXAMPLE",
+    "Secret": "supersecretvalue123",
+    "RuleID": "aws-access-token",
+    "Fingerprint": "src/config.txt:aws-access-token:12"
+  }
+]

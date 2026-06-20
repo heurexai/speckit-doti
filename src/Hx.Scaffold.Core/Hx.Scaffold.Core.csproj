@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\tools\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+    <!-- Within-core orchestration edges (doti-arch-review A1/A2): the finisher calls these cores in
+         process. Not Hx.Impact.Core — Impact is vendored by file-copy, not invoked by the smoke. -->
+    <ProjectReference Include="..\..\tools\Hx.Doti.Core\Hx.Doti.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Sentrux.Core\Hx.Sentrux.Core.csproj" />
+  </ItemGroup>
+</Project>

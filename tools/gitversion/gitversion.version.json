@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "tool": "gitversion",
+  "license": "MIT",
+  "repository": "https://github.com/GitTools/GitVersion",
+  "version": "6.7.0",
+  "releaseUrl": "https://github.com/GitTools/GitVersion/releases/tag/6.7.0",
+  "releasePublishedAt": null,
+  "vendoredAt": "2026-06-19",
+  "updateChannel": "stable",
+  "assets": [
+    {
+      "rid": "win-x64",
+      "assetName": "gitversion-win-x64-6.7.0.zip",
+      "downloadUrl": "https://github.com/GitTools/GitVersion/releases/download/6.7.0/gitversion-win-x64-6.7.0.zip",
+      "archiveSha256": "55b43a1c1e1d174675ca1500410e64a0ad9904425f2329fe6b35b5368a31f629",
+      "executablePath": "tools/gitversion/bin/win-x64/gitversion.exe",
+      "executableSha256": "6ef2ee1938f1b6f3b92e634f8cff05a84ce0465981a38573564c6a4a78464cda",
+      "executableName": "gitversion.exe",
+      "supportLevel": "active"
+    }
+  ]
+}

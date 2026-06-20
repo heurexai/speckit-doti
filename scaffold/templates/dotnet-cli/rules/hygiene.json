@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "gitleaksEnabled": true,
+  "defaultCommitScope": "changed",
+  "fullScanRequiredForRelease": true,
+  "changedFileThreshold": 2000,
+  "gitleaksBaselineAllowed": false,
+  "scanPaths": ["."],
+  "excludePaths": [
+    ".git",
+    "bin",
+    "obj",
+    "tools",
+    "rules/hygiene.json"
+  ],
+  "allowedUrlPrefixes": [
+    "https://github.com/",
+    "https://api.github.com/",
+    "https://learn.microsoft.com/",
+    "https://www.nuget.org/",
+    "https://dotnet.microsoft.com/"
+  ],
+  "localPathMarkers": [
+    "C:\\Users\\",
+    "/Users/",
+    "/home/",
+    "OneDrive",
+    "AppData",
+    "\\Local\\Temp"
+  ],
+  "privateKeyMarkers": [
+    "-----BEGIN RSA PRIVATE KEY-----",
+    "-----BEGIN PRIVATE KEY-----",
+    "-----BEGIN OPENSSH PRIVATE KEY-----",
+    "-----BEGIN EC PRIVATE KEY-----",
+    "-----BEGIN PGP PRIVATE KEY BLOCK-----"
+  ],
+  "binaryExtensions": [".pfx", ".p12", ".snk", ".dll", ".exe", ".so", ".dylib"],
+  "shellRunnerExtensions": [".ps1", ".psm1", ".sh", ".bash", ".cmd", ".bat"]
+}

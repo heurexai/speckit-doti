@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+    <ProjectReference Include="..\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+  </ItemGroup>
+</Project>
