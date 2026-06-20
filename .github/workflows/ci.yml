@@ -1,15 +1,13 @@
 name: CI
 
-# PR gate:
-#  - build (ubuntu, macOS): cross-platform compile check — pure .NET, no vendored tools needed.
-#  - build + test (windows): the verified gate — restore, build, and the full test suite, which
-#    includes the ArchUnitNET architecture families (layering/boundary violations fail the build).
+# PR gate: restore, build, and run the full test suite on Windows, Linux, and macOS.
+# The suite includes the ArchUnitNET architecture families (layering/boundary violations
+# fail the build). Heavy end-to-end smokes (template round-trip, scaffold-new) are env-gated
+# and skipped here.
 #
 # The full `gate run` (hygiene, Gitleaks secret scan, Sentrux boundary analysis, security SCA,
-# GitVersion) needs the vendored win-x64 tool binaries + Sentrux grammar, fetched operationally
-# per tools/*/*.version.json — those steps run locally until cross-platform tool vendoring lands.
-# The full test suite is Windows-only for now: a few path/RID tests assume win-x64; making them
-# OS-agnostic is the next step toward running tests on Linux/macOS too.
+# GitVersion) still needs the vendored win-x64 tool binaries + Sentrux grammar (operational),
+# so it is not part of CI yet.
 
 on:
   pull_request:
@@ -21,12 +19,12 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: build (${{ matrix.os }})
+  build-test:
+    name: build + test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -37,18 +35,5 @@ jobs:
         run: dotnet restore scaffold-dotnet.slnx
       - name: Build (Release)
         run: dotnet build scaffold-dotnet.slnx -c Release --no-restore
-
-  test:
-    name: build + test (windows-latest)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-      - name: Restore
-        run: dotnet restore scaffold-dotnet.slnx
-      - name: Build (Release)
-        run: dotnet build scaffold-dotnet.slnx -c Release --no-restore
-      - name: Test (unit + ArchUnitNET architecture families)
+      - name: Test
         run: dotnet test scaffold-dotnet.slnx -c Release --no-build
