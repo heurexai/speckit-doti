@@ -1,0 +1,20 @@
+# Build output
+**/bin/
+**/obj/
+
+# Vendored tool binaries — large; re-fetched operationally per tools/*/*.version.json
+tools/gitleaks/bin/
+tools/sentrux/bin/
+tools/sentrux/grammars/
+tools/gitversion/bin/
+
+# doti runtime state (regenerated)
+.doti/cycle-state.json
+.doti/gate-proof.json
+
+# IDE / OS
+.vs/
+.idea/
+*.user
+*.suo
+.DS_Store
