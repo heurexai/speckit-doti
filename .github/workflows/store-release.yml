@@ -58,7 +58,12 @@ jobs:
           & "$($sdk.FullName)/x64/makeappx.exe" pack /d msix-layout /p "speckit-doti-${{ inputs.version }}.msix" /o
 
       # Subsequent-version submission via the Microsoft Store Developer CLI. The first submission
-      # (listing + age rating) is manual in Partner Center; verify the exact msstore flags on first run.
+      # (listing + age rating) is manual in Partner Center. NOTE: the MSStore CLI is NOT a dotnet/NuGet
+      # tool — it is installed via the official setup action below (winget locally). Verify the exact
+      # `publish` invocation on the first automated run: https://aka.ms/msstoredevcli
+      - name: Setup Microsoft Store Developer CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
       - name: Submit to the Microsoft Store
         shell: pwsh
         env:
@@ -67,6 +72,5 @@ jobs:
           STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
           STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
         run: |
-          dotnet tool install --global MSStore.CLI
           msstore reconfigure --tenantId $env:STORE_TENANT_ID --sellerId $env:STORE_SELLER_ID --clientId $env:STORE_CLIENT_ID --clientSecret $env:STORE_CLIENT_SECRET
-          msstore publish "speckit-doti-${{ inputs.version }}.msix" --id 9P4FZG3SQ890
+          msstore publish "speckit-doti-${{ inputs.version }}.msix" --appId 9P4FZG3SQ890
