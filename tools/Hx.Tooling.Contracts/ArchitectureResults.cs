@@ -1,6 +1,6 @@
 namespace Hx.Tooling.Contracts;
 
-/// <summary>JSON proof for <c>architecture test</c>: per-`[Fact]` results plus the eight families
+/// <summary>JSON proof for <c>architecture test</c>: per-`[Fact]` results plus the families
 /// declared in <c>rules/architecture.json</c> (the enforced contract).</summary>
 public sealed record ArchitectureTestResult(
     int SchemaVersion,

@@ -14,7 +14,7 @@ This skill is seeded with the specific ArchUnitNET and Sentrux items to check so
 ## ArchUnitNET checklist (config: `rules/architecture.json`)
 
 - `rules/architecture.json` is the single config source; tests are config-driven. Reject rule weakening done inline in test code instead of in config.
-- All eight rule families exist as visible test groups. The structural families carry negative fixtures (proving the rule fails when violated; `cycle` is positive-only); the capability-confinement and output-confinement families carry non-vacuity assertions (proving they are enforced against loaded types, not vacuously true):
+- All nine rule families exist as visible test groups. The structural families carry negative fixtures (proving the rule fails when violated; `cycle` is positive-only); the capability-confinement, output-confinement, and CLI surface-confinement families carry non-vacuity assertions (proving they are enforced against loaded types, not vacuously true):
   1. **Namespace dependency** — dependency direction is correct. Contracts (`Hx.Tooling.Contracts`) depend on nothing internal; core may depend on contracts; CLI may depend on core + contracts; **core must not depend on CLI**. Generated `dotnet-cli`: `<Solution>` (core) must not depend on `<Solution>.Cli`.
   2. **Class dependency** — forbidden class/interface directions; DTO/contract types stay independent of process, file-system, Git, and CLI types.
   3. **Inheritance naming** — assignable classes (command handlers, services, validators, options) follow naming conventions.
@@ -23,6 +23,7 @@ This skill is seeded with the specific ArchUnitNET and Sentrux items to check so
   6. **Cycle** — namespace/module slices are acyclic.
   7. **Security architecture (capability confinement)** — the domain/library layer must not depend on dangerous capabilities (process execution, networking, dynamic code generation); those belong in the CLI or dedicated adapters. The capability assemblies are loaded so the rule is enforced, not vacuously true. Complements the code-level analyzer security rules (CA3xxx/CA5xxx) enabled in `Directory.Build.props`.
   8. **Output confinement (agent-first)** — only the `Agent` host writes to the console; command logic returns the `CliResult` envelope (JSON-first), so output stays one machine-consumable chokepoint. A non-vacuity assertion proves the `Agent` actually reaches `System.Console`.
+  9. **CLI surface confinement (Channel Independence / thin adapter)** — types in a `.Cli` namespace carry no business-logic roles (`*Service`/`*Repository`/`*Validator`/`*Calculator`/`*Engine`/`*Manager`/`*Scanner`/`*Provider`); those live in the domain library, so the CLI stays a thin channel adapter and the core is reusable from any channel. A non-vacuity assertion proves a `*Service` resides in the library, not the CLI.
 - The README states ArchUnitNET rules are default gates, not examples.
 - The shared architecture loader loads the generated library + CLI assemblies once per run.
 - Any new project/namespace/layer/attribute/handler/service/validator/options class is reflected in `rules/architecture.json`.

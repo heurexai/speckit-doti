@@ -31,3 +31,7 @@ When a blocking decision or ambiguity needs the operator, surface it with full c
 ## Codified Cycle
 
 The doti cycle is enforced by code, not honored by convention. A stage proceeds only when its prerequisites are stamped and **fresh** (`doti cycle check --stage <X>`, fail-closed), and commits go **only** through `doti cycle commit` — the sanctioned path that re-verifies the prerequisite chain (including a fresh drift-review and the task-hash), a fresh passing gate proof, and a clean staged scope, then commits; it refuses otherwise. **Never commit by hand**: an untracked, logic-free insurance pre-commit hook (installed by `doti install-hooks`) redirects a bare `git commit` to the sanctioned path. Freshness is diff-bound — changing code after a stage's proof invalidates that proof.
+
+## Channel Independence (Thin Adapter)
+
+Behavior lives in `*.Core` libraries and must be drivable from any channel. CLI/entry projects are thin adapters: they parse input, delegate to a core type, and render the `CliResult` — they hold no business logic. A CLI type may construct and inject channel adapters (network, process, console) into pure core, but the logic itself lives in core. Adding a feature means adding it to a `*.Core` library with a command that only wires it — keeping the core reusable across channels (CLI, daemon, HTTP). Enforced by the thin-CLI architecture families (`cliSurfaceConfinement`, `cliDelegation`).

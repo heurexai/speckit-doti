@@ -20,7 +20,7 @@
 ## Why .NET devs use it
 
 - **One command, a project that builds.** `dotnet new hx-dotnet-cli` emits a layered .NET 10 solution — domain library, agent-first CLI, xUnit tests, ArchUnitNET architecture tests, security analyzers, gate configs — that compiles and tests **green on day one**. No wiring, no "TODO: add tests later."
-- **Architecture rules that fail the build.** Eight [ArchUnitNET](https://github.com/TNG/ArchUnitNET) families + a vendored [Sentrux](https://github.com/heurexai/sentrux) boundary engine run on every `dotnet test`. Layering drift is a red build, not a code-review nit.
+- **Architecture rules that fail the build.** Nine [ArchUnitNET](https://github.com/TNG/ArchUnitNET) families + a vendored [Sentrux](https://github.com/heurexai/sentrux) boundary engine run on every `dotnet test`. Layering drift is a red build, not a code-review nit.
 - **Guardrails your agent can't talk its way around.** Unlike Spec Kit's advisory markdown prompts, every doti stage is backed by a CLI command that emits a hash-bound proof, and the gate ladder is **fail-closed** — a commit chokepoint refuses work it didn't verify.
 - **Agent-first by design.** Every operation is a JSON-first command, so Claude Code or Codex can drive, verify, and report on the whole spec → ship loop with no human in the path.
 
@@ -139,7 +139,7 @@ The point of the scaffold is that good design is **enforced from the first commi
 
 - **Layered & dependency-directed.** A pure domain `library` that may depend on nothing, and a `CLI` that may depend only on the library — enforced by tests, not just documented.
 - **Agent-first CLI.** Commands return a `CliResult` envelope — _Status / Identity / Diagnostics / Direction / Result_, plus _Effects / Progress_ — serialized as LF-normalized, JSON-first output. A single `Agent` host is the only type allowed to write to the console, so output is one machine-consumable chokepoint. Structured error codes (`<PREFIX><NNNN>`), a `describe` command for self-description, and NDJSON streaming come built in.
-- **Architecture gated by code.** `test/*.Architecture.Tests` runs **eight ArchUnitNET families** on every `dotnet test`:
+- **Architecture gated by code.** `test/*.Architecture.Tests` runs **nine ArchUnitNET families** on every `dotnet test`:
 
   | family | enforces |
   | --- | --- |
@@ -151,6 +151,7 @@ The point of the scaffold is that good design is **enforced from the first commi
   | `cycle` | namespaces are free of dependency cycles |
   | `capabilityConfinement` | the library must not touch process execution, networking, or dynamic code generation (least privilege) |
   | `outputConfinement` | only the `Agent` host writes to the console (output stays JSON-first) |
+  | `cliSurfaceConfinement` | the CLI carries no business-logic types (`*Service`/`*Repository`/…); logic lives in the library (thin adapter) |
 
 - **Security at the build.** .NET analyzer security rules (CA3xxx/CA5xxx) are errors via `Directory.Build.props` — the build itself is the SAST gate.
 
