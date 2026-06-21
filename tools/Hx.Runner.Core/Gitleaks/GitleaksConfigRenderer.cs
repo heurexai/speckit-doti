@@ -45,8 +45,11 @@ public static class GitleaksConfigRenderer
 
     private static string EscapePathRegex(string path)
     {
-        // Treat policy excludes as path prefixes anchored at the repo-relative root.
+        // Anchor each exclude to a path-segment boundary (start-of-string or '/') rather than only '^':
+        // gitleaks reports paths that may be absolute (e.g. C:/.../repo/rules/hygiene.json), so a '^'-only
+        // anchor never matches and the exclude is silently ineffective. '(^|/)' matches the segment whether
+        // the scanned path is repo-relative or absolute.
         string normalized = path.Replace('\\', '/').TrimEnd('/');
-        return "^" + System.Text.RegularExpressions.Regex.Escape(normalized);
+        return "(^|/)" + System.Text.RegularExpressions.Regex.Escape(normalized);
     }
 }
