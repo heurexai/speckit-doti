@@ -1,0 +1,72 @@
+name: Store release
+
+# Manual: build the MSIX (self-contained hx + payload + win-x64 tools) and submit it to the
+# Microsoft Store. The FIRST submission must be completed manually in Partner Center (listing,
+# age rating); this automates subsequent version submissions. Requires the repo secrets
+# STORE_TENANT_ID / STORE_SELLER_ID / STORE_CLIENT_ID / STORE_CLIENT_SECRET (the linked Azure AD app).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to package + submit, e.g. 0.2.0 (MSIX version becomes <version>.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  msix:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build scaffold-dotnet.slnx -c Release
+
+      - name: Fetch vendored tool binaries (win-x64)
+        run: dotnet run --project tools/Hx.Runner.Cli -c Release --no-build -- tools fetch --repo . --json
+
+      - name: Publish hx (self-contained, single file)
+        run: dotnet publish tools/Hx.Scaffold.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+      - name: Assemble MSIX layout
+        shell: pwsh
+        run: |
+          $ver = "${{ inputs.version }}"
+          $layout = "msix-layout"
+          New-Item -ItemType Directory -Force $layout | Out-Null
+          # Payload (template, doti, source, manifests, vendored grammars) + win-x64 tool binaries + hx.
+          git archive --format=tar HEAD | tar -x -C $layout
+          foreach ($t in 'gitleaks','sentrux','gitversion') { if (Test-Path "tools/$t/bin") { Copy-Item -Recurse -Force "tools/$t/bin" "$layout/tools/$t/bin" } }
+          Copy-Item publish/Hx.Scaffold.Cli.exe "$layout/hx.exe"
+          Copy-Item packaging/msix/AppxManifest.xml "$layout/AppxManifest.xml"
+          New-Item -ItemType Directory -Force "$layout/Assets" | Out-Null
+          Copy-Item packaging/msix/Assets/* "$layout/Assets/"
+          # Stamp the 4-part MSIX version (last part must be 0 for the Store).
+          (Get-Content "$layout/AppxManifest.xml") -replace 'Version="[0-9.]+"', "Version=`"$ver.0`"" | Set-Content "$layout/AppxManifest.xml"
+
+      - name: Pack MSIX (makeappx)
+        shell: pwsh
+        run: |
+          $sdk = Get-ChildItem "C:/Program Files (x86)/Windows Kits/10/bin" -Directory |
+                   Where-Object { Test-Path "$($_.FullName)/x64/makeappx.exe" } |
+                   Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $sdk) { throw "makeappx.exe not found in the Windows SDK." }
+          & "$($sdk.FullName)/x64/makeappx.exe" pack /d msix-layout /p "speckit-doti-${{ inputs.version }}.msix" /o
+
+      # Subsequent-version submission via the Microsoft Store Developer CLI. The first submission
+      # (listing + age rating) is manual in Partner Center; verify the exact msstore flags on first run.
+      - name: Submit to the Microsoft Store
+        shell: pwsh
+        env:
+          STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
+          STORE_SELLER_ID: ${{ secrets.STORE_SELLER_ID }}
+          STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
+          STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+        run: |
+          dotnet tool install --global MSStore.CLI
+          msstore reconfigure --tenantId $env:STORE_TENANT_ID --sellerId $env:STORE_SELLER_ID --clientId $env:STORE_CLIENT_ID --clientSecret $env:STORE_CLIENT_SECRET
+          msstore publish "speckit-doti-${{ inputs.version }}.msix" --id 9P4FZG3SQ890
