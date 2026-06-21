@@ -299,6 +299,7 @@ Every command is `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `H
 | `sentrux verify` / `sentrux check` | Verify the vendored Sentrux binary / run the boundary analysis |
 | `hygiene scan` / `hygiene gitleaks verify` | Working-tree hygiene + secret scanning |
 | `version calculate` / `version bump` | GitVersion semantic version / bump + annotated tag |
+| `tools fetch [--rid] [--tool all\|gitleaks\|sentrux\|gitversion]` | Download + SHA-256-verify the vendored tool binaries from their pinned manifests (fail-closed on mismatch) |
 | `plan` _(Hx.Impact.Cli)_ | Affected-test planner (project-graph reverse closure → covering test projects) |
 | `doti cycle stamp \| status \| check \| commit` | Stamp a stage / show cycle state / fail-closed prereq check / sanctioned commit |
 | `doti question check` | Validate operator-question format compliance |
@@ -321,7 +322,7 @@ The gate never creates a Sentrux baseline, and persists its proof so `doti cycle
 
 ## Status
 
-Fully green on **win-x64**; other RIDs fail closed pending cross-platform vendoring of the binary tools (Gitleaks / Sentrux / GitVersion). Cross-platform CI is on the roadmap.
+Fully green on **win-x64**; other RIDs fail closed pending cross-platform vendoring of the binary tools (Gitleaks / Sentrux / GitVersion). The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary (incl. GitVersion) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with a working GitVersion (plus Gitleaks / Sentrux) without a manual step. Cross-platform CI is on the roadmap.
 
 ## Acknowledgements
 

@@ -45,6 +45,10 @@ public sealed class RunnerCommandsTests
         AssertUsage(RunnerCommands.QuestionCheck(Meta, file: ""));
 
     [Fact]
+    public void ToolsFetch_rejects_an_unknown_tool() =>
+        AssertUsage(RunnerCommands.ToolsFetch(Meta, ".", rid: "win-x64", toolFilter: "bogus"));
+
+    [Fact]
     public void QuestionCheck_reports_a_missing_file_as_validation()
     {
         CliResult r = RunnerCommands.QuestionCheck(Meta, file: "does-not-exist-12345.json");

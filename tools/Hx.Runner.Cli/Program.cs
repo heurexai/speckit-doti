@@ -310,6 +310,23 @@ securityScanCommand.SetAction(parseResult => CliHost.Run(meta, "security scan",
 securityCommand.Subcommands.Add(securityScanCommand);
 rootCommand.Subcommands.Add(securityCommand);
 
+// ---- tools (deterministic, hash-verified vendored-tool provisioning) ----
+Command toolsCommand = new("tools", "Vendored-tool provisioning.");
+Command toolsFetchCommand = new("fetch", "Fetch + hash-verify the vendored tool binaries from their pinned manifests (fail-closed on mismatch).");
+Option<string> tfRepo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+Option<string?> tfRid = new("--rid") { Description = "Target RID (default: host)." };
+Option<string> tfTool = new("--tool") { Description = "all | gitleaks | sentrux | gitversion", DefaultValueFactory = _ => "all" };
+Option<bool> tfJson = CliApp.JsonOption();
+toolsFetchCommand.Options.Add(tfRepo);
+toolsFetchCommand.Options.Add(tfRid);
+toolsFetchCommand.Options.Add(tfTool);
+toolsFetchCommand.Options.Add(tfJson);
+toolsFetchCommand.SetAction(parseResult => CliHost.Run(meta, "tools fetch",
+    () => RunnerCommands.ToolsFetch(meta, parseResult.GetValue(tfRepo)!, parseResult.GetValue(tfRid), parseResult.GetValue(tfTool)!),
+    forceJson: CliApp.ForceJson(parseResult, tfJson)));
+toolsCommand.Subcommands.Add(toolsFetchCommand);
+rootCommand.Subcommands.Add(toolsCommand);
+
 // ---- errorcodes (render from registry.json; check the append-only shipped freeze) ----
 Command errorcodesCommand = new("errorcodes", "Error-code registry: render the generated constants and check stability.");
 

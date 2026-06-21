@@ -11,6 +11,10 @@
     { "category": "internal", "suffix": "unhandled", "severity": "Error", "message": "An unhandled internal error occurred.", "remediation": "This is a bug — report it with the command and inputs." },
     { "category": "usage", "suffix": "invalid-arguments", "severity": "Error", "message": "Invalid command arguments.", "remediation": "Run the command with --help to see valid usage." },
     { "category": "validation", "suffix": "failed", "severity": "Error", "message": "Validation failed.", "remediation": "Fix the reported issues and re-run." },
-    { "category": "integrity", "suffix": "verification-failed", "severity": "Error", "message": "An integrity verification failed.", "remediation": "Re-vendor or re-verify the tool/proof; do not bypass the gate." }
+    { "category": "integrity", "suffix": "verification-failed", "severity": "Error", "message": "An integrity verification failed.", "remediation": "Re-vendor or re-verify the tool/proof; do not bypass the gate." },
+    { "category": "validation", "suffix": "tool-asset-unavailable", "severity": "Error", "message": "No vendored-tool asset is mapped for the host RID.", "remediation": "This RID has no pinned asset yet; vendor one, or run on a supported RID (win-x64)." },
+    { "category": "integrity", "suffix": "tool-archive-hash-mismatch", "severity": "Error", "message": "A downloaded tool archive's SHA-256 does not match the manifest.", "remediation": "Do not install the binary; re-check the pinned downloadUrl/archiveSha256 in the tool manifest." },
+    { "category": "integrity", "suffix": "tool-executable-hash-mismatch", "severity": "Error", "message": "A fetched tool executable's SHA-256 does not match the manifest.", "remediation": "Do not install the binary; re-check the pinned executableSha256 in the tool manifest." },
+    { "category": "internal", "suffix": "tool-download-failed", "severity": "Error", "message": "A vendored-tool download or extraction failed.", "remediation": "Check network connectivity and the pinned downloadUrl, then re-run the fetch." }
   ]
 }

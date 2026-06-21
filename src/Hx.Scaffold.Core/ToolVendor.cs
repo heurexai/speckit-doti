@@ -7,16 +7,16 @@ using Hx.Tooling.Contracts;
 namespace Hx.Scaffold.Core;
 
 /// <summary>
-/// Copies the scaffold's already release-sourced, SHA-256-hashed, manifest-pinned Gitleaks + Sentrux
-/// tool trees into a generated repo (binaries, manifest, grammars, LICENSE). The copied manifest
-/// travels with the tool so the generated repo re-verifies it (the smoke does this); we do not
-/// re-download per repo (tool provenance = copy the verified vendor).
+/// Copies the scaffold's already release-sourced, SHA-256-hashed, manifest-pinned Gitleaks + Sentrux +
+/// GitVersion tool trees into a generated repo (binaries when present, manifest, grammars, LICENSE). The
+/// copied manifest travels with the tool so the generated repo can re-verify it (the smoke does this) and
+/// re-fetch any missing binary from its pinned downloadUrl (<see cref="Hx.Runner.Core.Tools.ToolFetcher"/>).
 /// The Gitleaks native config is then re-rendered from the GENERATED repo's rules/hygiene.json (plan:
 /// rendered, not copied) and its hash re-pinned so <c>gitleaks verify</c> stays green.
 /// </summary>
 public static class ToolVendor
 {
-    public static readonly IReadOnlyList<string> ToolDirectories = ["tools/gitleaks", "tools/sentrux"];
+    public static readonly IReadOnlyList<string> ToolDirectories = ["tools/gitleaks", "tools/sentrux", "tools/gitversion"];
 
     public static void Vendor(string sourceRepoRoot, string targetRepoRoot)
     {

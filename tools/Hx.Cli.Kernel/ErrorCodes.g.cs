@@ -13,6 +13,10 @@ public static class ErrorCodes
     public const string Usage_InvalidArguments = "USG0001";
     public const string Validation_Failed = "VAL0001";
     public const string Integrity_VerificationFailed = "ITG0001";
+    public const string Validation_ToolAssetUnavailable = "VAL0002";
+    public const string Integrity_ToolArchiveHashMismatch = "ITG0002";
+    public const string Integrity_ToolExecutableHashMismatch = "ITG0003";
+    public const string Internal_ToolDownloadFailed = "INT0002";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -25,5 +29,13 @@ public static class ErrorCodes
             "Validation failed.", "Fix the reported issues and re-run."),
         new("ITG0001", "integrity", "ITG", 1, Severity.Error, ExitClass.Integrity, "integrity.verification-failed",
             "An integrity verification failed.", "Re-vendor or re-verify the tool/proof; do not bypass the gate."),
+        new("VAL0002", "validation", "VAL", 2, Severity.Error, ExitClass.Validation, "validation.tool-asset-unavailable",
+            "No vendored-tool asset is mapped for the host RID.", "This RID has no pinned asset yet; vendor one, or run on a supported RID (win-x64)."),
+        new("ITG0002", "integrity", "ITG", 2, Severity.Error, ExitClass.Integrity, "integrity.tool-archive-hash-mismatch",
+            "A downloaded tool archive's SHA-256 does not match the manifest.", "Do not install the binary; re-check the pinned downloadUrl/archiveSha256 in the tool manifest."),
+        new("ITG0003", "integrity", "ITG", 3, Severity.Error, ExitClass.Integrity, "integrity.tool-executable-hash-mismatch",
+            "A fetched tool executable's SHA-256 does not match the manifest.", "Do not install the binary; re-check the pinned executableSha256 in the tool manifest."),
+        new("INT0002", "internal", "INT", 2, Severity.Error, ExitClass.Internal, "internal.tool-download-failed",
+            "A vendored-tool download or extraction failed.", "Check network connectivity and the pinned downloadUrl, then re-run the fetch."),
     ];
 }
