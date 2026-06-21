@@ -1,0 +1,18 @@
+# winget installer manifest (schema 1.6.0). After a release, fill PackageVersion, InstallerUrl,
+# and InstallerSha256 from the published win-x64 zip (see packaging/PUBLISHING.md), then submit
+# this + the version + locale manifests to microsoft/winget-pkgs. Install: winget install Heurex.SpeckitDoti
+PackageIdentifier: Heurex.SpeckitDoti
+PackageVersion: 0.2.0
+InstallerType: zip
+NestedInstallerType: portable
+Commands:
+  - hx
+NestedInstallerFiles:
+  - RelativeFilePath: hx.exe
+    PortableCommandAlias: hx
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/heurexai/speckit-doti/releases/download/v0.2.0/speckit-doti-v0.2.0-win-x64.zip
+    InstallerSha256: REPLACE_WITH_WIN_X64_ARCHIVE_SHA256
+ManifestType: installer
+ManifestVersion: 1.6.0

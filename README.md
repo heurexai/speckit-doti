@@ -262,15 +262,22 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 
 ## Get started
 
-### Install the released toolkit (win-x64)
+### Install the released toolkit
 
-Download the latest `speckit-doti-<version>-win-x64.zip` from the [**Releases**](https://github.com/heurexai/speckit-doti/releases) page, extract it, and run the bundled `hx.exe` from any directory:
+Each [**Release**](https://github.com/heurexai/speckit-doti/releases) ships a standalone installer per platform — **win-x64** (`.zip`), **linux-x64**, and **osx-arm64** (`.tar.gz`). Download the archive for your platform, extract it, and run the bundled `hx` from any directory:
 
+```bash
+# macOS / Linux
+./hx new --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
+```
 ```powershell
+# Windows
 .\hx.exe new --name Acme.Widget --output .\Acme.Widget --company Acme --agents codex,claude
 ```
 
-The release bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (`%LOCALAPPDATA%\Heurex\speckit-doti\tools`) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution.
+Package-manager installs (after first publish): `winget install Heurex.SpeckitDoti` (Windows) and `brew install heurexai/tap/speckit-doti` (macOS/Linux) — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
+
+Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (`%LOCALAPPDATA%\Heurex\speckit-doti\tools`, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution.
 
 ### Build from source
 
