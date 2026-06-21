@@ -22,8 +22,10 @@ the first submission isn't made within ~3 months of reserving.
 1. **Complete the listing** for the product: description, screenshots, category, **age rating (IARC)**,
    privacy-policy URL. (Required before any submission can pass certification.)
 2. **Link an Azure AD app for API submission**: Partner Center → *Account settings → User management →
-   Azure AD applications* → add an app (e.g. `speckit-doti-ci`) with the **Manager** role. In the Azure
-   portal create a **client secret** for it.
+   Azure AD applications* → add an app (e.g. `speckit-doti-ci`) with the **Developer** role (least
+   privilege — it can upload packages and submit apps/add-ons, but cannot touch account or financial
+   settings; elevate to **Manager** only if a submission ever fails with an insufficient-permissions
+   error). In the Azure portal create a **client secret** for it (note its expiry — rotate before then).
 3. Add repo **Actions secrets**: `STORE_TENANT_ID`, `STORE_SELLER_ID` (Partner Center seller ID),
    `STORE_CLIENT_ID`, `STORE_CLIENT_SECRET`.
 4. **Do the first submission manually** — build the MSIX (below), upload it in Partner Center, complete
