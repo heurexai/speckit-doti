@@ -30,9 +30,11 @@ public static class ToolVendor
                     $"Vendored tool source is missing in the scaffold: {relative}. Vendor it before scaffolding.");
             }
 
-            // Include everything (bin, config, grammars, *.version.json, LICENSE) — these ARE the
-            // vendored artifacts the generated repo verifies.
-            DirectoryCopy.Copy(from, to, _ => true);
+            // Exclude bin/ (the heavy tool binaries, ~127MB): generated solutions resolve those from the
+            // shared tool store, not a per-solution copy. Keep config/, grammars/, *.version.json, and
+            // LICENSE — the small, verifiable vendored artifacts (the sentrux grammar has no downloadUrl,
+            // so it stays vendored in-repo and is staged from there).
+            DirectoryCopy.Copy(from, to, DirectoryCopy.ExcludeBuildArtifacts);
         }
 
         RefreshGitleaksConfig(targetRepoRoot);

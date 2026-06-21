@@ -1,6 +1,5 @@
 using Hx.Runner.Core.Platform;
 using Hx.Runner.Core.Process;
-using Hx.Runner.Core.Repository;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Sentrux.Core;
@@ -31,8 +30,7 @@ public static class SentruxBaselineRunner
         // pinned grammar, not a machine-global install.
         SentruxGrammarStager.EnsureStaged(root, rid);
 
-        string executable = RepositoryPathResolver
-            .ResolveInside(root, SentruxToolPathResolver.ResolveRepoRelativeToolPath(rid)).FullPath;
+        string executable = SentruxToolPathResolver.ResolveExecutable(root, rid);
 
         ProcessRunResult run = ProcessRunner.Run(SentruxProcessAdapter.GateSave(executable, root));
         SentruxOutputParser.GateReport report = SentruxOutputParser.ParseGate(run.StandardOutput);
