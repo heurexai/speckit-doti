@@ -18,6 +18,26 @@
       "executableSha256": "6ef2ee1938f1b6f3b92e634f8cff05a84ce0465981a38573564c6a4a78464cda",
       "executableName": "gitversion.exe",
       "supportLevel": "active"
+    },
+    {
+      "rid": "linux-x64",
+      "assetName": "gitversion-linux-x64-6.7.0.tar.gz",
+      "downloadUrl": "https://github.com/GitTools/GitVersion/releases/download/6.7.0/gitversion-linux-x64-6.7.0.tar.gz",
+      "archiveSha256": "e2012abfb3392a6f0ccf5f82738173c291b15bfdb2d5e9197777ec3f41b88f76",
+      "executablePath": "tools/gitversion/bin/linux-x64/gitversion",
+      "executableSha256": "1ef62db778f6a59bae9aa2010b31ad8401b139fa8da566e2fa9bb8db3c76d239",
+      "executableName": "gitversion",
+      "supportLevel": "active"
+    },
+    {
+      "rid": "osx-arm64",
+      "assetName": "gitversion-osx-arm64-6.7.0.tar.gz",
+      "downloadUrl": "https://github.com/GitTools/GitVersion/releases/download/6.7.0/gitversion-osx-arm64-6.7.0.tar.gz",
+      "archiveSha256": "429108e0d51f98815b6fbf4ebba84cf53812a4c71eee67180456e8771e9f4320",
+      "executablePath": "tools/gitversion/bin/osx-arm64/gitversion",
+      "executableSha256": "728a0189c527689bd91d2154490df5694bb65d50cd4bd60cee1d595ebb10ce4e",
+      "executableName": "gitversion",
+      "supportLevel": "active"
     }
   ]
 }

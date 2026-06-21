@@ -1,7 +1,9 @@
 name: Release
 
-# On a v* tag: build the standalone win-x64 installer (self-contained hx.exe + the bundled scaffold
-# payload, incl. the vendored tool binaries) and publish it as a GitHub Release asset.
+# On a v* tag: build the standalone installer for each supported RID (win-x64 / linux-x64 / osx-arm64)
+# on its native runner — a self-contained single-file hx + the bundled scaffold payload (template, doti,
+# source, manifests, vendored grammars) + that RID's fetched tool binaries — and attach each archive
+# (zip on Windows, tar.gz on linux/macOS) to a single GitHub Release.
 on:
   push:
     tags: [ 'v*' ]
@@ -10,9 +12,28 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: build + publish win-x64 installer
-    runs-on: windows-latest
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create the GitHub Release (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" >/dev/null 2>&1 \
+            || gh release create "${{ github.ref_name }}" --repo "${{ github.repository }}" \
+                 --title "speckit-doti ${{ github.ref_name }}" --generate-notes
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64,  ext: zip,    exe: hx.exe }
+          - { os: ubuntu-latest,  rid: linux-x64, ext: tar.gz, exe: hx }
+          - { os: macos-latest,   rid: osx-arm64, ext: tar.gz, exe: hx }
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v5
@@ -22,30 +43,39 @@ jobs:
       - name: Build
         run: dotnet build scaffold-dotnet.slnx -c Release
 
-      - name: Fetch vendored tool binaries (win-x64)
+      - name: Fetch vendored tool binaries for ${{ matrix.rid }}
         run: dotnet run --project tools/Hx.Runner.Cli -c Release --no-build -- tools fetch --repo . --json
 
       - name: Publish hx (self-contained, single file)
-        run: dotnet publish tools/Hx.Scaffold.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+        run: dotnet publish tools/Hx.Scaffold.Cli -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
-      - name: Assemble the installer
+      - name: Assemble installer (Windows zip)
+        if: matrix.ext == 'zip'
         shell: pwsh
         run: |
-          $name = "speckit-doti-$($env:GITHUB_REF_NAME)-win-x64"
+          $name = "speckit-doti-$($env:GITHUB_REF_NAME)-${{ matrix.rid }}"
           New-Item -ItemType Directory -Force $name | Out-Null
-          # Clean, tracked payload (template + doti + source projects + manifests + configs; no bin/obj/.git).
           git archive --format=tar HEAD | tar -x -C $name
-          # Overlay the fetched, gitignored tool binaries so the install is fully offline.
-          # (The sentrux grammar is vendored in-repo, so git archive already placed it in the payload.)
-          Copy-Item -Recurse -Force tools/gitleaks/bin   "$name/tools/gitleaks/bin"
-          Copy-Item -Recurse -Force tools/sentrux/bin    "$name/tools/sentrux/bin"
-          Copy-Item -Recurse -Force tools/gitversion/bin "$name/tools/gitversion/bin"
-          # The standalone launcher sits at the payload root, so AppContext.BaseDirectory finds the marker.
-          Copy-Item publish/Hx.Scaffold.Cli.exe "$name/hx.exe"
-          Compress-Archive -Path "$name/*" -DestinationPath "$name.zip" -Force
-          "ASSET=$name.zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+          foreach ($t in 'gitleaks','sentrux','gitversion') { if (Test-Path "tools/$t/bin") { Copy-Item -Recurse -Force "tools/$t/bin" "$name/tools/$t/bin" } }
+          Copy-Item "publish/Hx.Scaffold.Cli.exe" "$name/${{ matrix.exe }}"
+          Compress-Archive -Path "$name/*" -DestinationPath "$name.${{ matrix.ext }}" -Force
+          "ASSET=$name.${{ matrix.ext }}" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Create the GitHub Release
+      - name: Assemble installer (tar.gz)
+        if: matrix.ext == 'tar.gz'
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="speckit-doti-${GITHUB_REF_NAME}-${{ matrix.rid }}"
+          mkdir -p "$name"
+          git archive --format=tar HEAD | tar -x -C "$name"
+          for t in gitleaks sentrux gitversion; do [ -d "tools/$t/bin" ] && cp -R "tools/$t/bin" "$name/tools/$t/bin"; done
+          cp "publish/Hx.Scaffold.Cli" "$name/${{ matrix.exe }}"
+          chmod +x "$name/${{ matrix.exe }}"
+          tar czf "$name.${{ matrix.ext }}" -C "$name" .
+          echo "ASSET=$name.${{ matrix.ext }}" >> "$GITHUB_ENV"
+
+      - name: Upload ${{ matrix.rid }} archive to the Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:GITHUB_REF_NAME "$env:ASSET" --title "speckit-doti $env:GITHUB_REF_NAME" --generate-notes
+        run: gh release upload "${{ github.ref_name }}" "${{ env.ASSET }}" --repo "${{ github.repository }}" --clobber

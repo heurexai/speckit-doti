@@ -18,6 +18,26 @@
       "executableSha256": "52bc5902b69ed594c0d440e7eac449ea12b0f5a0926828564d5112cfcc7b8974",
       "executableName": "sentrux.exe",
       "supportLevel": "active"
+    },
+    {
+      "rid": "linux-x64",
+      "assetName": "sentrux-linux-x86_64",
+      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.10/sentrux-linux-x86_64",
+      "archiveSha256": null,
+      "executablePath": "tools/sentrux/bin/linux-x64/sentrux",
+      "executableSha256": "f5080be3a1f6539be817a6463bfefebac5de10f1f9cfcca3ff1faaeb91866d02",
+      "executableName": "sentrux",
+      "supportLevel": "active"
+    },
+    {
+      "rid": "osx-arm64",
+      "assetName": "sentrux-darwin-arm64",
+      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.10/sentrux-darwin-arm64",
+      "archiveSha256": null,
+      "executablePath": "tools/sentrux/bin/osx-arm64/sentrux",
+      "executableSha256": "777f5c2b1a83ce581f4d593b8da1932a37a5c502206180bb2666f0936777d0fe",
+      "executableName": "sentrux",
+      "supportLevel": "active"
     }
   ],
   "grammars": [
@@ -26,6 +46,18 @@
       "rid": "win-x64",
       "path": "tools/sentrux/grammars/csharp/grammars/windows-x86_64.dll",
       "sha256": "b582b14030e2c6245fdc7200b48d918075186caa05fcc5cbd840f62bc2d07a45"
+    },
+    {
+      "name": "csharp",
+      "rid": "linux-x64",
+      "path": "tools/sentrux/grammars/csharp/grammars/linux-x86_64.so",
+      "sha256": "41bf116c3ebd2991a71c489761e9d2a3fefdf53c7cefba024418cc2e07ca157a"
+    },
+    {
+      "name": "csharp",
+      "rid": "osx-arm64",
+      "path": "tools/sentrux/grammars/csharp/grammars/darwin-arm64.dylib",
+      "sha256": "9d22149d84e736b49819479acaaad137762ea7f14def0bb828448add30e3b390"
     }
   ],
   "requiredFeatures": ["check-include-untracked", "gate-save"]

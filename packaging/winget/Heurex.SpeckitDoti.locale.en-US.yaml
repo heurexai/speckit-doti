@@ -1,0 +1,18 @@
+PackageIdentifier: Heurex.SpeckitDoti
+PackageVersion: 0.2.0
+PackageLocale: en-US
+Publisher: Heurex
+PublisherUrl: https://github.com/heurexai
+PackageName: speckit-doti
+PackageUrl: https://github.com/heurexai/speckit-doti
+License: MIT
+LicenseUrl: https://github.com/heurexai/speckit-doti/blob/main/LICENSE
+ShortDescription: Agentic .NET spec-driven development starter kit with an enforced, command-backed doti workflow.
+Tags:
+  - dotnet
+  - scaffold
+  - cli
+  - spec-driven-development
+  - ai-agents
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
