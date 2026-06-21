@@ -111,7 +111,8 @@ public static class ToolFetcher
                 $"Download failed for '{tool}' ({rid}): {ex.Message}");
         }
 
-        // Archive present → verify its hash, then extract executableName. Else the download IS the executable.
+        // Archive present → verify its hash, then extract executableName (.zip on win, .tar.gz on linux/macOS).
+        // Else the download IS the executable (e.g. the raw sentrux binary).
         byte[] executableBytes;
         if (!string.IsNullOrWhiteSpace(asset.ArchiveSha256))
         {
@@ -123,7 +124,7 @@ public static class ToolFetcher
 
             try
             {
-                executableBytes = ExtractFromZip(downloaded, asset.ExecutableName);
+                executableBytes = ExtractExecutable(downloaded, asset.ExecutableName, asset.DownloadUrl);
             }
             catch (Exception ex)
             {
@@ -181,6 +182,33 @@ public static class ToolFetcher
         using var buffer = new MemoryStream();
         entryStream.CopyTo(buffer);
         return buffer.ToArray();
+    }
+
+    /// <summary>Extract <paramref name="executableName"/> from a .zip (Windows) or .tar.gz (linux/macOS), chosen by the download URL.</summary>
+    private static byte[] ExtractExecutable(byte[] archive, string executableName, string downloadUrl) =>
+        downloadUrl.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase) || downloadUrl.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase)
+            ? ExtractFromTarGz(archive, executableName)
+            : ExtractFromZip(archive, executableName);
+
+    private static byte[] ExtractFromTarGz(byte[] archive, string executableName)
+    {
+        using var stream = new MemoryStream(archive, writable: false);
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using var tar = new System.Formats.Tar.TarReader(gzip);
+
+        // Match the entry by file name (the executable may sit at the archive root or under a directory).
+        while (tar.GetNextEntry() is { } entry)
+        {
+            if (entry.DataStream is not null &&
+                string.Equals(Path.GetFileName(entry.Name), executableName, StringComparison.OrdinalIgnoreCase))
+            {
+                using var buffer = new MemoryStream();
+                entry.DataStream.CopyTo(buffer);
+                return buffer.ToArray();
+            }
+        }
+
+        throw new InvalidOperationException($"Archive does not contain '{executableName}'.");
     }
 
     private static string Sha256OfBytes(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
