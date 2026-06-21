@@ -54,19 +54,20 @@ public sealed class TemplateGoldenTests
         {
             "Namespace dependency", "Class dependency", "Inheritance naming",
             "namespace containment", "Attribute access", "Cycle", "Security architecture",
-            "Output confinement",
+            "Output confinement", "CLI surface confinement",
         })
         {
             Assert.Contains(family, src);
         }
 
         // Six structural families (five with a negative fixture; cycle is positive-only) plus the security
-        // family (positive + non-vacuity guard) plus the agent-first output-confinement family (positive +
-        // non-vacuity guard) = 15 facts, 5 negative fixtures.
+        // family (positive + non-vacuity guard), the agent-first output-confinement family (positive +
+        // non-vacuity guard), and the CLI surface-confinement family (positive + negative fixture)
+        // = 17 facts, 6 negative fixtures.
         int facts = CountOccurrences(src, "[Fact]");
         int negatives = CountOccurrences(src, "Negative_");
-        Assert.Equal(15, facts);
-        Assert.Equal(5, negatives);
+        Assert.Equal(17, facts);
+        Assert.Equal(6, negatives);
     }
 
     [Fact]
@@ -82,12 +83,12 @@ public sealed class TemplateGoldenTests
         // The contract names exactly the families that the ArchUnitNET tests implement.
         var ids = root.GetProperty("families").EnumerateArray()
             .Select(f => f.GetProperty("id").GetString()).ToList();
-        Assert.Equal(8, ids.Count);
+        Assert.Equal(9, ids.Count);
         foreach (string id in new[]
         {
             "namespaceDependency", "classDependency", "inheritanceNaming",
             "classNamespaceContainment", "attributeAccess", "cycle", "capabilityConfinement",
-            "outputConfinement",
+            "outputConfinement", "cliSurfaceConfinement",
         })
         {
             Assert.Contains(id, ids);

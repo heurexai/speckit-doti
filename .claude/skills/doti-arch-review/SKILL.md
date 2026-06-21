@@ -14,7 +14,7 @@ disable-model-invocation: false
 
 Read `.doti/agent-context.md`, then follow `doti/core/templates/commands/doti-arch-review.md`.
 
-Validate that the ArchUnitNET config (`rules/architecture.json`, eight rule families: six structural plus a security/capability-confinement family and an agent-first output-confinement family) and the Sentrux config (`.sentrux/rules.toml` layers/boundaries/constraints, baseline, `rules/sentrux.json` mapping) measure the intended architecture and stay mutually consistent. The command template seeds the specific items to check so they are not re-derived each run. The architecture gate (`architecture test` per-family proof) and the Sentrux gate are command-backed; this cross-engine consistency review is an advisory judgment.
+Validate that the ArchUnitNET config (`rules/architecture.json`, nine rule families: six structural plus a security/capability-confinement family, an agent-first output-confinement family, and a CLI surface-confinement (thin-adapter) family) and the Sentrux config (`.sentrux/rules.toml` layers/boundaries/constraints, baseline, `rules/sentrux.json` mapping) measure the intended architecture and stay mutually consistent. The command template seeds the specific items to check so they are not re-derived each run. The architecture gate (`architecture test` per-family proof) and the Sentrux gate are command-backed; this cross-engine consistency review is an advisory judgment.
 
 ## Asking the operator a question (required format)
 

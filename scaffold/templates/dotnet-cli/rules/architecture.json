@@ -43,6 +43,10 @@
     {
       "id": "outputConfinement",
       "intent": "Agent-first output: command logic returns the CliResult envelope and renders only through the Agent host (JSON-first); no CLI type except Agent writes to the console directly, so output stays one machine-consumable chokepoint."
+    },
+    {
+      "id": "cliSurfaceConfinement",
+      "intent": "Channel Independence (thin adapter): the CLI namespace carries no business-logic types (*Service/*Repository/*Validator/*Calculator/*Engine/*Manager/*Scanner/*Provider); those live in the domain library, so the CLI stays a thin channel adapter and the core is reusable from any channel."
     }
   ]
 }

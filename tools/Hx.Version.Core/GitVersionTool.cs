@@ -3,6 +3,7 @@ using Hx.Runner.Core.Io;
 using Hx.Runner.Core.Platform;
 using Hx.Runner.Core.Process;
 using Hx.Runner.Core.Repository;
+using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Version.Core;
@@ -70,8 +71,10 @@ public static class GitVersionTool
 
         checks.Add($"asset mapped for {hostRuntimeIdentifier} ({asset.SupportLevel})");
 
-        RepositoryPath exePath = RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath);
-        if (!File.Exists(exePath.FullPath))
+        string inRepoExe = RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath).FullPath;
+        string exeFullPath = ToolStoreResolver.ResolveOrFallback(
+            Tool, manifest.Version, hostRuntimeIdentifier, asset.ExecutableName, asset.ExecutableSha256 ?? string.Empty, inRepoExe);
+        if (!File.Exists(exeFullPath))
         {
             problems.Add($"GitVersion executable is missing for {hostRuntimeIdentifier}: {asset.ExecutablePath}");
             return Result(false, StageOutcome.Blocked, checks, problems,
@@ -80,7 +83,7 @@ public static class GitVersionTool
 
         if (!string.IsNullOrWhiteSpace(asset.ExecutableSha256))
         {
-            string actual = FileHashing.Sha256OfFile(exePath.FullPath);
+            string actual = FileHashing.Sha256OfFile(exeFullPath);
             if (!string.Equals(actual, asset.ExecutableSha256, StringComparison.OrdinalIgnoreCase))
             {
                 problems.Add("GitVersion executable hash does not match the manifest.");
@@ -194,14 +197,16 @@ public static class GitVersionTool
 
     private static string? ResolveExecutable(string repositoryRoot, string rid)
     {
-        GitVersionAsset? asset = LoadManifest(repositoryRoot).Assets
+        GitVersionManifest manifest = LoadManifest(repositoryRoot);
+        GitVersionAsset? asset = manifest.Assets
             .FirstOrDefault(a => string.Equals(a.Rid, rid, StringComparison.OrdinalIgnoreCase));
         if (asset is null)
         {
             return null;
         }
 
-        return RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath).FullPath;
+        string inRepo = RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath).FullPath;
+        return ToolStoreResolver.ResolveOrFallback(Tool, manifest.Version, rid, asset.ExecutableName, asset.ExecutableSha256 ?? string.Empty, inRepo);
     }
 
     private static ToolVerificationResult Result(

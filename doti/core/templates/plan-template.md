@@ -30,6 +30,7 @@ Technical approach and files likely to change. **Architecture delta:** projects 
 - **Exit class** — Success / Usage / Validation / Integrity / Internal.
 - **`describe` entry** — the command/option/exit-class surface it adds to the capability model, so an agent learns it in one call.
 - **Envelope** — returns the `CliResult` envelope, JSON-first (no direct console writes).
+- **Channel boundary** — new behavior lives in a `*.Core` library; the CLI delta is wiring-only (parse → delegate to a named core type → render). Name the core type each new command delegates to. Enforced by the thin-CLI families (`cliSurfaceConfinement` / `cliDelegation`).
 
 ## Command Availability
 

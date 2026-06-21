@@ -2,6 +2,7 @@ using System.Text.Json;
 using Hx.Runner.Core.Io;
 using Hx.Runner.Core.Process;
 using Hx.Runner.Core.Repository;
+using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Sentrux.Core;
@@ -86,17 +87,19 @@ public static class SentruxManifestValidator
 
         checks.Add($"asset mapped for {hostRuntimeIdentifier} ({asset.SupportLevel})");
 
-        RepositoryPath exePath = RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath);
-        if (!File.Exists(exePath.FullPath))
+        string inRepoExe = RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath).FullPath;
+        string exeFullPath = ToolStoreResolver.ResolveOrFallback(
+            Tool, manifest.ReleaseTag, hostRuntimeIdentifier, asset.ExecutableName, asset.ExecutableSha256 ?? string.Empty, inRepoExe);
+        if (!File.Exists(exeFullPath))
         {
             problems.Add($"Sentrux executable is missing for {hostRuntimeIdentifier}: {asset.ExecutablePath}");
             return Result(false, StageOutcome.Blocked, checks, problems,
                 "Vendor the Sentrux executable for this RID, or disable Sentrux in rules/sentrux.json.");
         }
 
-        VerifyHash(exePath.FullPath, asset.ExecutableSha256, "executable", checks, problems);
+        VerifyHash(exeFullPath, asset.ExecutableSha256, "executable", checks, problems);
         VerifyGrammars(repositoryRoot, hostRuntimeIdentifier, manifest, policy, checks, problems);
-        VerifyForkStamp(exePath.FullPath, policy.ForkStamp, checks, problems);
+        VerifyForkStamp(exeFullPath, policy.ForkStamp, checks, problems);
 
         RepositoryPath rulesPath = RepositoryPathResolver.ResolveInside(repositoryRoot, policy.RulesConfigPath);
         if (File.Exists(rulesPath.FullPath))

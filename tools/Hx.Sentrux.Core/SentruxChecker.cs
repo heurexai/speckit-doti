@@ -49,8 +49,7 @@ public static class SentruxChecker
             advisory.Add($"Staged {staged.Count} vendored grammar(s) into the Sentrux plugins directory.");
         }
 
-        string executable = RepositoryPathResolver
-            .ResolveInside(root, SentruxToolPathResolver.ResolveRepoRelativeToolPath(rid)).FullPath;
+        string executable = SentruxToolPathResolver.ResolveExecutable(root, rid);
 
         ProcessRunResult checkRun = ProcessRunner.Run(SentruxProcessAdapter.Check(executable, root));
         SentruxOutputParser.CheckReport check = SentruxOutputParser.ParseCheck(checkRun.StandardOutput);
