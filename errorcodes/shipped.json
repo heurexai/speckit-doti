@@ -9,6 +9,10 @@
     { "code": "VAL0002", "name": "validation.tool-asset-unavailable", "exitClass": "Validation" },
     { "code": "ITG0002", "name": "integrity.tool-archive-hash-mismatch", "exitClass": "Integrity" },
     { "code": "ITG0003", "name": "integrity.tool-executable-hash-mismatch", "exitClass": "Integrity" },
-    { "code": "INT0002", "name": "internal.tool-download-failed", "exitClass": "Internal" }
+    { "code": "INT0002", "name": "internal.tool-download-failed", "exitClass": "Internal" },
+    { "code": "VAL0003", "name": "validation.tool-store-version-unavailable", "exitClass": "Validation" },
+    { "code": "VAL0004", "name": "validation.tool-store-version-too-new", "exitClass": "Validation" },
+    { "code": "ITG0004", "name": "integrity.tool-store-hash-mismatch", "exitClass": "Integrity" },
+    { "code": "INT0003", "name": "internal.tool-store-populate-failed", "exitClass": "Internal" }
   ]
 }
