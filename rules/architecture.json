@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "description": "Architecture contract for the scaffold-dotnet toolkit's OWN code. The dependency-direction and boundary rules (contracts -> core -> cli) are enforced by Sentrux (.sentrux/rules.toml); the families below are the thin-CLI (Channel Independence) families enforced by the ArchUnitNET tests in test/Hx.Architecture.Tests, run by `dotnet test` and reported by `architecture test`. This dog-foods the same families the generated dotnet-cli template ships.",
+  "families": [
+    {
+      "id": "cliSurfaceConfinement",
+      "intent": "Channel Independence: types in a *.Cli namespace carry no business-logic roles (*Service/*Repository/*Validator/*Scanner/*Runner/*Resolver/*Engine/*Provider) — those live in a *.Core library so the CLI stays a thin channel adapter."
+    },
+    {
+      "id": "cliDelegation",
+      "intent": "Channel Independence: CLI command-dispatch types (*Commands) delegate to a *.Core library rather than containing the logic themselves, so the core is drivable from any channel."
+    }
+  ]
+}
