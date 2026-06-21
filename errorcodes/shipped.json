@@ -5,6 +5,10 @@
     { "code": "INT0001", "name": "internal.unhandled", "exitClass": "Internal" },
     { "code": "USG0001", "name": "usage.invalid-arguments", "exitClass": "Usage" },
     { "code": "VAL0001", "name": "validation.failed", "exitClass": "Validation" },
-    { "code": "ITG0001", "name": "integrity.verification-failed", "exitClass": "Integrity" }
+    { "code": "ITG0001", "name": "integrity.verification-failed", "exitClass": "Integrity" },
+    { "code": "VAL0002", "name": "validation.tool-asset-unavailable", "exitClass": "Validation" },
+    { "code": "ITG0002", "name": "integrity.tool-archive-hash-mismatch", "exitClass": "Integrity" },
+    { "code": "ITG0003", "name": "integrity.tool-executable-hash-mismatch", "exitClass": "Integrity" },
+    { "code": "INT0002", "name": "internal.tool-download-failed", "exitClass": "Internal" }
   ]
 }
