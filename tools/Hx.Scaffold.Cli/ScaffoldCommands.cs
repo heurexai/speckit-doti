@@ -26,7 +26,7 @@ public static class ScaffoldCommands
 
         string[] agents = agentsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var request = new ScaffoldRequest(name, company, output, profile, agents);
-        string sourceRoot = ScaffoldRoot.Find(Directory.GetCurrentDirectory());
+        string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
 
         ScaffoldProof proof = ScaffoldNewRunner.Run(request, sourceRoot);
         string summary = $"Scaffold '{name}' ({profile}): {proof.Outcome}.";
