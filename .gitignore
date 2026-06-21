@@ -9,8 +9,10 @@ publish/
 # gitversion.version.json) and verified by SHA-256. Gates fail closed until vendored.
 tools/gitleaks/bin/
 tools/sentrux/bin/
-tools/sentrux/grammars/
 tools/gitversion/bin/
+# tools/sentrux/grammars/ is intentionally NOT ignored: the sentrux C# grammar has no downloadUrl
+# (it cannot be fetched like the executables), so it is vendored in-repo — pinned + SHA-256-verified
+# in sentrux.version.json — so the build and the standalone installer stay offline-capable.
 
 # Doti cycle working state (local; the durable proof is the commit)
 .doti/cycle-state.json
