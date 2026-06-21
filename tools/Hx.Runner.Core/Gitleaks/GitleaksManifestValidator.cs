@@ -2,6 +2,7 @@ using System.Text.Json;
 using Hx.Runner.Core.Io;
 using Hx.Runner.Core.Platform;
 using Hx.Runner.Core.Repository;
+using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Runner.Core.Gitleaks;
@@ -69,8 +70,10 @@ public static class GitleaksManifestValidator
 
         checks.Add($"asset mapped for {hostRuntimeIdentifier} ({asset.SupportLevel})");
 
-        RepositoryPath exePath = RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath);
-        if (!File.Exists(exePath.FullPath))
+        string inRepoExe = RepositoryPathResolver.ResolveInside(repositoryRoot, asset.ExecutablePath).FullPath;
+        string exeFullPath = ToolStoreResolver.ResolveOrFallback(
+            Tool, manifest.Version, hostRuntimeIdentifier, asset.ExecutableName, asset.ExecutableSha256 ?? string.Empty, inRepoExe);
+        if (!File.Exists(exeFullPath))
         {
             problems.Add($"Gitleaks executable is missing for {hostRuntimeIdentifier}: {asset.ExecutablePath}");
             return Result(false, StageOutcome.Blocked, checks, problems,
@@ -79,7 +82,7 @@ public static class GitleaksManifestValidator
 
         if (!string.IsNullOrWhiteSpace(asset.ExecutableSha256))
         {
-            string actual = FileHashing.Sha256OfFile(exePath.FullPath);
+            string actual = FileHashing.Sha256OfFile(exeFullPath);
             if (!string.Equals(actual, asset.ExecutableSha256, StringComparison.OrdinalIgnoreCase))
             {
                 problems.Add("Gitleaks executable hash does not match the manifest.");

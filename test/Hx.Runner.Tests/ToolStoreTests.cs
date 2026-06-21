@@ -97,5 +97,22 @@ public sealed class ToolStoreTests : IDisposable
         Assert.Null(ToolStoreResolver.Resolve(Tool, Version, Rid, ExeName, Sha256(Encoding.UTF8.GetBytes("different"))));
     }
 
+    [Fact]
+    public void ResolveOrFallbackPrefersStoreThenInRepo()
+    {
+        string inRepo = Path.Combine(_store, "in-repo", "bin", ExeName);
+
+        // Empty store → the in-repo path is returned unchanged (today's behavior).
+        Assert.Equal(inRepo, ToolStoreResolver.ResolveOrFallback(Tool, Version, Rid, ExeName, "deadbeef", inRepo));
+
+        byte[] bytes = Encoding.UTF8.GetBytes("fake-gitversion-binary");
+        string sha = Sha256(bytes);
+        StorePopulator.InstallBytes(Tool, Version, Rid, ExeName, bytes, sha);
+
+        // Verified store entry present → the store path wins over the in-repo fallback.
+        Assert.Equal(ToolStore.PathFor(Tool, Version, Rid, ExeName),
+            ToolStoreResolver.ResolveOrFallback(Tool, Version, Rid, ExeName, sha, inRepo));
+    }
+
     private static string Sha256(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 }
