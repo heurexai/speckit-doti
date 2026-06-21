@@ -35,11 +35,11 @@ jobs:
           New-Item -ItemType Directory -Force $name | Out-Null
           # Clean, tracked payload (template + doti + source projects + manifests + configs; no bin/obj/.git).
           git archive --format=tar HEAD | tar -x -C $name
-          # Overlay the fetched, gitignored tool binaries + grammar so the install is fully offline.
-          Copy-Item -Recurse -Force tools/gitleaks/bin    "$name/tools/gitleaks/bin"
-          Copy-Item -Recurse -Force tools/sentrux/bin      "$name/tools/sentrux/bin"
-          Copy-Item -Recurse -Force tools/sentrux/grammars "$name/tools/sentrux/grammars"
-          Copy-Item -Recurse -Force tools/gitversion/bin   "$name/tools/gitversion/bin"
+          # Overlay the fetched, gitignored tool binaries so the install is fully offline.
+          # (The sentrux grammar is vendored in-repo, so git archive already placed it in the payload.)
+          Copy-Item -Recurse -Force tools/gitleaks/bin   "$name/tools/gitleaks/bin"
+          Copy-Item -Recurse -Force tools/sentrux/bin    "$name/tools/sentrux/bin"
+          Copy-Item -Recurse -Force tools/gitversion/bin "$name/tools/gitversion/bin"
           # The standalone launcher sits at the payload root, so AppContext.BaseDirectory finds the marker.
           Copy-Item publish/Hx.Scaffold.Cli.exe "$name/hx.exe"
           Compress-Archive -Path "$name/*" -DestinationPath "$name.zip" -Force
