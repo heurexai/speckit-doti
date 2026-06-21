@@ -22,6 +22,15 @@ For each unknown / dependency / integration:
 
 Technical approach and files likely to change. **Architecture delta:** projects / namespaces / layers added or moved, and the exact rule changes that encode it — the ArchUnitNET family in `rules/architecture.json` and the Sentrux layer / boundary in `.sentrux/rules.toml`, kept mutually consistent (`/doti-arch-review` validates both engines encode the same intent). A structural change without a matching rule change will drift.
 
+## CLI surface & error contract
+
+(Only if the feature adds or changes a CLI command/operation; omit this section otherwise.) For each new or changed command, declare:
+
+- **Error codes** it emits — the stable `<PREFIX><NNNN>` diagnostics, registered in `errorcodes/registry.json` (frozen append-only by `errorcodes check`).
+- **Exit class** — Success / Usage / Validation / Integrity / Internal.
+- **`describe` entry** — the command/option/exit-class surface it adds to the capability model, so an agent learns it in one call.
+- **Envelope** — returns the `CliResult` envelope, JSON-first (no direct console writes).
+
 ## Command Availability
 
 | Area | Command | Status |

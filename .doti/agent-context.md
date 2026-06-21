@@ -73,6 +73,7 @@ Cross-platform mode:
 ## Workflow Rules
 
 - Use `/doti-<name>` command naming.
+- **Self-orient and self-correct via the CLI's machine contract.** Before driving a scaffold CLI, run `describe --json` to learn its command/option tree, exit classes, and error-code catalog — don't guess a command or flag. On any non-Success `CliResult`, act on the diagnostics `code` (`<PREFIX><NNNN>`), `hint`, and `nextActions` rather than guessing or blind-retrying.
 - Treat manual review as advisory, not proof.
 - Asking the operator a question (any stage, Claude and Codex): use the shared **Operator-Question Protocol** (the "Asking the operator a question" section below); `/doti-clarify` adds the stage-specifics (one blocking question at a time, folded into the spec's `## Clarifications`).
 - Installed Codex/Claude skills, `.doti/agent-context.md`, and the root `AGENTS.md`/`CLAUDE.md` are rendered by `doti render-skills` from `doti/core/skills.json` + the profile footnote/maturity note; edit the source and re-render — never hand-edit installed files (they are drift).
