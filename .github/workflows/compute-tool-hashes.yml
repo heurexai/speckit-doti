@@ -1,0 +1,56 @@
+name: Compute tool hashes
+
+# Manual helper for the cross-platform release: download the linux-x64 + osx-arm64 tool assets,
+# compute the archive + inner-executable SHA-256s, and emit ready-to-paste manifest values to the
+# job summary + log. The maintainer pastes these into tools/*/*.version.json. Read-only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hash linux-x64 + osx-arm64 tool assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          w=$(mktemp -d); cd "$w"
+          sum() { sha256sum "$1" | cut -d' ' -f1; }
+          out="$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Tool asset hashes (linux-x64, osx-arm64)"
+            echo "| tool/rid | assetName | archiveSha256 | executableSha256 | contents |"
+            echo "| --- | --- | --- | --- | --- |"
+          } >> "$out"
+          row() { local l="| $1 | $2 | $3 | $4 | $5 |"; echo "$l" >> "$out"; echo "ROW $l"; }
+
+          for r in "linux-x64 gitleaks_8.30.1_linux_x64.tar.gz" "osx-arm64 gitleaks_8.30.1_darwin_arm64.tar.gz"; do
+            set -- $r; rid=$1; f=$2
+            curl -fsSL -o a.tgz "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/$f"
+            arch=$(sum a.tgz); tar xzf a.tgz gitleaks; exe=$(sum gitleaks); rm -f gitleaks a.tgz
+            row "gitleaks/$rid" "$f" "$arch" "$exe" "gitleaks"
+          done
+
+          for r in "linux-x64 gitversion-linux-x64-6.7.0.tar.gz" "osx-arm64 gitversion-osx-arm64-6.7.0.tar.gz"; do
+            set -- $r; rid=$1; f=$2
+            curl -fsSL -o a.tgz "https://github.com/GitTools/GitVersion/releases/download/6.7.0/$f"
+            arch=$(sum a.tgz); mkdir -p gv && tar xzf a.tgz -C gv
+            inner=$(ls gv | tr '\n' ' '); exe=$(sum gv/gitversion 2>/dev/null || echo "SEE-CONTENTS")
+            row "gitversion/$rid" "$f" "$arch" "$exe" "$inner"; rm -rf gv a.tgz
+          done
+
+          for r in "linux-x64 sentrux-linux-x86_64" "osx-arm64 sentrux-darwin-arm64"; do
+            set -- $r; rid=$1; f=$2
+            curl -fsSL -o sx "https://github.com/heurexai/sentrux/releases/download/v0.5.10/$f"
+            exe=$(sum sx); row "sentrux/$rid" "$f" "(raw=null)" "$exe" "raw binary"; rm -f sx
+          done
+
+          for r in "linux-x64 grammars-linux-x86_64.tar.gz" "osx-arm64 grammars-darwin-arm64.tar.gz"; do
+            set -- $r; rid=$1; f=$2
+            curl -fsSL -o g.tgz "https://github.com/heurexai/sentrux/releases/download/v0.5.10/$f"
+            arch=$(sum g.tgz); contents=$(tar tzf g.tgz | tr '\n' ' ')
+            row "grammar/$rid" "$f" "$arch" "(per-file)" "$contents"; rm -f g.tgz
+          done
