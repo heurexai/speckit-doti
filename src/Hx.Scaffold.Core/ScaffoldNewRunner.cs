@@ -1,7 +1,4 @@
-using System.Net.Http;
 using Hx.Doti.Core;
-using Hx.Runner.Core.Platform;
-using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Scaffold.Core;
@@ -35,10 +32,10 @@ public static class ScaffoldNewRunner
             .ToArray();
         DotiInstaller.Install(sourceRepoRoot, targetRoot, agents, request.Name);
 
-        // 2b. Best-effort, fetch-if-missing provisioning of any vendored tool binary the copy didn't carry
-        // (most visibly gitversion, whose bin is gitignored). Fail-closed per tool but never throws out of `new`:
-        // offline generation must still complete (the first smoke already tolerates a blocked tool step).
-        ProvisionMissingToolsBestEffort(targetRoot);
+        // 2b. Populate the shared tool store from the vendored binaries so the generated solution resolves
+        // tools from one machine-global store (no ~127MB per-solution copy). Best-effort + fail-closed:
+        // a missing/absent binary is skipped (the generated repo can self-provision in-repo via `tools fetch`).
+        StoreProvisioner.PopulateFromVendoredTools(sourceRepoRoot);
 
         // 3. First smoke against the finished repo.
         GateProof smoke = FirstSmokeRunner.Run(targetRoot);
@@ -48,25 +45,5 @@ public static class ScaffoldNewRunner
             smoke.Outcome == StageOutcome.Fail ? StageOutcome.Fail :
             StageOutcome.Blocked;
         return new ScaffoldProof(JsonContractDefaults.SchemaVersion, overall, request, invocation, smoke);
-    }
-
-    /// <summary>
-    /// Fetch any vendored tool binary that is missing from the generated repo (the manifests travelled with the
-    /// copy; the binaries are gitignored). Fail-closed per tool (a hash mismatch never installs), but swallow all
-    /// errors here — offline `new` must still complete; the gate verifies the binaries are present at run time.
-    /// </summary>
-    private static void ProvisionMissingToolsBestEffort(string targetRoot)
-    {
-        try
-        {
-            string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("scaffold-dotnet-tool-fetch");
-            ToolFetcher.FetchAll(targetRoot, rid, url => http.GetByteArrayAsync(url).GetAwaiter().GetResult());
-        }
-        catch
-        {
-            // Provisioning is best-effort; a network/IO failure degrades to today's behavior (a blocked tool step).
-        }
     }
 }

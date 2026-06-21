@@ -262,6 +262,18 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 
 ## Get started
 
+### Install the released toolkit (win-x64)
+
+Download the latest `speckit-doti-<version>-win-x64.zip` from the [**Releases**](https://github.com/heurexai/speckit-doti/releases) page, extract it, and run the bundled `hx.exe` from any directory:
+
+```powershell
+.\hx.exe new --name Acme.Widget --output .\Acme.Widget --company Acme --agents codex,claude
+```
+
+The release bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (`%LOCALAPPDATA%\Heurex\speckit-doti\tools`) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution.
+
+### Build from source
+
 **Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/) (10.0.300+), Git, and PowerShell or bash. Vendored tools (Gitleaks, Sentrux, GitVersion) are pinned and SHA-256-verified per their manifests under `tools/`, and fetched operationally — the large binaries are gitignored.
 
 ```bash

@@ -4,6 +4,7 @@ using Hx.Runner.Core.Gitleaks;
 using Hx.Runner.Core.Platform;
 using Hx.Runner.Core.Process;
 using Hx.Runner.Core.Repository;
+using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Runner.Core.Hygiene;
@@ -186,7 +187,9 @@ public static class HygieneScanner
             return [];
         }
 
-        string executable = RepositoryPathResolver.ResolveInside(root, asset.ExecutablePath).FullPath;
+        string inRepoExe = RepositoryPathResolver.ResolveInside(root, asset.ExecutablePath).FullPath;
+        string executable = ToolStoreResolver.ResolveOrFallback(
+            GitleaksManifestValidator.Tool, manifest.Version, rid, asset.ExecutableName, asset.ExecutableSha256 ?? string.Empty, inRepoExe);
         string config = RepositoryPathResolver.ResolveInside(root, manifest.ConfigPath).FullPath;
         string reportPath = Path.Combine(Path.GetTempPath(), "hx-gitleaks-" + Guid.NewGuid().ToString("n") + ".json");
 
