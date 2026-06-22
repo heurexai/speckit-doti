@@ -6,6 +6,15 @@ All notable changes to speckit-doti are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-23
+
+### Added
+- **Heurex-branded CLI experience (Spectre.Console)** — human/TTY output now renders a branded figlet banner + a rounded command table for help, and `hx new` shows **live per-step progress bars** with a final summary panel instead of a long silent pause followed by a single line. Navy/gold Heurex palette throughout.
+
+### Changed
+- All human rendering flows through **Spectre.Console in `Hx.Cli.Kernel`** (the single human-output site) — no thin-CLI / channel-independence rule violation. The scaffold runners (`ScaffoldNewRunner`, `FirstSmokeRunner`) emit a `CliEvent` per step via an optional callback so a channel can render progress without the core depending on the renderer.
+- The agent-first JSON envelope is **byte-identical** in `--json`/piped mode (the progress callback is a no-op there), so the machine contract is unchanged. `Spectre.Console` is pinned in both `Directory.Packages.props` files so the vendored kernel restores in generated products too.
+
 ## [0.2.0] - 2026-06-21
 
 ### Added
@@ -27,6 +36,7 @@ First tagged release — the toolkit is published as a downloadable, standalone 
 - `tools fetch` — deterministic, hash-verified provisioning of the vendored tool binaries from their pinned manifests (fail-closed on mismatch).
 - Agent-first CLI self-description (structured `<PREFIX><NNNN>` error codes, `describe`, the `CliResult` envelope) encoded into the doti workflow.
 
-[Unreleased]: https://github.com/heurexai/speckit-doti/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/heurexai/speckit-doti/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/heurexai/speckit-doti/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/heurexai/speckit-doti/releases/tag/v0.2.0
 [0.1.0]: https://github.com/heurexai/speckit-doti/releases/tag/v0.1.0
