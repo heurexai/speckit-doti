@@ -45,8 +45,9 @@ jobs:
           Copy-Item packaging/msix/AppxManifest.xml "$layout/AppxManifest.xml"
           New-Item -ItemType Directory -Force "$layout/Assets" | Out-Null
           Copy-Item packaging/msix/Assets/* "$layout/Assets/"
-          # Stamp the 4-part MSIX version (last part must be 0 for the Store).
-          (Get-Content "$layout/AppxManifest.xml") -replace 'Version="[0-9.]+"', "Version=`"$ver.0`"" | Set-Content "$layout/AppxManifest.xml"
+          # Stamp the Identity version (4-part; last part 0 for the Store). Anchor to the start of the line so
+          # MinVersion/MaxVersionTested (10.0.x, on the TargetDeviceFamily line) are never rewritten.
+          (Get-Content "$layout/AppxManifest.xml") -replace '^(\s*)Version="[0-9.]+"', "`${1}Version=`"$ver.0`"" | Set-Content -Encoding utf8 "$layout/AppxManifest.xml"
 
       - name: Pack MSIX (makeappx)
         shell: pwsh
