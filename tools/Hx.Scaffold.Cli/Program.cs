@@ -30,18 +30,20 @@ newCommand.Options.Add(outputOption);
 newCommand.Options.Add(profileOption);
 newCommand.Options.Add(agentsOption);
 newCommand.Options.Add(newJson);
-newCommand.SetAction(parseResult => CliHost.Run(meta, "new",
-    () => ScaffoldCommands.New(
+newCommand.SetAction(parseResult => CliHost.RunWithProgress(meta, "new",
+    emit => ScaffoldCommands.New(
         meta,
         parseResult.GetValue(nameOption)!,
         parseResult.GetValue(companyOption)!,
         parseResult.GetValue(outputOption)!,
         parseResult.GetValue(profileOption)!,
-        parseResult.GetValue(agentsOption)!),
+        parseResult.GetValue(agentsOption)!,
+        emit),
     forceJson: CliApp.ForceJson(parseResult, newJson)));
 rootCommand.Subcommands.Add(newCommand);
 
 // ---- describe ----
 CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
 
-return rootCommand.Parse(args).Invoke();
+return CliApp.Invoke(rootCommand, meta, args, "speckit-doti",
+    "Agentic .NET spec-driven development starter kit");

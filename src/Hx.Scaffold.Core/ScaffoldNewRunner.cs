@@ -10,10 +10,17 @@ namespace Hx.Scaffold.Core;
 /// </summary>
 public static class ScaffoldNewRunner
 {
-    public static ScaffoldProof Run(ScaffoldRequest request, string sourceRepoRoot)
+    public static ScaffoldProof Run(ScaffoldRequest request, string sourceRepoRoot, Action<CliEvent>? onEvent = null)
     {
+        // The optional callback emits one step event per phase so a human channel can render live progress;
+        // it is null for agents/tests, leaving behaviour identical. The finish phases (vendor/doti/store)
+        // throw on failure, so a successful return is the "pass" they emit.
+        void Emit(string name, string status) => onEvent?.Invoke(new CliEvent("step", name, status));
+
         // 1. Generate the base solution (subprocess dotnet new).
+        Emit("template", "running");
         TemplateInvocation invocation = TemplateGenerator.Generate(request, sourceRepoRoot);
+        Emit("template", invocation.Outcome.ToString().ToLowerInvariant());
         if (invocation.Outcome != StageOutcome.Pass)
         {
             return new ScaffoldProof(JsonContractDefaults.SchemaVersion, StageOutcome.Fail, request, invocation,
@@ -23,22 +30,29 @@ public static class ScaffoldNewRunner
         string targetRoot = Path.GetFullPath(request.OutputPath);
 
         // 2. Finish: vendor the verified tools + the runner/impact source, then install Doti assets.
+        Emit("vendor-tooling", "running");
         ToolVendor.Vendor(sourceRepoRoot, targetRoot);
         SourceVendor.Vendor(sourceRepoRoot, targetRoot);
+        Emit("vendor-tooling", "pass");
+
+        Emit("doti-install", "running");
         DotiAgentTarget[] agents = request.Agents
             .Select(DotiAgentTarget.FromKey)
             .Where(a => a is not null)
             .Cast<DotiAgentTarget>()
             .ToArray();
         DotiInstaller.Install(sourceRepoRoot, targetRoot, agents, request.Name);
+        Emit("doti-install", "pass");
 
         // 2b. Populate the shared tool store from the vendored binaries so the generated solution resolves
         // tools from one machine-global store (no ~127MB per-solution copy). Best-effort + fail-closed:
         // a missing/absent binary is skipped (the generated repo can self-provision in-repo via `tools fetch`).
+        Emit("tool-store", "running");
         StoreProvisioner.PopulateFromVendoredTools(sourceRepoRoot);
+        Emit("tool-store", "pass");
 
         // 3. First smoke against the finished repo.
-        GateProof smoke = FirstSmokeRunner.Run(targetRoot);
+        GateProof smoke = FirstSmokeRunner.Run(targetRoot, onEvent);
 
         StageOutcome overall =
             invocation.Outcome == StageOutcome.Pass && smoke.Outcome == StageOutcome.Pass ? StageOutcome.Pass :

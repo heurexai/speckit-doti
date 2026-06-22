@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 </Project>
