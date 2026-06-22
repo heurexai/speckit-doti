@@ -16,7 +16,9 @@ public static class ScaffoldCommands
         CliResults.Ok(meta, "profile", $"Default scaffold profile: {ScaffoldBootstrap.DefaultProfile.Name}.",
             ScaffoldBootstrap.DefaultProfile);
 
-    public static CliResult New(CliMeta meta, string name, string company, string output, string profile, string agentsCsv)
+    public static CliResult New(
+        CliMeta meta, string name, string company, string output, string profile, string agentsCsv,
+        Action<CliEvent>? onEvent = null)
     {
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(output))
         {
@@ -28,7 +30,7 @@ public static class ScaffoldCommands
         var request = new ScaffoldRequest(name, company, output, profile, agents);
         string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
 
-        ScaffoldProof proof = ScaffoldNewRunner.Run(request, sourceRoot);
+        ScaffoldProof proof = ScaffoldNewRunner.Run(request, sourceRoot, onEvent);
         string summary = $"Scaffold '{name}' ({profile}): {proof.Outcome}.";
         return proof.Outcome == StageOutcome.Pass
             ? CliResults.Ok(meta, "new", summary, proof,

@@ -3,6 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Spectre.Console" Version="0.57.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.9" />
     <PackageVersion Include="YamlDotNet" Version="18.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />

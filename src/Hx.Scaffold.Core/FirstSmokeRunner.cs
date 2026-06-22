@@ -15,53 +15,77 @@ namespace Hx.Scaffold.Core;
 /// </summary>
 public static class FirstSmokeRunner
 {
-    public static GateProof Run(string targetRepoRoot)
+    public static GateProof Run(string targetRepoRoot, Action<CliEvent>? onEvent = null)
     {
         var steps = new List<GateStep>();
 
+        // Wraps one step: emit "running", compute it, emit its outcome, collect it. The optional callback lets a
+        // human channel render live progress; it is null for agents/tests so behaviour is otherwise identical.
+        GateStep Tracked(string name, Func<GateStep> run)
+        {
+            onEvent?.Invoke(new CliEvent("step", name, "running"));
+            GateStep step = run();
+            onEvent?.Invoke(new CliEvent("step", name, step.Outcome.ToString().ToLowerInvariant()));
+            steps.Add(step);
+            return step;
+        }
+
         // 1. Hygiene scan (includes Gitleaks verification on the vendored binary). Runs on the working
         //    tree before git init.
-        HygieneScanResult hygiene = HygieneScanner.Scan(
-            new HygieneScanRequest(targetRepoRoot, HygieneScope.All, HygieneSource.WorkingTree));
-        steps.Add(Step("hygiene", hygiene.Outcome,
-            $"scanned {hygiene.ScannedFileCount} files; {hygiene.Findings.Count} findings"));
+        Tracked("hygiene", () =>
+        {
+            HygieneScanResult hygiene = HygieneScanner.Scan(
+                new HygieneScanRequest(targetRepoRoot, HygieneScope.All, HygieneSource.WorkingTree));
+            return Step("hygiene", hygiene.Outcome,
+                $"scanned {hygiene.ScannedFileCount} files; {hygiene.Findings.Count} findings");
+        });
 
         // 2. Restore + build + test the generated solution (the only nested dotnet — hang-fixed).
-        steps.Add(BuildAndTest(targetRepoRoot));
+        Tracked("build-test", () => BuildAndTest(targetRepoRoot));
 
         // 2b. Build the vendored runner tooling. Catches a vendored-source closure gap — a copied CLI
         //     referencing a project that was not vendored (e.g. a missing Hx.Gate.Core reference). The generated
         //     repo's CLI is not running, so building it is lock-free.
-        steps.Add(BuildVendoredTooling(targetRepoRoot));
+        Tracked("vendored-tooling", () => BuildVendoredTooling(targetRepoRoot));
 
         // 3. git init + stage so Sentrux (which enumerates via `git ls-files`) sees the files.
         GitInitAndStage(targetRepoRoot);
 
         // 4. Sentrux verify.
-        string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
-        SentruxPolicy policy = SentruxPolicyLoader.Load(targetRepoRoot, out _);
-        ToolVerificationResult verify = SentruxManifestValidator.Verify(targetRepoRoot, rid, policy);
-        steps.Add(Step("sentrux-verify", verify.Outcome,
-            verify.Verified ? "verified" : string.Join("; ", verify.Problems)));
+        ToolVerificationResult verify = null!;
+        Tracked("sentrux-verify", () =>
+        {
+            string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
+            SentruxPolicy policy = SentruxPolicyLoader.Load(targetRepoRoot, out _);
+            verify = SentruxManifestValidator.Verify(targetRepoRoot, rid, policy);
+            return Step("sentrux-verify", verify.Outcome,
+                verify.Verified ? "verified" : string.Join("; ", verify.Problems));
+        });
 
         // 5. + 6. First-smoke baseline, then check (only when verify passed; else Blocked = fail closed).
         if (verify.Verified)
         {
-            SentruxBaselineResult baseline = SentruxBaselineRunner.Save(targetRepoRoot);
-            steps.Add(Step("sentrux-baseline", baseline.Outcome, $"signal={baseline.QualitySignal}"));
+            Tracked("sentrux-baseline", () =>
+            {
+                SentruxBaselineResult baseline = SentruxBaselineRunner.Save(targetRepoRoot);
+                return Step("sentrux-baseline", baseline.Outcome, $"signal={baseline.QualitySignal}");
+            });
 
-            SentruxCheckResult check = SentruxChecker.Check(targetRepoRoot);
-            steps.Add(Step("sentrux-check", check.Outcome,
-                $"signal={check.QualitySignal}; regression={check.RegressionOutcome}"));
+            Tracked("sentrux-check", () =>
+            {
+                SentruxCheckResult check = SentruxChecker.Check(targetRepoRoot);
+                return Step("sentrux-check", check.Outcome,
+                    $"signal={check.QualitySignal}; regression={check.RegressionOutcome}");
+            });
         }
         else
         {
-            steps.Add(new GateStep("sentrux-baseline", StageOutcome.Blocked,
+            Tracked("sentrux-baseline", () => new GateStep("sentrux-baseline", StageOutcome.Blocked,
                 [new GateEvidence("sentrux", "skipped: Sentrux not verified (per-RID binary not vendored?)")]));
         }
 
         // Version calculation is advisory until the `version calculate` command exists.
-        steps.Add(new GateStep("version-calculate", StageOutcome.Skipped,
+        Tracked("version-calculate", () => new GateStep("version-calculate", StageOutcome.Skipped,
             [new GateEvidence("version", "advisory: `version calculate` is not implemented yet")]));
 
         StageOutcome overall =

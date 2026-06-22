@@ -109,6 +109,19 @@ public static class CliHost
         bool? forceJson = null, bool streamEvents = false) =>
         Execute(meta, command, body, output, forceJson, streamEvents);
 
+    /// <summary>
+    /// A long-running command with a Heurex-branded live progress display in human mode: the body's emitted
+    /// <see cref="CliEvent"/> steps drive a Spectre progress bar, then a summary panel is rendered. In JSON/piped
+    /// mode this is byte-identical to <see cref="Run"/> — the emit callback is a no-op and only the final envelope
+    /// is written — so the agent contract is unchanged.
+    /// </summary>
+    public static int RunWithProgress(
+        CliMeta meta, string command, Func<Action<CliEvent>, CliResult> body, Stream? output = null,
+        bool? forceJson = null) =>
+        CliWriter.PreferHuman(forceJson)
+            ? CliRenderer.RunWithLiveProgress(meta, command, body)
+            : Execute(meta, command, body, output, forceJson, streamEvents: false);
+
     private static int Execute(
         CliMeta meta, string command, Func<Action<CliEvent>, CliResult> body, Stream? output, bool? forceJson,
         bool streamEvents)

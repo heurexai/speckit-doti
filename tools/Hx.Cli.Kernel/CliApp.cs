@@ -33,6 +33,26 @@ public static class CliApp
         parseResult.GetValue(jsonOption) ? true : null;
 
     /// <summary>
+    /// The thin entry point each tool's <c>Program.cs</c> calls instead of <c>root.Parse(args).Invoke()</c>:
+    /// renders the Heurex-branded banner + command table for root-level help (no args, or <c>-h/--help/-?/help</c>
+    /// as the first token), and otherwise dispatches to System.CommandLine. Per-subcommand help (e.g. <c>new --help</c>)
+    /// and <c>--version</c> fall through unchanged.
+    /// </summary>
+    public static int Invoke(RootCommand root, CliMeta meta, string[] args, string banner, string tagline)
+    {
+        if (WantsRootHelp(args))
+        {
+            CliRenderer.WriteHelp(root, meta, banner, tagline);
+            return (int)ExitClass.Success;
+        }
+
+        return root.Parse(args).Invoke();
+    }
+
+    private static bool WantsRootHelp(string[] args) =>
+        args.Length == 0 || args[0] is "-h" or "--help" or "-?" or "help";
+
+    /// <summary>
     /// Adds a kernel-generated <c>describe</c> subcommand that emits the capability model for <paramref name="root"/>
     /// (command/option tree + exit classes + error-code catalog) so an agent learns the whole tool in one call.
     /// </summary>
