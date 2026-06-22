@@ -135,6 +135,25 @@ public sealed class CycleEnforcementTests
         }
     }
 
+    [Fact]
+    public void GateProofValidator_RejectsLegacyProofWithoutAffectedTestProof()
+    {
+        string dir = NewTempDir();
+        try
+        {
+            var persisted = new PersistedGateProof(
+                1, "id-1", "dev", Lane.Normal, new GateProof(1, StageOutcome.Pass, [], []), "abc123");
+
+            IReadOnlyList<string> reasons = GateProofValidator.ValidateAffectedTestProof(dir, persisted);
+
+            Assert.Contains(reasons, r => r.Contains("no affected-test proof", StringComparison.Ordinal));
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
     // ---------------- cycle check / commit (temp git repo) ----------------
 
     private static void Git(string dir, params string[] args)
@@ -177,6 +196,26 @@ public sealed class CycleEnforcementTests
             Assert.False(report.Passed);
             Assert.Contains(report.Prerequisites, p => p.Stage == "specify" && p.Status == "missing");
             Assert.Contains(report.Prerequisites, p => p.Stage == "drift-review" && p.Status == "missing");
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
+    public void Stamp_FailsClosed_WhenPrerequisitesAreMissing()
+    {
+        string dir = InitRepo();
+        try
+        {
+            var service = new CycleService(dir);
+
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+                () => service.Stamp("drift-review", "f", null));
+
+            Assert.Contains("prerequisites are not all fresh", ex.Message);
+            Assert.Contains("specify: missing", ex.Message);
         }
         finally
         {

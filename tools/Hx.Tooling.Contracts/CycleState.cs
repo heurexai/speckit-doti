@@ -22,7 +22,8 @@ public sealed record CycleStageProof(
     string Outcome,
     string ChangeSetId,
     IReadOnlyList<string> ArtifactHashes,
-    string? StampedAtCommit);
+    string? StampedAtCommit,
+    string? PrerequisiteProofHash = null);
 
 /// <summary>
 /// The persistent doti cycle state (<c>.doti/cycle-state.json</c>, gitignored). Tracks the active

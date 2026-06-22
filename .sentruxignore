@@ -1,2 +1,6 @@
 # Generated-repo template content is packaged input, not scaffold source.
 scaffold/templates/
+
+# Local packaging/publish output is a test or release artifact, not source.
+artifacts/
+publish/

@@ -7,10 +7,10 @@ Command-aware advisory behavior:
 1. Read `.doti/agent-context.md` and the relevant command brief.
 2. Make narrow edits aligned with the active spec/plan/tasks. When the change adds or changes a CLI command, register its declared error codes in `errorcodes/registry.json`, run `errorcodes check` (the append-only stability gate), and confirm `describe --json` reflects the new command/option surface — so the help/error system stays self-describing.
 3. Update README and the docs when behavior changes.
-4. Run `gate run --profile normal --repo .` (the aggregated, fail-closed gate: hygiene, tool verification, build/test, architecture, skill-drift, Sentrux) and treat any failure as blocking.
+4. Run the command-backed build, then `gate run --profile normal --repo .` (the aggregated, fail-closed gate: hygiene, tool verification, affected-test planning + hashed proof, prebuilt test execution, architecture, skill-drift, Sentrux) and treat any failure as blocking. Direct `dotnet test` runs are useful diagnostics only; they do not authorize commit.
 5. Run advisory checks only for planned commands that do not exist yet.
 6. Report advisory gaps explicitly.
-7. On completion, stamp the stage (`doti cycle stamp --stage implement`) so the diff-bound proof the commit chokepoint verifies is recorded.
+7. On completion, stamp the stage (`doti cycle stamp --stage implement`) so the diff-bound proof the commit chokepoint verifies is recorded. The stamp itself fails closed if transitive prerequisites are missing, stale, or invalid.
 
 ## Engineering discipline (required)
 

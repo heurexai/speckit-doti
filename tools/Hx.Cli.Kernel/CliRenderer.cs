@@ -22,30 +22,148 @@ public static class CliRenderer
     private const string LightHex = "#F4F6F9";
     private const string MutedHex = "#8B91A7";
 
-    /// <summary>The branded banner (figlet ANSI art) + a table of the tool's commands — the human help screen.</summary>
-    public static void WriteHelp(RootCommand root, CliMeta meta, string banner, string tagline, IAnsiConsole? console = null)
+    /// <summary>The branded banner (figlet ANSI art) + command/option tables — the human help screen.</summary>
+    public static void WriteHelp(
+        RootCommand root,
+        Command command,
+        IReadOnlyList<string> path,
+        CliMeta meta,
+        string banner,
+        string tagline,
+        CliHelpMode mode,
+        IAnsiConsole? console = null,
+        TextWriter? plainOutput = null)
+    {
+        if (ShouldWritePlain(mode))
+        {
+            (plainOutput ?? Console.Out).Write(RenderPlainHelp(root, command, path, meta, banner, tagline));
+            return;
+        }
+
+        WriteRichHelp(root, command, path, meta, banner, tagline, console);
+    }
+
+    public static string RenderPlainHelp(
+        RootCommand root,
+        Command command,
+        IReadOnlyList<string> path,
+        CliMeta meta,
+        string banner,
+        string tagline)
+    {
+        var lines = new List<string>
+        {
+            $"{banner} {meta.Version}",
+            tagline,
+            string.Empty,
+            $"{Invocation(meta, path)} - {Description(command)}",
+            string.Empty,
+            "Usage:",
+            $"  {Invocation(meta, path)}{UsageSuffix(command)}",
+            string.Empty,
+        };
+
+        if (command.Subcommands.Count > 0)
+        {
+            lines.Add("Commands:");
+            AddPlainRows(lines, command.Subcommands.Select(c => (c.Name, Description(c))));
+            lines.Add(string.Empty);
+        }
+
+        lines.Add("Options:");
+        AddPlainRows(lines, HelpOptions(command));
+        lines.Add(string.Empty);
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static void WriteRichHelp(
+        RootCommand root,
+        Command command,
+        IReadOnlyList<string> path,
+        CliMeta meta,
+        string banner,
+        string tagline,
+        IAnsiConsole? console = null)
     {
         IAnsiConsole c = console ?? AnsiConsole.Console;
         c.WriteLine();
         c.Write(new FigletText(banner).LeftJustified().Color(Gold));
         c.MarkupLine($"  [{MutedHex}]{Markup.Escape(tagline)}[/]   [{GoldHex}]{Markup.Escape(meta.Version)}[/]");
         c.WriteLine();
+        c.MarkupLine($"  [{GoldHex}]{Markup.Escape(Invocation(meta, path))}[/] [{MutedHex}]- {Markup.Escape(Description(command))}[/]");
+        c.WriteLine();
 
+        string title = $"{Invocation(meta, path)}  -  {Description(command)}";
         var table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Navy)
-            .Title($"{meta.Tool}  —  {root.Description}", new Style(Gold))
+            .Title(Markup.Escape(title), new Style(Gold))
             .Expand();
         table.AddColumn(new TableColumn($"[{GoldHex}]Command[/]"));
         table.AddColumn(new TableColumn($"[{GoldHex}]Description[/]"));
-        foreach (Command sub in root.Subcommands)
+        foreach (Command sub in command.Subcommands)
         {
-            table.AddRow($"[{LightHex}]{Markup.Escape(sub.Name)}[/]", Markup.Escape(sub.Description ?? string.Empty));
+            table.AddRow($"[{LightHex}]{Markup.Escape(sub.Name)}[/]", Markup.Escape(Description(sub)));
         }
 
-        c.Write(table);
-        c.MarkupLine($"  [{MutedHex}]options:[/] [{LightHex}]--json[/] [{MutedHex}](machine-readable envelope)[/]   [{LightHex}]-h, --help[/]");
+        if (command.Subcommands.Count > 0)
+        {
+            c.Write(table);
+            c.WriteLine();
+        }
+
+        var options = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(Navy)
+            .Title("Options", new Style(Gold))
+            .Expand();
+        options.AddColumn(new TableColumn($"[{GoldHex}]Option[/]"));
+        options.AddColumn(new TableColumn($"[{GoldHex}]Description[/]"));
+        foreach ((string name, string description) in HelpOptions(command))
+        {
+            options.AddRow($"[{LightHex}]{Markup.Escape(name)}[/]", Markup.Escape(description));
+        }
+
+        c.MarkupLine($"  [{MutedHex}]usage:[/] [{LightHex}]{Markup.Escape(Invocation(meta, path) + UsageSuffix(command))}[/]");
         c.WriteLine();
+        c.Write(options);
+        c.WriteLine();
+    }
+
+    private static bool ShouldWritePlain(CliHelpMode mode) =>
+        mode == CliHelpMode.Plain || mode == CliHelpMode.Auto && Console.IsOutputRedirected;
+
+    private static string Invocation(CliMeta meta, IReadOnlyList<string> path) =>
+        path.Count == 0 ? meta.Tool : meta.Tool + " " + string.Join(' ', path);
+
+    private static string UsageSuffix(Command command)
+    {
+        bool hasCommands = command.Subcommands.Count > 0;
+        return hasCommands ? " [command] [options]" : " [options]";
+    }
+
+    private static string Description(Command command) =>
+        string.IsNullOrWhiteSpace(command.Description) ? "No description." : command.Description!;
+
+    private static IReadOnlyList<(string Name, string Description)> HelpOptions(Command command)
+    {
+        var rows = command.Options
+            .Select(o => (o.Name, string.IsNullOrWhiteSpace(o.Description) ? "No description." : o.Description!))
+            .ToList();
+        rows.Add(("--help-mode <auto|rich|plain>", "Select human help rendering. Also honors HX_HELP_MODE and NO_COLOR."));
+        rows.Add(("--plain-help", "Shortcut for --help-mode plain."));
+        rows.Add(("-h, --help, -?", "Show help for this command."));
+        return rows;
+    }
+
+    private static void AddPlainRows(List<string> lines, IEnumerable<(string Name, string Description)> rows)
+    {
+        (string Name, string Description)[] materialized = rows.ToArray();
+        int width = materialized.Length == 0 ? 0 : materialized.Max(r => r.Name.Length);
+        foreach ((string name, string description) in materialized)
+        {
+            lines.Add($"  {name.PadRight(width)}  {description}");
+        }
     }
 
     /// <summary>

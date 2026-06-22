@@ -52,11 +52,14 @@ public static class GateRunner
             sentruxVerify.Verified ? "verified" : string.Join("; ", sentruxVerify.Problems)));
 
         // 4. Affected-test planning (selects the test set; fail-safe to full on a planner error).
-        (GateStep affectedStep, AffectedPlan plan) = AffectedChangeStep(repositoryRoot);
+        AffectedGatePlan affected = AffectedChangeStep(repositoryRoot);
+        AffectedPlan plan = affected.Plan;
+        GateStep affectedStep = affected.Step;
         Emit(affectedStep);
 
         // 5. Restore + full build + lane-scoped unit tests (arch families excluded; they run next).
-        Emit(BuildAndTestStep(repositoryRoot, lane, plan));
+        BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, plan);
+        Emit(buildAndTest.Step);
 
         // 5. Architecture test (per-family proof; Skipped when there is no arch project).
         ArchitectureTestResult arch = ArchitectureTestRunner.Run(repositoryRoot);
@@ -80,7 +83,8 @@ public static class GateRunner
         // already fails on vulnerable packages via NuGetAudit; this adds the explicit proof + release gate.
         Emit(SecurityStep(repositoryRoot, lane));
 
-        return new GateProof(JsonContractDefaults.SchemaVersion, Aggregate(steps), steps, []);
+        AffectedTestProof affectedProof = CreateAffectedProof(affected, buildAndTest);
+        return new GateProof(JsonContractDefaults.SchemaVersion, Aggregate(steps), steps, [], affectedProof);
     }
 
     /// <summary>The gate fails closed: any Fail or Blocked step fails the whole gate; Skipped advisory
@@ -109,11 +113,11 @@ public static class GateRunner
             $"{request.Scope}/{request.Source}: {result.ScannedFileCount} files, {result.Findings.Count} findings");
     }
 
-    private static (GateStep Step, AffectedPlan Plan) AffectedChangeStep(string repositoryRoot)
+    private static AffectedGatePlan AffectedChangeStep(string repositoryRoot)
     {
+        string baseRef = ResolveBaseRef(repositoryRoot);
         try
         {
-            string baseRef = ResolveBaseRef(repositoryRoot);
             AffectedPlan plan = new AffectedTestPlanner().Plan(repositoryRoot, baseRef, "HEAD", "Release");
             string message = plan.Outcome switch
             {
@@ -121,13 +125,18 @@ public static class GateRunner
                 AffectedOutcome.NoTestsRequired => "no test-affecting changes",
                 _ => "full gate required: " + string.Join("; ", plan.Reasons.Take(3))
             };
-            return (Step("affected-change", StageOutcome.Pass, message), plan);
+            return new AffectedGatePlan(Step("affected-change", StageOutcome.Pass, message), plan, baseRef, "HEAD", "Release", null);
         }
         catch (Exception ex)
         {
             // Fail-safe: a planner error must NEVER skip tests — run the full suite (never under-select).
-            return (Step("affected-change", StageOutcome.Pass, "planner error; running full suite (fail-safe): " + ex.Message),
-                AffectedPlanFactory.FullGate("planner error: " + ex.Message));
+            return new AffectedGatePlan(
+                Step("affected-change", StageOutcome.Pass, "planner error; running full suite (fail-safe): " + ex.Message),
+                AffectedPlanFactory.FullGate("planner error: " + ex.Message),
+                baseRef,
+                "HEAD",
+                "Release",
+                "planner error: " + ex.Message);
         }
     }
 
@@ -140,7 +149,7 @@ public static class GateRunner
         return result.ExitCode == 0 ? "dev" : "HEAD";
     }
 
-    private static GateStep BuildAndTestStep(string repositoryRoot, Lane lane, AffectedPlan plan)
+    private static BuildAndTestResult BuildAndTestStep(string repositoryRoot, Lane lane, AffectedPlan plan)
     {
         IReadOnlyDictionary<string, string> env = NestedDotnetEnv();
         const string filter = "FullyQualifiedName!~Architecture.Tests";
@@ -154,19 +163,32 @@ public static class GateRunner
 
         if (targets.Count == 0)
         {
-            return new GateStep("restore-build-test", StageOutcome.Pass,
-                [new GateEvidence("dotnet-test", full ? "no test projects found" : "no affected tests to run")]);
+            return new BuildAndTestResult(
+                new GateStep("restore-build-test", StageOutcome.Pass,
+                    [new GateEvidence("dotnet-test", full ? "no test projects found" : "no affected tests to run")]),
+                [],
+                full,
+                full ? "release lane or planner escalation" : null);
         }
 
-        // Per-test-project `dotnet test` builds each test closure (cores + test project) and runs it. It
-        // NEVER builds the runner CLIs, so the gate — itself invoked via `dotnet run --project Hx.Runner.Cli`
-        // — cannot try to rebuild and self-lock its own running output (the MSB3021 trap of a solution build).
+        // Per-test-project `dotnet test` runs against the already-built outputs. Some scaffold test projects
+        // intentionally reference Hx.Runner.Cli/Hx.Scaffold.Cli for architecture and command-surface checks;
+        // rebuilding them from inside the runner process tries to overwrite loaded assemblies and self-locks.
         var failures = new List<string>();
+        var executed = new List<ExecutedTestProject>();
         foreach (string target in targets)
         {
+            string command = $"dotnet test {target} --nologo -c Release --no-build --no-restore --filter {filter} --disable-build-servers";
             ProcessRunResult test = ProcessRunner.Run(new ToolCommand(
-                "dotnet", ["test", target, "--nologo", "-c", "Release", "--filter", filter, "--disable-build-servers"],
+                "dotnet", ["test", target, "--nologo", "-c", "Release", "--no-build", "--no-restore", "--filter", filter, "--disable-build-servers"],
                 repositoryRoot, env));
+            StageOutcome outcome = test.ExitCode == 0 ? StageOutcome.Pass : StageOutcome.Fail;
+            executed.Add(new ExecutedTestProject(
+                Path.GetFileNameWithoutExtension(target),
+                target,
+                command,
+                test.ExitCode,
+                outcome));
             if (test.ExitCode != 0)
             {
                 failures.Add(Path.GetFileNameWithoutExtension(target) + ": " + Tail(test.StandardError + test.StandardOutput, 200));
@@ -174,11 +196,12 @@ public static class GateRunner
         }
 
         string scope = full ? "full" : "affected";
-        return failures.Count == 0
+        GateStep step = failures.Count == 0
             ? new GateStep("restore-build-test", StageOutcome.Pass,
-                [new GateEvidence("dotnet-test", $"restore + build + {targets.Count} {scope} test project(s) passed")])
+                [new GateEvidence("dotnet-test", $"{targets.Count} prebuilt {scope} test project(s) passed")])
             : new GateStep("restore-build-test", StageOutcome.Fail,
                 [new GateEvidence("dotnet-test", $"{scope} tests failed: " + string.Join(" | ", failures))]);
+        return new BuildAndTestResult(step, executed, full, full ? "release lane or planner escalation" : null);
     }
 
     private static IReadOnlyList<string> AllTestProjectPaths(string repositoryRoot)
@@ -263,4 +286,37 @@ public static class GateRunner
         new(name, outcome, [new GateEvidence(name, message)]);
 
     private static string Tail(string text, int max = 600) => text.Length <= max ? text : text[^max..];
+
+    private static AffectedTestProof CreateAffectedProof(AffectedGatePlan affected, BuildAndTestResult buildAndTest)
+    {
+        string[] testScope = buildAndTest.FullSuite
+            ? buildAndTest.ExecutedTests.Select(t => t.ProjectPath).ToArray()
+            : affected.Plan.SelectedTests.Select(t => t.ProjectPath).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return new AffectedTestProof(
+            JsonContractDefaults.SchemaVersion,
+            affected.BaseRef,
+            affected.HeadRef,
+            affected.Configuration,
+            AffectedTestProofHasher.HashPlan(affected.Plan),
+            AffectedTestProofHasher.HashTestScope(testScope),
+            AffectedTestProofHasher.HashExecutedTests(buildAndTest.ExecutedTests),
+            buildAndTest.FullSuite,
+            buildAndTest.FullSuiteReason ?? affected.FullSuiteReason,
+            affected.Plan,
+            buildAndTest.ExecutedTests);
+    }
+
+    private sealed record AffectedGatePlan(
+        GateStep Step,
+        AffectedPlan Plan,
+        string BaseRef,
+        string HeadRef,
+        string Configuration,
+        string? FullSuiteReason);
+
+    private sealed record BuildAndTestResult(
+        GateStep Step,
+        IReadOnlyList<ExecutedTestProject> ExecutedTests,
+        bool FullSuite,
+        string? FullSuiteReason);
 }

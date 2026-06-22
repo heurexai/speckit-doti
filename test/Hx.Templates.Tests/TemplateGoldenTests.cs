@@ -158,11 +158,15 @@ public sealed class TemplateGoldenTests
         string cliDir = Path.Combine(TemplateRepo.TemplateDir, "src", "HxScaffoldSample.Cli");
         string program = File.ReadAllText(Path.Combine(cliDir, "Program.cs"));
         Assert.Contains("Agent.Run", program);
+        Assert.Contains("Agent.Invoke", program);
         Assert.Contains("Agent.Ok", program);
         Assert.Contains("\"describe\"", program);
 
         string agent = File.ReadAllText(Path.Combine(cliDir, "Agent.cs"));
         Assert.Contains("record CliResult", agent);
+        Assert.Contains("HelpMode", agent);
+        Assert.Contains("--help-mode <auto|rich|plain>", agent);
+        Assert.Contains("RenderPlainHelp", agent);
         foreach (string field in new[]
         {
             "SchemaVersion", "Tool", "Version", "Command", "Outcome", "Ok", "ExitCode", "Summary",

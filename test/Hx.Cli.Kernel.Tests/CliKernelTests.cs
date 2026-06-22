@@ -99,4 +99,51 @@ public sealed class CliKernelTests
         Assert.Contains("Internal", describe.ExitClasses);
         Assert.Contains(describe.ErrorCodeCatalog, e => e.Code == "INT0001");
     }
+
+    [Fact]
+    public void PlainHelp_UsesTheSameModel_ForNestedCommands()
+    {
+        var root = new RootCommand("test tool");
+        var group = new Command("group", "Grouped commands.");
+        var leaf = new Command("leaf", "Leaf command.");
+        leaf.Options.Add(new Option<bool>("--json") { Description = "JSON output." });
+        group.Subcommands.Add(leaf);
+        root.Subcommands.Add(group);
+
+        string help = CliRenderer.RenderPlainHelp(root, leaf, ["group", "leaf"], Meta, "speckit-doti", "tagline");
+
+        Assert.Contains("hx-test group leaf - Leaf command.", help);
+        Assert.Contains("Usage:", help);
+        Assert.Contains("--json", help);
+        Assert.Contains("--help-mode <auto|rich|plain>", help);
+        Assert.DoesNotContain("\x1b[", help, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CliApp_Invoke_InterceptsSubcommandHelp_AndCanForcePlain()
+    {
+        var root = new RootCommand("test tool");
+        var group = new Command("group", "Grouped commands.");
+        var leaf = new Command("leaf", "Leaf command.");
+        group.Subcommands.Add(leaf);
+        root.Subcommands.Add(group);
+
+        TextWriter original = Console.Out;
+        using var writer = new StringWriter();
+        try
+        {
+            Console.SetOut(writer);
+            int exit = CliApp.Invoke(root, Meta,
+                ["group", "leaf", "--help-mode", "plain", "--help"], "speckit-doti", "tagline");
+
+            Assert.Equal(0, exit);
+            string help = writer.ToString();
+            Assert.Contains("hx-test group leaf - Leaf command.", help);
+            Assert.Contains("--plain-help", help);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+    }
 }

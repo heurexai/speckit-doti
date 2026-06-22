@@ -354,4 +354,4 @@ rootCommand.Subcommands.Add(errorcodesCommand);
 // ---- describe (kernel-generated capability model) ----
 CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
 
-return rootCommand.Parse(args).Invoke();
+return CliApp.Invoke(rootCommand, meta, args, "speckit-doti", "deterministic runner and workflow gate");

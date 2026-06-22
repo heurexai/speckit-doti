@@ -41,4 +41,4 @@ rootCommand.Subcommands.Add(planCommand);
 // ---- describe ----
 CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
 
-return rootCommand.Parse(args).Invoke();
+return CliApp.Invoke(rootCommand, meta, args, "speckit-doti", "deterministic affected-test planner");

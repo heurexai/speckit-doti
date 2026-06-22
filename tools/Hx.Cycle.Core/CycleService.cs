@@ -47,6 +47,20 @@ public sealed class CycleService
                 "No feature set for the cycle; pass --feature <slug> on the first stamp (e.g. phase-14-doti-cycle-state).");
         string resolvedBaseRef = baseRef ?? existing?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
 
+        if (stage.Prereqs.Count > 0)
+        {
+            CycleCheckReport prereqCheck = Check(stage.Id);
+            if (!prereqCheck.Passed)
+            {
+                string summary = string.Join("; ", prereqCheck.Prerequisites
+                    .Where(p => !p.Ok)
+                    .Select(p => $"{p.Stage}: {p.Status}" + (p.Reason is { } r ? $" ({r})" : "")));
+                throw new InvalidOperationException(
+                    $"Cannot stamp stage '{stage.Id}' because its prerequisites are not all fresh: {summary}");
+            }
+        }
+        string? prerequisiteProofHash = CycleStageProofHasher.HashPrerequisites(existing, stage.Prereqs);
+
         string identity = ChangeSetIdentity.Of(_repositoryRoot, resolvedBaseRef, "HEAD");
 
         var artifactHashes = new List<string>();
@@ -60,7 +74,13 @@ public sealed class CycleService
             }
         }
 
-        var proof = new CycleStageProof(stage.Id, CycleStageOutcome.Stamped, identity, artifactHashes, GitRefs.TryHeadSha(_repositoryRoot));
+        var proof = new CycleStageProof(
+            stage.Id,
+            CycleStageOutcome.Stamped,
+            identity,
+            artifactHashes,
+            GitRefs.TryHeadSha(_repositoryRoot),
+            prerequisiteProofHash);
         List<CycleStageProof> stages = (existing?.Stages ?? [])
             .Where(s => !string.Equals(s.Stage, stage.Id, StringComparison.OrdinalIgnoreCase))
             .Append(proof)
@@ -122,6 +142,25 @@ public sealed class CycleService
                 continue;
             }
 
+            CycleStage prereqStage = _stageModel.Find(prereqId);
+            if (prereqStage.Prereqs.Count > 0)
+            {
+                string? expectedHash = CycleStageProofHasher.HashPrerequisites(state, prereqStage.Prereqs);
+                if (string.IsNullOrWhiteSpace(proof.PrerequisiteProofHash))
+                {
+                    results.Add(new StagePrereqResult(prereqId, "invalid", false,
+                        "missing prerequisite proof hash; re-stamp the stage with the current runner"));
+                    continue;
+                }
+
+                if (!string.Equals(expectedHash, proof.PrerequisiteProofHash, StringComparison.Ordinal))
+                {
+                    results.Add(new StagePrereqResult(prereqId, "invalid", false,
+                        "prerequisite proof hash differs from the current prerequisite proofs"));
+                    continue;
+                }
+            }
+
             results.Add(new StagePrereqResult(prereqId, "fresh", true, null));
         }
 
@@ -169,6 +208,10 @@ public sealed class CycleService
         else if (!string.Equals(gateProof.ChangeSetId, identity, StringComparison.Ordinal))
         {
             reasons.Add("gate proof is stale (the diff changed since the gate ran); re-run `gate run`");
+        }
+        else
+        {
+            reasons.AddRange(GateProofValidator.ValidateAffectedTestProof(_repositoryRoot, gateProof));
         }
 
         CommitScope scope = CommitScopeInspector.Inspect(_repositoryRoot);

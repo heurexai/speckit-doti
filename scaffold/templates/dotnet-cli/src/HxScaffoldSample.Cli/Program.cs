@@ -33,6 +33,6 @@ public static class Program
             forceJson: parseResult.GetValue(describeJson) ? true : null));
         root.Subcommands.Add(describe);
 
-        return root.Parse(args).Invoke();
+        return Agent.Invoke(root, args);
     }
 }

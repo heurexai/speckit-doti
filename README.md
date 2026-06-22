@@ -22,7 +22,7 @@
 - **One command, a project that builds.** `dotnet new hx-dotnet-cli` emits a layered .NET 10 solution — domain library, agent-first CLI, xUnit tests, ArchUnitNET architecture tests, security analyzers, gate configs — that compiles and tests **green on day one**. No wiring, no "TODO: add tests later."
 - **Architecture rules that fail the build.** Nine [ArchUnitNET](https://github.com/TNG/ArchUnitNET) families + a vendored [Sentrux](https://github.com/heurexai/sentrux) boundary engine run on every `dotnet test`. Layering drift is a red build, not a code-review nit.
 - **Guardrails your agent can't talk its way around.** Unlike Spec Kit's advisory markdown prompts, every doti stage is backed by a CLI command that emits a hash-bound proof, and the gate ladder is **fail-closed** — a commit chokepoint refuses work it didn't verify.
-- **Agent-first by design.** Every operation is a JSON-first command, so Claude Code or Codex can drive, verify, and report on the whole spec → ship loop with no human in the path.
+- **Agent-first by design.** Every operation is a JSON-first command, so Claude Code or Codex can drive, verify, and report on the whole spec → ship loop with no human in the path. Human help uses one shared rich/plain renderer across root menus and subcommands (`--help-mode plain` / `--plain-help` / `NO_COLOR` for ANSI-free output).
 
 ## 30-second quickstart
 
@@ -223,7 +223,7 @@ We kept what makes Spec Kit good — the spec-first sequence, clarification befo
 8. **`/doti-drift-review`** — _(doti-only)_ Compare the actual diff against the approved plan/design and check for drift between source assets and installed files.
    _Spec Kit:_ loosely related to `/speckit.converge`, but it's a **gate** that catches divergence before you can commit, not a task-appender.
 
-9. **`/doti-commit`** — _(doti-only)_ Make the scoped commit through the sanctioned path. `doti cycle commit` refuses unless a fresh drift-review, a fresh passing `gate run` proof, and a clean staged scope all line up.
+9. **`/doti-commit`** — _(doti-only)_ Make the scoped commit through the sanctioned path. `doti cycle commit` refuses unless a fresh drift-review, a fresh passing `gate run` proof with recomputable affected-test hashes, and a clean staged scope all line up. Direct `dotnet test` transcripts are diagnostic only, not commit proof.
    _Spec Kit:_ no equivalent.
 
 10. **`/doti-release`** — _(doti-only)_ Cut a version via the GitVersion-backed release lane (calculate → bump → annotated tag), running the gate at the `release` profile.
@@ -308,7 +308,7 @@ Then drive development with the slash-commands, in order — each stage's proof 
 
 ## CLI reference
 
-Every command is `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, `Hx.Scaffold.Cli` for `new`). Add `--json` for the machine envelope.
+Every command is `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, `Hx.Scaffold.Cli` for `new`). Add `--json` for the machine envelope. Human `--help` is rich by default on capable terminals and supports `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR` for ANSI-free output.
 
 | Command | What it does |
 | --- | --- |
@@ -321,7 +321,7 @@ Every command is `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `H
 | `version calculate` / `version bump` | GitVersion semantic version / bump + annotated tag |
 | `tools fetch [--rid] [--tool all\|gitleaks\|sentrux\|gitversion]` | Download + SHA-256-verify the vendored tool binaries from their pinned manifests (fail-closed on mismatch) |
 | `plan` _(Hx.Impact.Cli)_ | Affected-test planner (project-graph reverse closure → covering test projects) |
-| `doti cycle stamp \| status \| check \| commit` | Stamp a stage / show cycle state / fail-closed prereq check / sanctioned commit |
+| `doti cycle stamp \| status \| check \| commit` | Stamp a stage (prereq-checked) / show cycle state / fail-closed prereq check / sanctioned commit |
 | `doti question check` | Validate operator-question format compliance |
 | `doti render-skills` / `doti install` / `doti install-hooks` | Re-render skills / install the workflow / install the pre-commit hook |
 | `describe` | Self-describe the CLI surface as JSON |
@@ -333,12 +333,12 @@ Every command is `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `H
 1. **Hygiene** — working-tree / staged scope checks
 2. **Secret scanning** — vendored [Gitleaks](https://github.com/gitleaks/gitleaks)
 3. **Architecture** — [ArchUnitNET](https://github.com/TNG/ArchUnitNET) families + [Sentrux](https://github.com/heurexai/sentrux) boundary analysis
-4. **Affected-test planning** — project-graph reverse closure scopes the `normal`/`advisory` test run; `release` runs the full suite
+4. **Affected-test planning** — project-graph reverse closure scopes the `normal`/`advisory` test run; `release` runs the full suite; the gate proof records planner, test-scope, and execution hashes
 5. **Build & test**
 6. **Security** — package-vulnerability SCA + build-integrated analyzer SAST (CA3xxx/CA5xxx as errors); enforced at `release`, advisory in dev
 7. **Versioning** — [GitVersion](https://github.com/GitTools/GitVersion)
 
-The gate never creates a Sentrux baseline, and persists its proof so `doti cycle commit` can require a _fresh, passing_ one.
+The gate never creates a Sentrux baseline, and persists its proof so `doti cycle commit` can require a _fresh, passing_ one whose affected-test hashes recompute against the current change set.
 
 ## Status
 
