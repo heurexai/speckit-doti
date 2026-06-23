@@ -264,7 +264,7 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 
 ### Install the released toolkit
 
-Current release: [**v0.3.1**](https://github.com/heurexai/speckit-doti/releases/tag/v0.3.1).
+Current release: [**v0.4.0**](https://github.com/heurexai/speckit-doti/releases/tag/v0.4.0).
 
 Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) ships a standalone installer per platform — **win-x64** (`.zip`), **linux-x64**, and **osx-arm64** (`.tar.gz`). Download the archive for your platform, extract it, and run the bundled `hx` from any directory:
 
@@ -291,7 +291,7 @@ Use the same standalone `hx` to inspect or update an existing doti-enabled repos
 
 `hx update` resolves the latest non-prerelease `heurexai/speckit-doti` release for the host platform, verifies the release checksum, reuses a verified temporary cache entry when possible, and creates a backup Git worktree before mutating the original checkout. Pass `--noworktree` to skip that backup or `--force` to replace modified managed Doti assets after they are reported. Live repo configuration and baselines, including Sentrux state, remain target-owned and are not replaced.
 
-Package-manager manifests for `v0.3.1` are prepared under `packaging/`; publishing them still requires external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
+Package-manager manifest templates are prepared under `packaging/`; publishing them still requires the released archive hashes and external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
 
 Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution; `hx prereq check` reports those prerequisites and directory readiness before `new` or `update` mutates anything.
 
@@ -363,7 +363,7 @@ The gate never creates a Sentrux baseline, and persists its proof so `doti cycle
 
 ## Status
 
-Current release: [v0.3.1](https://github.com/heurexai/speckit-doti/releases/tag/v0.3.1). GitHub CI is green on Windows, Linux, and macOS, and the release workflow publishes win-x64, linux-x64, and osx-arm64 archives with matching `.sha256` files. The deterministic release gate remains command-backed and fail-closed; the local release proof for v0.3.1 passed on win-x64 with full tests, hygiene, version calculation, Sentrux, and security scan.
+Current release: [v0.4.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.4.0). GitHub CI is green on Windows, Linux, and macOS, and the release workflow publishes win-x64, linux-x64, and osx-arm64 archives with matching `.sha256` files. The deterministic release gate remains command-backed and fail-closed; the local release proof for v0.4.0 passed on win-x64 with full tests, hygiene, version calculation, Sentrux, and security scan.
 
 The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary (including GitVersion) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with a working GitVersion plus Gitleaks and Sentrux without a manual step.
 

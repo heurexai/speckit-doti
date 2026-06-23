@@ -6,8 +6,11 @@ All notable changes to speckit-doti are documented here. The format follows
 
 ## [Unreleased]
 
-### Fixed
-- Standalone release archives can now run `hx new` from the extracted payload without a `.git` checkout; the runtime template pack no longer imports GitVersion, and scaffold failures include the failing stage evidence instead of only the generic validation summary.
+## [0.4.0] - 2026-06-23
+
+- **Added** trusted prerequisite preflight: `hx prereq check` reports .NET SDK, Git, directory readiness, and manifest identity; `hx prereq install` runs only a release-defined, digest-approved Windows winget plan.
+- **Changed** `hx new` and `hx update` now run prereq/directory preflight before side effects, generated repos carry `.doti/prerequisites.json`, and `hx version --repo` reports read-only prereq health.
+- **Fixed** standalone archives can run `hx new` from the extracted payload without a `.git` checkout; the template pack no longer imports GitVersion, and scaffold failures include stage evidence.
 
 ## [0.3.1] - 2026-06-23
 
@@ -54,7 +57,8 @@ First tagged release — the toolkit is published as a downloadable, standalone 
 - `tools fetch` — deterministic, hash-verified provisioning of the vendored tool binaries from their pinned manifests (fail-closed on mismatch).
 - Agent-first CLI self-description (structured `<PREFIX><NNNN>` error codes, `describe`, the `CliResult` envelope) encoded into the doti workflow.
 
-[Unreleased]: https://github.com/heurexai/speckit-doti/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/heurexai/speckit-doti/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/heurexai/speckit-doti/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/heurexai/speckit-doti/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/heurexai/speckit-doti/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/heurexai/speckit-doti/releases/tag/v0.2.0

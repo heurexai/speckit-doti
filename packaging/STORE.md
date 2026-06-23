@@ -34,7 +34,7 @@ the first submission isn't made within ~3 months of reserving.
 ## Build the MSIX locally (for the first submission / testing)
 
 Build from the matching release tag/ref. The packaged `hx.exe --version` must exactly match the
-MSIX version prefix (for example, `0.3.1` in an MSIX identity version of `0.3.1.0`); the Store
+MSIX version prefix (for example, `0.4.0` in an MSIX identity version of `0.4.0.0`); the Store
 workflow enforces this before packing.
 
 ```powershell
@@ -45,7 +45,7 @@ foreach ($t in 'gitleaks','sentrux','gitversion') { copy -Recurse -Force "tools/
 copy publish/Hx.Scaffold.Cli.exe "$layout/hx.exe"
 copy packaging/msix/AppxManifest.xml "$layout/AppxManifest.xml"
 ni -ItemType Directory -Force "$layout/Assets" | Out-Null; copy packaging/msix/Assets/* "$layout/Assets/"
-& "${env:ProgramFiles(x86)}\Windows Kits\10\bin\<sdk-version>\x64\makeappx.exe" pack /d $layout /p speckit-doti-0.3.1.msix /o
+& "${env:ProgramFiles(x86)}\Windows Kits\10\bin\<sdk-version>\x64\makeappx.exe" pack /d $layout /p speckit-doti-0.4.0.msix /o
 ```
 The MSIX bundles `hx` + its payload (template, doti, source, manifests, vendored grammars) + the win-x64
 tool binaries; `hx` resolves its payload from the package install dir (read-only — generated projects and
