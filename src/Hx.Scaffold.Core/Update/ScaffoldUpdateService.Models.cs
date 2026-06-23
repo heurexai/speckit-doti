@@ -13,7 +13,8 @@ public static partial class ScaffoldUpdateService
         ScaffoldUpdateWorktreeBackup? BackupWorktree,
         bool Delegated,
         ScaffoldUpdateDelegation? Delegation,
-        IReadOnlyList<string> ChangedPaths);
+        IReadOnlyList<string> ChangedPaths,
+        ScaffoldHookReport? Hook);
 
     private sealed record ManagedFilePlan(IReadOnlyList<string> CreatePaths, IReadOnlyList<string> ReplacePaths)
     {

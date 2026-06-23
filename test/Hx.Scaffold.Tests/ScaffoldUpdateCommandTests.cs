@@ -1,4 +1,5 @@
 using Hx.Cli.Kernel;
+using Hx.Cycle.Core;
 using Hx.Scaffold.Cli;
 using Hx.Scaffold.Core.Update;
 using Hx.Tooling.Contracts;
@@ -22,6 +23,9 @@ public sealed partial class ScaffoldCommandsTests
 
             Assert.True(report.DryRun);
             Assert.Contains(report.PlannedActions, a => a.Contains("create backup worktree", StringComparison.Ordinal));
+            Assert.NotNull(report.Hook);
+            Assert.Equal(HookInstaller.VerdictMissing, report.Hook.Verdict);
+            Assert.Contains(report.PlannedActions, a => a.Contains("install the Doti insurance", StringComparison.Ordinal));
             Assert.Empty(report.Blockers);
         }
         finally
@@ -112,6 +116,10 @@ public sealed partial class ScaffoldCommandsTests
             Assert.NotNull(first.BackupWorktreePath);
             Assert.True(Directory.Exists(first.BackupWorktreePath));
             Assert.Contains(".doti/workflows/doti/workflow.yml", first.ChangedPaths);
+            Assert.NotNull(first.Hook);
+            Assert.True(first.Hook.Changed);
+            Assert.Equal(HookInstaller.VerdictExpected, first.Hook.Verdict);
+            Assert.Equal(HookInstaller.HookScript, File.ReadAllText(Path.Combine(repo, ".git", "hooks", "pre-commit")));
             Assert.Contains(".sentrux", first.PreservedLivePaths);
             Assert.Equal("live baseline", File.ReadAllText(Path.Combine(repo, ".sentrux", "baseline.json")));
             Assert.Contains("clarify", File.ReadAllText(Path.Combine(repo, ".doti", "workflows", "doti", "workflow.yml")));
@@ -125,6 +133,9 @@ public sealed partial class ScaffoldCommandsTests
             Assert.Empty(second.Blockers);
             Assert.Equal("reuse-verified-cache", second.CacheAction);
             Assert.Empty(second.ChangedPaths);
+            Assert.NotNull(second.Hook);
+            Assert.False(second.Hook.Changed);
+            Assert.Equal(HookInstaller.VerdictExpected, second.Hook.Verdict);
             Assert.Equal(2, downloads);
 
             if (first.BackupWorktreePath is not null)
@@ -137,6 +148,37 @@ public sealed partial class ScaffoldCommandsTests
             ForceDelete(repo);
             ForceDelete(cache);
             ForceDelete(worktrees);
+            ForceDelete(Path.GetDirectoryName(release)!);
+        }
+    }
+
+    [Fact]
+    public void Update_refuses_to_overwrite_external_precommit_hook()
+    {
+        string repo = NewVersionedGitRepo();
+        string cache = NewTempDir("hx-update-cache-");
+        string release = NewReleaseArchive("1.0.0", out string checksum);
+        string hook = Path.Combine(repo, ".git", "hooks", "pre-commit");
+        try
+        {
+            File.WriteAllText(hook, "#!/bin/sh\necho custom hook\n");
+
+            ScaffoldUpdateReport report = ScaffoldUpdateService.Plan(
+                new ScaffoldUpdateRequest(repo, DryRun: false, Force: true, NoWorktree: true, RunningVersion: "1.0.0"),
+                FakeReleaseServices(cache, release, checksum));
+
+            Assert.Contains(report.Blockers, b => b.Contains("not owned by Doti", StringComparison.Ordinal));
+            Assert.Contains(report.Diagnostics, d => d.Code == "update.hook.external-precommit"
+                && string.Equals(d.Path, hook, StringComparison.OrdinalIgnoreCase));
+            Assert.NotNull(report.Hook);
+            Assert.Equal(HookInstaller.VerdictExternal, report.Hook.Verdict);
+            Assert.False(report.Hook.Changed);
+            Assert.Contains("custom hook", File.ReadAllText(hook));
+        }
+        finally
+        {
+            ForceDelete(repo);
+            ForceDelete(cache);
             ForceDelete(Path.GetDirectoryName(release)!);
         }
     }

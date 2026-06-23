@@ -59,7 +59,28 @@ public static class SentruxOutputParser
     {
         string rule = TryString(item, "rule") ?? "rule";
         string message = TryString(item, "message") ?? "violation";
-        return $"[{rule}] {message}";
+        string? path = TryString(item, "path") ?? TryString(item, "file") ?? TryString(item, "source");
+        int? line = TryInt(item, "line") ?? TryInt(item, "startLine");
+        string? detail = TryString(item, "detail") ?? TryString(item, "details") ?? TryString(item, "help");
+        string? recommendation = TryString(item, "recommendation") ?? TryString(item, "remediation");
+
+        List<string> parts = [$"[{rule}] {message}"];
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            parts.Add(line is null ? path : $"{path}:{line}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(detail))
+        {
+            parts.Add(detail);
+        }
+
+        if (!string.IsNullOrWhiteSpace(recommendation))
+        {
+            parts.Add("next: " + recommendation);
+        }
+
+        return string.Join(" - ", parts);
     }
 
     private static readonly Regex QualityArrow = new(
@@ -103,4 +124,9 @@ public static class SentruxOutputParser
 
     private static string? TryString(JsonElement root, string name) =>
         root.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    private static int? TryInt(JsonElement root, string name) =>
+        root.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int value)
+            ? value
+            : null;
 }

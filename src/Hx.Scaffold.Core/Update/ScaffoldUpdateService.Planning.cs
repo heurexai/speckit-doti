@@ -1,3 +1,4 @@
+using Hx.Cycle.Core;
 using Hx.Doti.Core.ManagedAssets;
 using Hx.Scaffold.Core.Versioning;
 using System.Text.Json;
@@ -51,6 +52,38 @@ public static partial class ScaffoldUpdateService
         request.Force ? "replace modified managed Doti assets because --force was supplied" : "preserve modified managed Doti assets by failing before mutation",
         "preserve live configuration and baselines",
     ];
+
+    private static void AddHookBlockers(
+        DotiHookInspection hook,
+        List<string> blockers,
+        List<ScaffoldUpdateDiagnostic> diagnostics)
+    {
+        if (hook.Verdict != HookInstaller.VerdictExternal)
+        {
+            return;
+        }
+
+        string hash = hook.CurrentSha256 is null ? "unknown hash" : "sha256 " + hook.CurrentSha256;
+        AddBlocker(blockers, diagnostics, "update.hook.external-precommit",
+            $"{hook.Message} Path: {hook.HookPath}; {hash}.", hook.HookPath, "git-hook");
+    }
+
+    private static void AddHookAction(DotiHookInspection hook, List<string> actions)
+    {
+        string? action = hook.Verdict switch
+        {
+            HookInstaller.VerdictMissing => "install the Doti insurance pre-commit hook",
+            HookInstaller.VerdictDotiOwned => "refresh the existing Doti-owned insurance pre-commit hook",
+            HookInstaller.VerdictExpected => "verify the Doti insurance pre-commit hook is already current",
+            HookInstaller.VerdictExternal => "refuse to overwrite the existing non-Doti pre-commit hook",
+            _ => null,
+        };
+
+        if (action is not null)
+        {
+            actions.Add(action);
+        }
+    }
 
     private static ReleasePlan ResolveReleasePlan(
         string rid,

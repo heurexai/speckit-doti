@@ -23,52 +23,57 @@ public static class ArchitectureTestRunner
 
         try
         {
-            var env = new Dictionary<string, string>
-            {
-                ["MSBUILDDISABLENODEREUSE"] = "1",
-                ["DOTNET_CLI_USE_MSBUILD_SERVER"] = "0",
-                ["NUGET_PACKAGES"] = Environment.GetEnvironmentVariable("NUGET_PACKAGES")
-                    ?? System.IO.Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages"),
-            };
-
-            var command = new ToolCommand(
-                "dotnet",
-                [
-                    "test", "--nologo", "--filter", Filter,
-                    "--logger", "trx;LogFileName=architecture.trx",
-                    "--results-directory", resultsDir,
-                    "--disable-build-servers",
-                ],
-                repositoryRoot,
-                env);
-
-            ProcessRunResult run = ProcessRunner.Run(command);
-
-            string? trx = Directory.Exists(resultsDir)
-                ? Directory.GetFiles(resultsDir, "*.trx").FirstOrDefault()
-                : null;
-
-            if (trx is null)
+            string[] projects = FindArchitectureTestProjects(repositoryRoot);
+            if (projects.Length == 0)
             {
                 return new ArchitectureTestResult(
-                    JsonContractDefaults.SchemaVersion, StageOutcome.Fail, 0, 0, 0, [], families,
-                    ["No TRX produced; `dotnet test` failed before reporting results.", Tail(run.StandardError + run.StandardOutput)]);
+                    JsonContractDefaults.SchemaVersion, StageOutcome.Skipped, 0, 0, 0, [], families,
+                    ["No architecture test project found (includeArchitectureTests=false or no arch project)."]);
             }
 
-            List<ArchitectureTestCase> tests = ParseTrx(trx);
+            var tests = new List<ArchitectureTestCase>();
+            var notes = new List<string>();
+            bool commandFailed = false;
+            foreach (string project in projects)
+            {
+                string logFileName = SafeLogFileName(project);
+                var command = new ToolCommand(
+                    "dotnet",
+                    [
+                        "test", project, "--nologo", "-c", "Release", "--no-build", "--no-restore", "--filter", Filter,
+                        "--logger", $"trx;LogFileName={logFileName}",
+                        "--results-directory", resultsDir,
+                        "--disable-build-servers",
+                    ],
+                    repositoryRoot);
+
+                ProcessRunResult run = ProcessRunner.Run(command, TestTimeout());
+                commandFailed |= run.ExitCode != 0;
+
+                string trx = Path.Combine(resultsDir, logFileName);
+                if (!File.Exists(trx))
+                {
+                    commandFailed = true;
+                    notes.Add("No TRX produced for " + RepositoryRelative(repositoryRoot, project)
+                        + "; `dotnet test` failed before reporting results.");
+                    notes.Add(Tail(run.StandardError + run.StandardOutput));
+                    continue;
+                }
+
+                tests.AddRange(ParseTrx(trx));
+            }
+
             int passed = tests.Count(t => t.Outcome == StageOutcome.Pass);
             int failed = tests.Count(t => t.Outcome == StageOutcome.Fail);
 
             StageOutcome outcome =
-                tests.Count == 0 ? StageOutcome.Skipped :
-                (run.ExitCode != 0 || failed > 0) ? StageOutcome.Fail :
+                tests.Count == 0 ? StageOutcome.Fail :
+                (commandFailed || failed > 0) ? StageOutcome.Fail :
                 StageOutcome.Pass;
 
-            var notes = new List<string>();
             if (tests.Count == 0)
             {
-                notes.Add("No architecture tests found (includeArchitectureTests=false or no arch project).");
+                notes.Add("Architecture test project(s) were found, but no architecture tests were reported.");
             }
 
             return new ArchitectureTestResult(
@@ -99,6 +104,30 @@ public static class ArchitectureTestRunner
     private static string Tail(string text, int max = 800) =>
         text.Length <= max ? text : text[^max..];
 
+    private static string[] FindArchitectureTestProjects(string repositoryRoot) =>
+        Directory.GetFiles(repositoryRoot, "*.csproj", SearchOption.AllDirectories)
+            .Where(p => IsRootTestProject(repositoryRoot, p))
+            .Where(p => Path.GetFileNameWithoutExtension(p).Contains("Architecture.Tests", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static bool IsRootTestProject(string repositoryRoot, string projectPath) =>
+        RepositoryRelative(repositoryRoot, projectPath).StartsWith("test/", StringComparison.OrdinalIgnoreCase);
+
+    private static string SafeLogFileName(string projectPath)
+    {
+        string name = Path.GetFileNameWithoutExtension(projectPath);
+        foreach (char c in Path.GetInvalidFileNameChars())
+        {
+            name = name.Replace(c, '-');
+        }
+
+        return name + ".trx";
+    }
+
+    private static string RepositoryRelative(string repositoryRoot, string path) =>
+        Path.GetRelativePath(repositoryRoot, path).Replace('\\', '/');
+
     private static void TryDelete(string path)
     {
         try
@@ -112,5 +141,14 @@ public static class ArchitectureTestRunner
         {
             // best-effort cleanup of the temp results dir
         }
+    }
+
+    private static TimeSpan TestTimeout()
+    {
+        string? configured = Environment.GetEnvironmentVariable("HX_ARCHITECTURE_TEST_TIMEOUT_SECONDS")
+            ?? Environment.GetEnvironmentVariable("HX_GATE_TEST_TIMEOUT_SECONDS");
+        return int.TryParse(configured, out int seconds) && seconds > 0
+            ? TimeSpan.FromSeconds(seconds)
+            : TimeSpan.FromSeconds(120);
     }
 }

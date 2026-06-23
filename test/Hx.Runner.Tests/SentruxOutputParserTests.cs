@@ -30,6 +30,34 @@ public sealed class SentruxOutputParserTests
     }
 
     [Fact]
+    public void ParsesRicherViolationObjectsWithoutDroppingLocationOrHelp()
+    {
+        SentruxOutputParser.CheckReport report = SentruxOutputParser.ParseCheck(
+            """
+            {
+              "passed": false,
+              "qualitySignal": 0.61,
+              "violations": [
+                {
+                  "rule": "god_file",
+                  "message": "file has too many responsibilities",
+                  "path": "tools/Hx.Runner.Cli/RunnerCommands.cs",
+                  "line": 42,
+                  "details": "split command orchestration from parsing",
+                  "remediation": "move the core logic behind a service"
+                }
+              ]
+            }
+            """);
+
+        string violation = Assert.Single(report.Violations);
+        Assert.Contains("god_file", violation, StringComparison.Ordinal);
+        Assert.Contains("RunnerCommands.cs:42", violation, StringComparison.Ordinal);
+        Assert.Contains("split command orchestration", violation, StringComparison.Ordinal);
+        Assert.Contains("move the core logic", violation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ParsesGateRegressionText()
     {
         SentruxOutputParser.GateReport report =

@@ -61,6 +61,8 @@ public static class ScaffoldNewRunner
         // 3. First smoke against the finished repo.
         GateProof smoke = FirstSmokeRunner.Run(targetRoot, onEvent);
 
+        ScaffoldHookArmorer.Arm(targetRoot, Emit);
+
         StageOutcome overall =
             invocation.Outcome == StageOutcome.Pass && smoke.Outcome == StageOutcome.Pass ? StageOutcome.Pass :
             smoke.Outcome == StageOutcome.Fail ? StageOutcome.Fail :

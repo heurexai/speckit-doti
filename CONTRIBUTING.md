@@ -41,7 +41,7 @@ Locally, you can run the full deterministic ladder (hygiene, secret scanning, Se
 dotnet run --project tools/Hx.Runner.Cli -- gate run --repo . --profile auto --json
 ```
 
-> The full `gate run` uses vendored **win-x64** tool binaries (Gitleaks / Sentrux / GitVersion), fetched operationally per `tools/*/*.version.json`. CI currently enforces build + architecture + unit tests; the vendored-tool steps run locally until cross-platform tool vendoring lands (see the README **Status**).
+> The full `gate run` uses pinned vendored tool manifests (Gitleaks / Sentrux / GitVersion) and hash-verified binaries fetched operationally per `tools/*/*.version.json`. CI currently enforces build + architecture + unit tests; vendored-tool steps run locally for the host RIDs declared by the manifests (see the README **Status**).
 
 ## doti workflow (optional for contributors)
 

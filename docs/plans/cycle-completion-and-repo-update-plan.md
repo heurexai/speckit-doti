@@ -1,10 +1,10 @@
 # Plan: Completed cycle status and existing-repo update
 
-> Spec: `docs/specs/cycle-completion-and-repo-update.md`. Complete the Doti cycle through the non-release deliverable, then stop before `/doti-release` so the operator can review the final artifact before any release tag or publication.
+> Spec: `docs/specs/cycle-completion-and-repo-update.md`. Complete the Doti cycle and release through the sanctioned release lane: implement the remaining hook/Sentrux deltas, pass gates, commit through `doti cycle commit`, run `/doti-release`, create the minor version release, and verify CI/release assets.
 
 ## Technical Context
 
-The work spans six scaffold surfaces, including the new prerequisite manifest/policy surface:
+The work spans eight scaffold surfaces, including the new prerequisite manifest/policy surface, auto-armed hook surface, and refreshed Sentrux fork:
 
 1. **Cycle completion and recovery** in `Hx.Cycle.Core`. `doti cycle stamp`, `status`, `check`, and `commit` share `CycleService`, `CycleStateStore`, `FreshnessEvaluator`, `GateProofStore`, `CommitScopeInspector`, `PrecommitGuard`, and `GateProofValidator`. The current working tree persists completed-cycle records, writes pre-commit intent, recovers completed commits, and returns an explicit recovery-needed result if completion-state persistence fails after Git creates the commit; final full-gate proof is still pending.
 2. **Gate proof provenance and bypass hardening** across `Hx.Gate.Core`, `Hx.Cycle.Core`, and `Hx.Tooling.Contracts`. The gate already persists a change-set-bound proof and recomputable affected-test hashes, but the planned feature needs stronger producer provenance, proof digest identity, execution artifact identity, staged-tree binding, final commit trailers, hook-health reporting, and external/bypass commit verdicts.
@@ -12,6 +12,8 @@ The work spans six scaffold surfaces, including the new prerequisite manifest/po
 4. **Managed Doti asset ownership** in `Hx.Doti.Core` and source assets under `doti/`, `.doti/`, `.agents/`, and `.claude/`. `doti install` and `doti render-skills` install and render assets; the current working tree adds a managed-asset manifest, canonical hash baseline, category-specific modification report, and source-format/canonicalizer/conflict-policy metadata.
 5. **Version and release asset identity** in `Hx.Version.Core`, packaging assets, and release manifests. `version calculate` and `version bump` exist; the current working tree adds a canonical scaffold product version stamp, repo-aware version report, target-to-latest relation in update reports, and release asset name/hash identity when a GitHub release payload installs or updates a repo.
 6. **Trusted prerequisite policy and preflight** in `Hx.Scaffold.Core` with optional contracts in `Hx.Tooling.Contracts`. No prerequisite implementation exists yet; this plan adds a manifest-driven preflight before `hx new`, `hx update`, repo-aware version reporting, and generated-repo validation, plus Windows-only operator-approved winget remediation. The first hard requirements are a compatible .NET SDK and Git. On 2026-06-23, `winget show --id Microsoft.DotNet.SDK.10 --exact` verified `Microsoft.DotNet.SDK.10` and `winget show --id Git.Git --exact` verified `Git.Git`; exact supported version ranges remain trusted manifest data.
+7. **Auto-armed Doti insurance hook** across `Hx.Cycle.Core`, `Hx.Scaffold.Core`, update orchestration, and Doti install orchestration. `HookInstaller` and `PrecommitGuard` already exist in `Hx.Cycle.Core`; this plan wires that existing command-backed hook surface into `hx new`, `hx update`, and `doti install`, while adding hook ownership/conflict classification before any automatic write.
+8. **Vendored Sentrux fork refresh** across `tools/sentrux/sentrux.version.json`, tool-store provisioning, Sentrux verification/check parsing, gate reporting, and release/generation docs. Current local context says Sentrux is vendored as `v0.5.10`; GitHub API verification on 2026-06-24 reported `heurexai/sentrux` latest release `v0.5.11` with platform asset digests and richer help/failure details requested by the operator.
 
 Stack and constraints: .NET source only, existing `System.CommandLine` and `CliResult` envelope, existing shared rich/plain help renderer, YamlDotNet 18.0.0 already pinned, `System.Text.Json` already used for contracts, GitVersion already vendored, no shell runners, no committed release binaries, and no release action during this cycle. Network access is explicit for `hx update`; winget execution is explicit, Windows-only, and operator-approved; offline gates remain offline.
 
@@ -28,6 +30,8 @@ PASS before design:
 - **Engineering Discipline** - implementation must prove update/report/recovery behavior with tests and command-backed gates before claiming completion.
 - **Channel Independence** - logic lives in core libraries; CLI projects only parse options, inject adapters, and render `CliResult`.
 - **Prerequisite trust boundary** - prerequisite policy and winget package metadata are release-defined managed assets or immutable built-in anchors; repo-local extensions cannot weaken requirements or inject executable URLs.
+- **Hook boundary** - automatic arming installs only the thin untracked insurance hook; Doti remains enforced by command-backed cycle checks, not hook trust.
+- **Sentrux baseline boundary** - the Sentrux executable/manifest may be refreshed, but target-owned `.sentrux` baselines and live configuration stay outside managed update replacement.
 
 No violation, so Complexity Tracking is empty.
 
@@ -72,6 +76,14 @@ No violation, so Complexity Tracking is empty.
 - **Decision:** The initial Windows winget mappings are `Microsoft.DotNet.SDK.10` for the .NET SDK and `Git.Git` for Git, both from the default `winget` source.
 - **Rationale:** These identifiers were verified from the local winget source on 2026-06-23 with `winget show --id Microsoft.DotNet.SDK.10 --exact` and `winget show --id Git.Git --exact`. The manifest records package/source identifiers and supported version policy; it must not trust repo-local executable URLs.
 - **Alternatives rejected:** Record raw installer URLs from winget output (stale and easier to subvert); use broad search terms like `dotnet` or `git` (ambiguous); add Linux/macOS package-manager automation now (operator explicitly withdrew that expansion).
+
+- **Decision:** Wire automatic hook arming through the existing `Hx.Cycle.Core.HookInstaller` and add hook ownership classification beside that hook surface, with Scaffold/Core calling it after generated repos are Git-initialized and after update mutation succeeds; `doti install` should install the hook from the command orchestration layer when the target is a Git repo.
+- **Rationale:** The hook content and sentinel behavior already live in `Hx.Cycle.Core`; duplicating hook text in scaffold/update/Doti install code would drift. `Hx.Scaffold.Core` can reference `Hx.Cycle.Core` without creating a cycle under the current core-layer rules. `Hx.Doti.Core` should stay focused on assets/rendering; `Hx.Runner.Cli doti install` can compose `DotiInstaller.Install` with hook arming without forcing `Hx.Doti.Core` to depend on cycle enforcement.
+- **Alternatives rejected:** Hand-write hook files in `Hx.Scaffold.Core` (duplicate policy); silently overwrite any existing pre-commit hook (violates spec safety); chain arbitrary hooks automatically (unproven semantics and hidden user-code execution); make hook presence a hard commit proof (hooks are bypassable local insurance).
+
+- **Decision:** Refresh `tools/sentrux/sentrux.version.json` to `heurexai/sentrux` `v0.5.11` using GitHub release-provided asset digests, then make Sentrux verify/check/gate reporting preserve richer failure detail.
+- **Rationale:** The user explicitly said the forked Sentrux has been updated and should replace the older vendored version. GitHub API verification found `v0.5.11`, published 2026-06-23, with release-provided digests for `sentrux-windows-x86_64.exe` (`ed387706d10fc2708507939d5390016b256cc4a725afcf9e209021cbab2bf88c`), `sentrux-linux-x86_64` (`6da9bede77654a54425c101d37d1bbb192a51c8cf7bd2823ad9c0da45ee34fae`), `sentrux-linux-aarch64` (`e59fafd687aaa980705cbbd20020b59f8647b9e9bed92d54d1e2ffb033e31fcb`), `sentrux-darwin-x86_64` (`034062226733c8f56660f59a4c73e10c66effaeafe598e90fbb37331ff101189`), and `sentrux-darwin-arm64` (`0389d2b84075bf02a5f53707f589e5a999b65b7b31acc47e622417d23745dad2`).
+- **Alternatives rejected:** Keep `v0.5.10` until a later release (does not meet operator request); download latest at runtime without pinning (not deterministic); refresh `.sentrux` baselines with the tool (violates live-configuration preservation).
 
 ## Design
 
@@ -253,6 +265,52 @@ Approach:
 
 Architecture delta: no source-layer change.
 
+### 8. Auto-armed Doti hook
+
+Likely files:
+
+- `tools/Hx.Cycle.Core/HookInstaller.cs`
+- new `tools/Hx.Cycle.Core/HookHealth.cs` or equivalent hook classifier
+- `src/Hx.Scaffold.Core/Hx.Scaffold.Core.csproj`
+- `src/Hx.Scaffold.Core/ScaffoldNewRunner.cs`
+- `src/Hx.Scaffold.Core/Update/ScaffoldUpdateService*.cs`
+- `tools/Hx.Runner.Cli/RunnerCommands.Doti.cs`
+- `tools/Hx.Runner.Cli/RunnerCommands.DotiCycle.cs`
+- tests in `test/Hx.Runner.Tests` and `test/Hx.Scaffold.Tests`
+
+Approach:
+
+- Keep hook script generation and sentinel policy in `Hx.Cycle.Core`.
+- Add a deterministic hook classifier that resolves the Git hooks path, computes the expected Doti hook identity, and classifies the current pre-commit hook as absent, expected, older-Doti, modified-Doti, non-Doti, or not-a-Git-repo.
+- Make automatic writes fail before managed update mutation when a non-Doti or unproven modified hook exists.
+- Wire `hx new` to arm the hook only after the target repo has been Git-initialized by first smoke, then record hook path/status in the scaffold proof or emitted events.
+- Wire `hx update` dry-run to report planned hook work without writing, and successful update/no-op update to install or refresh the hook after managed reconciliation succeeds.
+- Wire `doti install` command orchestration to install or refresh the hook when the target is a Git repo; `Hx.Doti.Core.DotiInstaller` remains focused on file assets and metadata.
+
+Architecture delta: `Hx.Scaffold.Core` adds a within-core reference to `Hx.Cycle.Core` unless implementation factors hook installation into a lower shared core. No `.sentrux/rules.toml` or `rules/architecture.json` change is expected because both projects are already in the core layer and Sentrux enforces no cycles. If a cycle appears, move hook classification/installer to a shared lower core before continuing.
+
+### 9. Vendored Sentrux `v0.5.11` refresh and richer failure reporting
+
+Likely files:
+
+- `tools/sentrux/sentrux.version.json`
+- `tools/Hx.Sentrux.Core/SentruxManifestValidator*.cs`
+- `tools/Hx.Sentrux.Core/SentruxOutputParser.cs`
+- `tools/Hx.Sentrux.Core/SentruxChecker*.cs`
+- `tools/Hx.Gate.Core/GateRunner.cs`
+- `tools/Hx.Tooling.Contracts/SentruxCheckResult.cs`
+- tests in `test/Hx.Runner.Tests` and `test/Hx.Scaffold.Tests`
+
+Approach:
+
+- Update the Sentrux manifest to `v0.5.11` with release URLs and byte-exact executable digests for every supported RID in the GitHub release.
+- Keep grammar assets and any grammar manifest entries explicit; if `v0.5.11` changes grammar requirements, fail closed with a clear verify diagnostic rather than creating a baseline or weakening the check.
+- Ensure `tools fetch`, shared tool store, `sentrux verify`, `sentrux check`, and `gate run` consume the refreshed manifest.
+- Preserve richer Sentrux failure output by parsing structured output when available and keeping raw-but-sanitized details as evidence when no structured field exists.
+- Do not refresh, rewrite, or normalize `.sentrux/baseline.json`, `.sentrux/rules.toml`, or target-owned live Sentrux configuration as part of the executable refresh.
+
+Architecture delta: no project/layer change. Work stays in existing Sentrux/Gate/Contracts cores. No Sentrux baseline update is allowed.
+
 ## CLI surface & error contract
 
 New operation: `hx update`.
@@ -286,6 +344,19 @@ Changed operation: `doti cycle status/check/stamp/commit`.
 - **`describe` entry:** update command summaries/diagnostics to distinguish diagnostic-only commands from proof-minting commands.
 - **Envelope:** completed-cycle, recoverable-completion, ambiguous-recovery, hook-health, and external/bypass verdicts appear in JSON output.
 
+Changed operation: `hx new`, `hx update`, and `doti install`.
+
+- **Exit classes:** Success includes hook absent/expected/older-Doti refresh success; Validation for non-Doti or unproven modified hook conflicts; Integrity for a hook classified as Doti-owned but hash-inconsistent with all known supported Doti hook identities.
+- **Planned error-code registry additions:** validation hook conflict non-Doti; validation hook modified; validation hook not Git repo when required; integrity hook identity mismatch.
+- **`describe` entry:** document automatic hook arming on `new`/`update`/`doti install`, and dry-run hook-health reporting on update/version/status.
+- **Envelope:** hook path, hook health verdict, expected hook identity, and planned/actual hook action appear in JSON without including raw non-Doti hook contents.
+
+Changed operation: `sentrux verify/check` and `gate run`.
+
+- **Exit classes:** existing success/validation/integrity behavior remains; manifest/hash mismatch is Integrity; Sentrux rule/regression failure is Validation/Blocked according to existing gate semantics.
+- **Planned error-code registry additions:** integrity sentrux manifest stale; integrity sentrux executable hash mismatch; validation sentrux failure details unavailable when the updated fork emits an unsupported shape.
+- **Envelope:** include Sentrux release tag/source remote/executable identity and richer file/rule/failure details when available.
+
 ## Command Availability
 
 | Area | Command | Status |
@@ -305,6 +376,8 @@ Changed operation: `doti cycle status/check/stamp/commit`.
 | GitHub latest-release client | update-only network path | implemented in current working tree; network-enabled and not part of offline gate |
 | Prerequisite preflight | `dotnet run --project tools/Hx.Scaffold.Cli -- prereq check ... --json` plus automatic preflight in `new`/`update`/repo-aware `version` | NEW (advisory until built); manifest-driven and fail-before-side-effects |
 | Windows prerequisite install | `dotnet run --project tools/Hx.Scaffold.Cli -- prereq install ... --json` | NEW (advisory until built); Windows-only, winget-only, explicit operator approval required |
+| Auto hook arming | `hx new`, `hx update`, and `doti install` installing/refreshing the Doti pre-commit hook | NEW (advisory until built); existing `doti install-hooks` command-backed installer/guard already exists |
+| Sentrux fork refresh | `tools/sentrux/sentrux.version.json` -> `heurexai/sentrux` `v0.5.11`; `sentrux verify/check`, `gate run` | NEW (advisory until manifest/tool and parser updates are built); current command availability still reports `v0.5.10` |
 | Release | `/doti-release`, tag, publish assets | intentionally not run in this cycle; user review comes first |
 
 ## Constitution Check (after design)
@@ -316,8 +389,10 @@ PASS after design:
 - It preserves the template boundary by rendering skills from source and treating generated files as generated.
 - It keeps network and release-cache effects outside offline gates and outside the repo.
 - It keeps prerequisite install effects outside ordinary command retries and binds them to a trusted release manifest plus explicit operator approval.
+- It uses the existing hook installer/guard as local insurance while keeping command-backed Doti cycle checks authoritative.
+- It treats Sentrux executable refresh as pinned managed tooling and preserves target-owned baseline/config state.
 - It does not add shell runners or trust local hooks as security boundaries.
-- It stops before release and keeps the eventual minor release as release-lane work.
+- Earlier non-release stop guidance is superseded by the active thread goal to complete the Doti cycle and release; release work still must use `/doti-release`, sanctioned version bump/tag, CI/release proof, and GitHub release publication gates rather than manual tags or direct pushes.
 
 ## Complexity Tracking
 
@@ -335,3 +410,5 @@ No justified constitution violations.
 - **Release boundary risk:** Do not run `version bump`, create tags, publish assets, or invoke `/doti-release` until the operator has reviewed the final deliverable.
 - **Prerequisite trust risk:** A mutable repo/cache manifest could turn remediation into arbitrary code execution. Treat release-defined package/source metadata as the only executable install source, hash/sign the manifest as a managed asset, and reject repo-local executable URL or winget overrides.
 - **Install side-effect risk:** Winget may require elevation, UI, policy approval, or PATH/session refresh. The installer must report this honestly, rerun probes after completion, and refuse scaffold/update mutation unless the new process environment can verify the prerequisite.
+- **Hook conflict risk:** Existing user hooks may encode important repo behavior. Automatic arming must fail hard on non-Doti or unproven modified hooks instead of chaining or overwriting them.
+- **Sentrux output-shape risk:** The updated fork may emit richer details in a different structure than the current parser expects. Parser updates must preserve existing pass/fail semantics and keep raw sanitized evidence available when structured extraction is partial.

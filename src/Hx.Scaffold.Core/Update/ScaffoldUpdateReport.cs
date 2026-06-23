@@ -38,6 +38,16 @@ public sealed record ScaffoldUpdateWorktreeBackup(
     bool Disabled,
     string Note);
 
+public sealed record ScaffoldHookReport(
+    string Verdict,
+    string? HookPath,
+    string ExpectedSha256,
+    string? CurrentSha256,
+    bool CanInstallOrRefresh,
+    bool Changed,
+    string Action,
+    string Message);
+
 public sealed record ScaffoldUpdateDelegation(
     bool Required,
     string? Reason,
@@ -72,6 +82,7 @@ public sealed record ScaffoldUpdateReport(
     IReadOnlyList<string> PlannedReplacePaths,
     IReadOnlyList<string> ForceReplacedPaths,
     IReadOnlyList<string> ChangedPaths,
+    ScaffoldHookReport? Hook,
     IReadOnlyList<string> PreservedLivePaths,
     IReadOnlyList<string> PossibleOrphanLegacyPaths,
     string? LegacyFollowUpInstruction,

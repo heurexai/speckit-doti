@@ -1,3 +1,4 @@
+using Hx.Cycle.Core;
 using Hx.Doti.Core;
 using Hx.Doti.Core.ManagedAssets;
 using Hx.Runner.Core.Io;
@@ -15,24 +16,26 @@ public static partial class ScaffoldUpdateService
         ScaffoldVersionReport version,
         UpdateCacheResult? cache,
         IReadOnlyList<DesiredManagedFile> desired,
+        DotiHookInspection hookPlan,
         List<string> blockers,
         List<ScaffoldUpdateDiagnostic> diagnostics)
     {
         ScaffoldUpdateWorktreeBackup? backup = DisabledBackupIfNeeded(request, gitRoot);
         if (request.DryRun || blockers.Count > 0)
         {
-            return new MutationResult(backup, Delegated: false, null, []);
+            return new MutationResult(backup, Delegated: false, null, [], ToHookReport(hookPlan));
         }
 
         if (cache is null)
         {
             AddBlocker(blockers, diagnostics, "update.release-cache.unavailable", "release cache is unavailable");
-            return new MutationResult(backup, Delegated: false, null, []);
+            return new MutationResult(backup, Delegated: false, null, [], ToHookReport(hookPlan));
         }
 
         if (DelegationReason(version, request.RunningVersion, cache.Release.Version) is { } reason)
         {
-            return new MutationResult(backup, Delegated: true, RunDelegatedUpdater(cache, gitRoot, request, reason), []);
+            return new MutationResult(backup, Delegated: true, RunDelegatedUpdater(cache, gitRoot, request, reason), [],
+                ToHookReport(hookPlan, action: "delegated"));
         }
 
         backup ??= CreateBackupWorktree(gitRoot, services.WorktreeRoot());
@@ -40,7 +43,14 @@ public static partial class ScaffoldUpdateService
         IReadOnlyList<DotiRenderTarget> generatedTargets = DotiRenderer.BuildTargets(gitRoot, DotiAgentTarget.All);
         ManagedAssetScanner.WriteBaseline(gitRoot, generatedTargets);
         WriteUpdatedVersionStamp(gitRoot, cache);
-        return new MutationResult(backup, Delegated: false, null, changed);
+        DotiHookInstallResult hook = HookInstaller.InstallIfSafe(gitRoot);
+        if (!hook.Success)
+        {
+            AddBlocker(blockers, diagnostics, "update.hook.install-failed", hook.Message,
+                hook.Inspection.HookPath, "git-hook");
+        }
+
+        return new MutationResult(backup, Delegated: false, null, changed, ToHookReport(hook));
     }
 
     private static ScaffoldUpdateReport BuildReport(
@@ -66,6 +76,7 @@ public static partial class ScaffoldUpdateService
             mutation.BackupWorktree, mutation.Delegated, mutation.Delegation,
             TargetToLatestRelation(version.Target, release.Cache?.Release.Version), blockers, diagnostics, actions,
             filePlan.CreatePaths, filePlan.ReplacePaths, ForceReplacedPaths(request, version), mutation.ChangedPaths,
+            mutation.Hook,
             PreservedLivePaths(gitRoot), possibleOrphans, legacyFollowUp, FollowUps(legacyFollowUp));
     }
 
@@ -106,4 +117,36 @@ public static partial class ScaffoldUpdateService
         legacyFollowUp is null
             ? ["hx version --repo <target> --json", "hx update --repo <target> --dry-run --json"]
             : ["hx version --repo <target> --json", "hx update --repo <target> --dry-run --json", legacyFollowUp];
+
+    private static ScaffoldHookReport ToHookReport(DotiHookInspection inspection, string? action = null) =>
+        new(
+            inspection.Verdict,
+            inspection.HookPath,
+            inspection.ExpectedSha256,
+            inspection.CurrentSha256,
+            inspection.CanInstallOrRefresh,
+            Changed: false,
+            action ?? PlannedHookAction(inspection),
+            inspection.Message);
+
+    private static ScaffoldHookReport ToHookReport(DotiHookInstallResult result) =>
+        new(
+            result.Inspection.Verdict,
+            result.Inspection.HookPath,
+            result.Inspection.ExpectedSha256,
+            result.Inspection.CurrentSha256,
+            result.Inspection.CanInstallOrRefresh,
+            result.Changed,
+            result.Action,
+            result.Message);
+
+    private static string PlannedHookAction(DotiHookInspection inspection) => inspection.Verdict switch
+    {
+        HookInstaller.VerdictMissing => "install",
+        HookInstaller.VerdictDotiOwned => "refresh",
+        HookInstaller.VerdictExpected => "already-current",
+        HookInstaller.VerdictExternal => "blocked",
+        HookInstaller.VerdictNotGitRepository => "skipped",
+        _ => "unknown",
+    };
 }

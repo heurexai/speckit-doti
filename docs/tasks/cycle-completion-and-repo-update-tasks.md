@@ -32,14 +32,19 @@ Ordered so prerequisites come first. Tests are placed before the implementation 
 - [ ] `T024` (FR-133, FR-134, FR-135, FR-144, FR-145, FR-146, FR-147, FR-148) - Wire prerequisite and directory preflight into `src/Hx.Scaffold.Core/ScaffoldNewRunner.cs`, `src/Hx.Scaffold.Core/Update/*`, `src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs`, `tools/Hx.Scaffold.Cli/ScaffoldCommands.cs`, and `tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs` before any side effects.
 - [ ] `T025` (FR-149, FR-151, FR-152, FR-153, FR-154, FR-155, FR-156, FR-157, FR-158, FR-159, FR-160, SC-071, SC-072, SC-073, SC-074, SC-075, SC-076) - Add Windows winget install-flow tests in `test/Hx.Scaffold.Tests`: exact plan/digest, explicit approval required, `--force`/JSON/retry do not approve install, winget unavailable/blocked, no trusted mapping, repo-local mapping override refused, failed/cancelled winget, post-install probe failure, non-Windows unsupported, and dry-run/preview executes no package manager.
 - [ ] `T026` (FR-149, FR-151, FR-152, FR-153, FR-154, FR-155, FR-156, FR-157, FR-158, FR-159, FR-160, SC-071, SC-072, SC-073, SC-074, SC-075, SC-076) - Implement `hx prereq check` and `hx prereq install` in `src/Hx.Scaffold.Core/Prerequisites/*`, `tools/Hx.Scaffold.Cli/Program.cs`, `tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs`, and `tools/Hx.Scaffold.Cli/ScaffoldCommands.cs`; verify winget identity, bind operator approval to a plan digest, execute only trusted release-defined winget package/source actions, rerun probes, and report structured provenance without secrets.
-- [ ] `T027` (FR-019, FR-031, FR-066, FR-067, FR-068, FR-069, FR-119, FR-131, FR-132, FR-150, FR-151, SC-016, SC-024, SC-025, SC-059, SC-070, SC-076) - Update single-sourced Doti guidance in `doti/core/skills.json` and `doti/core/templates/agent-context-template.md`; render installed `.agents`, `.claude`, `.doti/agent-context.md`, and root entrypoints; do not hand-edit rendered files.
-- [ ] `T028` (FR-066, FR-067, FR-068, FR-069, FR-132, FR-149, SC-024, SC-025, SC-070) - Update release-readiness notes or docs that describe implemented behavior, prerequisite preflight/install status, and minor-release classification, without running `version bump`, creating tags, or publishing release assets.
-- [ ] `T029` (all FR/SC) - Run `/doti-analyze` coverage review against `docs/specs/cycle-completion-and-repo-update.md`, this task file, and the plan; fix zero-coverage requirements or orphan tasks before implementation.
-- [ ] `T030` (architecture) - Run `/doti-arch-review` after implementation design is concrete; if a new project such as `Hx.Update.Core` or a prerequisite core project appears, update `scaffold-dotnet.slnx`, `.sentrux/rules.toml`, and `rules/architecture.json` consistently before code lands.
-- [ ] `T031` (verification) - Run focused tests: `test/Hx.Runner.Tests`, `test/Hx.Doti.Tests`, `test/Hx.Scaffold.Tests`, `test/Hx.Impact.Tests`, `test/Hx.Cli.Kernel.Tests`, and architecture tests.
-- [ ] `T032` (verification) - Run command-backed checks: `dotnet restore .\scaffold-dotnet.slnx`, `dotnet build .\scaffold-dotnet.slnx -c Release --no-restore /m:1`, `dotnet test .\scaffold-dotnet.slnx -c Release --no-build /m:1`, `doti render-skills --check`, `architecture test`, `security scan`, `gate run --profile normal`, and `gate run --profile release` as release-readiness proof only.
-- [ ] `T033` (local artifact, no release) - Discover and run the existing packaging/publish path to produce a local latest `hx.exe` artifact for operator review; do not run `/doti-release`, do not create a version tag, do not push, and do not publish GitHub release assets.
-- [ ] `T034` (cycle stop point) - Run `/doti-drift-review`, stamp `implement` and `drift-review`, persist a fresh gate proof, stage the scoped files, and commit through `doti cycle commit`; stop before `release` and hand the final deliverable to the operator for review.
+- [x] `T027` (FR-161, FR-164, FR-165, FR-166, FR-167, FR-168, FR-169, SC-077, SC-078, SC-079, SC-080, SC-081) - Add hook ownership and auto-arming tests in `test/Hx.Runner.Tests` and `test/Hx.Scaffold.Tests`: absent hook installs, expected hook no-ops, older Doti hook refreshes, modified/non-Doti hook fails before managed update mutation, dry-run reports planned hook write without mutation, resolved `core.hooksPath` is honored, and normal bare commits are redirected for both Codex/Claude-shared checkouts.
+- [x] `T028` (FR-161, FR-162, FR-163, FR-164, FR-165, FR-166, FR-167, FR-168, FR-169) - Implement hook health classification and auto-arming by reusing `tools/Hx.Cycle.Core/HookInstaller.cs`/`PrecommitGuard.cs`, adding hook ownership verdicts if needed, wiring `src/Hx.Scaffold.Core/ScaffoldNewRunner.cs`, `src/Hx.Scaffold.Core/Update/*`, and `tools/Hx.Runner.Cli/RunnerCommands.Doti.cs`; keep full verification logic in the Doti cycle.
+- [x] `T029` (FR-170, FR-171, FR-172, SC-082, SC-083, SC-085) - Update Sentrux vendoring tests and manifests: assert `tools/sentrux/sentrux.version.json` records `heurexai/sentrux` `v0.5.11`, release-provided SHA-256 values for declared assets, tool fetch/store verification fails closed on hash/tag mismatch, and existing `.sentrux/baseline.json` / live config remain unchanged.
+- [x] `T030` (FR-170, FR-171, FR-172) - Refresh `tools/sentrux/sentrux.version.json` to `v0.5.11` with the verified GitHub release asset URLs and byte-exact SHA-256 digests; update any shared-store or provisioning metadata needed so `tools fetch`, `hx new`, `hx update`, and generated-repo validation no longer target the older Sentrux release.
+- [x] `T031` (FR-173, FR-174, SC-083, SC-084, SC-085) - Update Sentrux parser/gate tests and implementation in `tools/Hx.Sentrux.Core/*`, `tools/Hx.Gate.Core/GateRunner.cs`, and contracts so richer Sentrux help/failure detail is preserved in human and JSON output without reducing existing structured diagnostics or touching baselines/config.
+- [x] `T032` (FR-019, FR-031, FR-066, FR-067, FR-068, FR-069, FR-119, FR-131, FR-132, FR-150, FR-151, FR-161, FR-162, FR-163, FR-170, FR-173, SC-016, SC-024, SC-025, SC-059, SC-070, SC-076, SC-077, SC-082, SC-084) - Update single-sourced Doti guidance in `doti/core/skills.json` and `doti/core/templates/agent-context-template.md`; render installed `.agents`, `.claude`, `.doti/agent-context.md`, and root entrypoints; do not hand-edit rendered files.
+- [x] `T033` (FR-066, FR-067, FR-068, FR-069, FR-132, FR-149, FR-161, FR-170, SC-024, SC-025, SC-070, SC-077, SC-082) - Update release-readiness notes or docs that describe implemented behavior, prerequisite preflight/install status, auto hook arming, Sentrux `v0.5.11`, and minor-release classification.
+- [x] `T034` (all FR/SC) - Run `/doti-analyze` coverage review against `docs/specs/cycle-completion-and-repo-update.md`, this task file, and the plan; fix zero-coverage requirements or orphan tasks before implementation.
+- [x] `T035` (architecture) - Run `/doti-arch-review` after implementation design is concrete; if a new project such as `Hx.Update.Core` or a prerequisite core project appears, update `scaffold-dotnet.slnx`, `.sentrux/rules.toml`, and `rules/architecture.json` consistently before code lands.
+- [x] `T036` (verification) - Run focused tests: `test/Hx.Runner.Tests`, `test/Hx.Doti.Tests`, `test/Hx.Scaffold.Tests`, `test/Hx.Impact.Tests`, `test/Hx.Cli.Kernel.Tests`, and architecture tests.
+- [x] `T037` (verification) - Run command-backed checks: `dotnet restore .\scaffold-dotnet.slnx`, `dotnet build .\scaffold-dotnet.slnx -c Release --no-restore /m:1`, `dotnet test .\scaffold-dotnet.slnx -c Release --no-build /m:1`, `doti render-skills --check`, `architecture test`, `security scan`, `gate run --profile normal`, and `gate run --profile release` as release-readiness proof.
+- [ ] `T038` (release artifact) - Discover and run the existing packaging/publish path to produce the release `hx.exe` archive/MSIX artifacts after the gates are green.
+- [ ] `T039` (cycle and release) - Run `/doti-drift-review`, stamp `implement` and `drift-review`, persist a fresh gate proof, stage the scoped files, commit through `doti cycle commit`, then run `/doti-release` and the sanctioned minor-release path: `version bump --minor`, release gate, tag push, GitHub CI/release verification, release asset/MSIX confirmation, and README/docs consistency checks.
 
 ## Dependencies
 
@@ -58,13 +63,16 @@ Ordered so prerequisites come first. Tests are placed before the implementation 
 - `T022` blocks generated-repo prerequisite carriage in `T024` and guidance in `T027`.
 - `T023` blocks `T024`; `T025` blocks `T026`.
 - `T024` and `T026` block prerequisite help/describe assertions in `T027`.
-- `T027` depends on implemented command availability and proof boundaries.
-- `T028` depends on implemented release-readiness behavior but not on actual release publication.
-- `T029` runs before implementation and again after task changes if coverage changes.
-- `T030` runs after implementation shape is known and before full gate.
-- `T031` and `T032` depend on implementation tasks.
-- `T033` depends on a green non-release gate.
-- `T034` depends on `T032` and scoped staging.
+- `T027` blocks `T028`.
+- `T029` blocks `T030`; `T030` blocks Sentrux verify/check portions of `T031`.
+- `T031` depends on the refreshed manifest and any updated Sentrux output fixtures from `T029`/`T030`.
+- `T032` depends on implemented command availability and proof boundaries, including hook and Sentrux behavior.
+- `T033` depends on implemented release-readiness behavior but not on actual release publication.
+- `T034` runs before implementation and again after task changes if coverage changes.
+- `T035` runs after implementation shape is known and before full gate.
+- `T036` and `T037` depend on implementation tasks.
+- `T038` depends on a green release-readiness gate.
+- `T039` depends on `T037`, `T038`, and scoped staging.
 
 ## Coverage
 
@@ -84,34 +92,38 @@ Ordered so prerequisites come first. Tests are placed before the implementation 
 | FR-088..FR-100 | T001, T002, T003 |
 | FR-101..FR-112 | T015, T016 |
 | FR-113..FR-118 | T001, T003, T011, T015, T016, T017 |
-| FR-119..FR-131 | T004, T005, T006, T007, T019, T027 |
-| FR-132..FR-143 | T021, T022, T023, T024, T027, T028 |
+| FR-119..FR-131 | T004, T005, T006, T007, T019, T032 |
+| FR-132..FR-143 | T021, T022, T023, T024, T032, T033 |
 | FR-144..FR-148 | T023, T024 |
-| FR-149..FR-160 | T025, T026, T027, T028 |
+| FR-149..FR-160 | T025, T026, T032, T033 |
+| FR-161..FR-169 | T027, T028, T032, T033 |
+| FR-170..FR-174 | T029, T030, T031, T032, T033 |
 | SC-001..SC-002 | T001, T002, T003 |
 | SC-003..SC-011 | T015, T017, T018 |
 | SC-012..SC-020 | T008, T009, T010 |
 | SC-021..SC-023 | T015, T017 |
-| SC-024..SC-025 | T027, T028 |
+| SC-024..SC-025 | T032, T033, T039 |
 | SC-026..SC-030 | T011, T012, T013 |
 | SC-031..SC-033 | T017, T020 |
 | SC-034..SC-040 | T001, T002, T003 |
 | SC-041..SC-048 | T015, T016 |
 | SC-049..SC-051 | T011, T012, T017 |
-| SC-052..SC-059 | T004, T005, T006, T007, T019, T027 |
+| SC-052..SC-059 | T004, T005, T006, T007, T019, T032 |
 | SC-060..SC-063 | T015, T017, T019 |
-| SC-064..SC-070 | T021, T022, T023, T024, T027, T028 |
-| SC-071..SC-076 | T025, T026, T027 |
+| SC-064..SC-070 | T021, T022, T023, T024, T032, T033 |
+| SC-071..SC-076 | T025, T026, T032 |
+| SC-077..SC-081 | T027, T028, T032, T033 |
+| SC-082..SC-085 | T029, T030, T031, T032, T033 |
 
 ## Current Status Notes
 
-- Implemented in the current working tree and covered by focused tests, pending final full-gate proof: completed-cycle persisted status, completion intent, recovery convergence for status/check/stamp/commit, post-commit completion-write failure reporting, staged-tree binding, repo-aware version report, canonical scaffold identity with release asset fields, managed-asset manifest/hash metadata, parser-backed YAML/JSON hashing, safer normalized text hashing, category-specific template/skill modification reporting, `hx update`, dry-run, `--force`, `--noworktree`, dirty planned-path refusal, worktree backup/reversal reporting, live configuration preservation, legacy pre-versioned conservative update reporting, GitHub release cache resolution, older-updater handoff with at-use delegated executable verification, trusted prerequisite manifest/preflight, generated prerequisite-policy carriage, repo-aware prerequisite health, and Windows-only operator-approved winget prerequisite installation.
-- Still advisory until separately implemented and proven: full appended error-code registry coverage for every update/version/cycle diagnostic, broader persisted `GateProof` producer provenance and proof digest beyond the current commit-intent/trailer binding, per-test execution artifact identity, hook-health reporting beyond installer/guard behavior, external/bypass commit classification beyond local refusal, clean-checkout merge/release proof, local review artifact packaging, broader repo-local prerequisite extension handling beyond refusing executable install metadata, and final minor-release proof.
+- Implemented in the current working tree and covered by focused tests plus normal/release gate proof: completed-cycle persisted status, completion intent, recovery convergence for status/check/stamp/commit, post-commit completion-write failure reporting, staged-tree binding, repo-aware version report, canonical scaffold identity with release asset fields, managed-asset manifest/hash metadata, parser-backed YAML/JSON hashing, safer normalized text hashing, category-specific template/skill modification reporting, `hx update`, dry-run, `--force`, `--noworktree`, dirty planned-path refusal, worktree backup/reversal reporting, live configuration preservation, legacy pre-versioned conservative update reporting, GitHub release cache resolution, older-updater handoff with at-use delegated executable verification, trusted prerequisite manifest/preflight, generated prerequisite-policy carriage, repo-aware prerequisite health, Windows-only operator-approved winget prerequisite installation, automatic hook arming from `hx new`/`hx update`/`doti install`, hook ownership conflict handling, Sentrux `v0.5.11` replacement, richer Sentrux failure detail preservation, and project-level release SCA scanning.
+- Still advisory until separately implemented and proven: full appended error-code registry coverage for every update/version/cycle diagnostic, broader persisted `GateProof` producer provenance and proof digest beyond the current commit-intent/trailer binding, per-test execution artifact identity, external/bypass commit classification beyond local refusal, clean-checkout merge/release proof, local review artifact packaging, and broader repo-local prerequisite extension handling beyond refusing executable install metadata.
 
 ## Gate Notes
 
 - Manual review is not deterministic gate proof.
-- `hx update`, repo-aware version reporting, completed-cycle recovery, and managed hash metadata are implemented in the current working tree after focused command-backed checks; final acceptance still requires the full normal/release gate sequence before release review.
+- `hx update`, repo-aware version reporting, completed-cycle recovery, managed hash metadata, auto hook arming, Sentrux `v0.5.11`, and project-level security SCA are implemented in the current working tree and have normal/release gate proof.
 - New update/version/cycle diagnostics currently appear as structured report diagnostics plus existing `VAL0001` CLI diagnostics; prerequisite-specific CLI diagnostics have appended registry codes and pass `errorcodes render/check`.
 - Network access is allowed only for `hx update` latest-release behavior and explicit tool/release checks; it is not part of the offline gate.
-- The final non-release deliverable includes trusted prerequisite preflight/install behavior, a local `hx.exe` artifact, and a green release-readiness proof, but no `/doti-release`, no `version bump`, no release tag, no push, and no GitHub release publication.
+- The active thread goal now includes completing the Doti cycle and release. The release deliverable includes trusted prerequisite preflight/install behavior, auto hook arming, Sentrux `v0.5.11`, a local `hx.exe`/MSIX artifact, a green release-readiness proof, sanctioned `/doti-release` work, minor version bump, release tag, push, GitHub CI/release verification, and README/docs consistency checks.

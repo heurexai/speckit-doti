@@ -152,7 +152,6 @@ public static class GateRunner
 
     private static BuildAndTestResult BuildAndTestStep(string repositoryRoot, Lane lane, AffectedPlan plan)
     {
-        IReadOnlyDictionary<string, string> env = NestedDotnetEnv();
         const string filter = "FullyQualifiedName!~Architecture.Tests";
 
         // Release and any escalation run the full suite (the soundness backstop); normal/advisory run the
@@ -182,7 +181,7 @@ public static class GateRunner
             string command = $"dotnet test {target} --nologo -c Release --no-build --no-restore --filter {filter} --disable-build-servers";
             ProcessRunResult test = ProcessRunner.Run(new ToolCommand(
                 "dotnet", ["test", target, "--nologo", "-c", "Release", "--no-build", "--no-restore", "--filter", filter, "--disable-build-servers"],
-                repositoryRoot, env));
+                repositoryRoot), TestTimeout());
             StageOutcome outcome = test.ExitCode == 0 ? StageOutcome.Pass : StageOutcome.Fail;
             executed.Add(new ExecutedTestProject(
                 Path.GetFileNameWithoutExtension(target),
@@ -275,13 +274,13 @@ public static class GateRunner
         return new GateStep("security-scan", advisory, [new GateEvidence("security", note)]);
     }
 
-    private static IReadOnlyDictionary<string, string> NestedDotnetEnv() => new Dictionary<string, string>
+    private static TimeSpan TestTimeout()
     {
-        ["MSBUILDDISABLENODEREUSE"] = "1",
-        ["DOTNET_CLI_USE_MSBUILD_SERVER"] = "0",
-        ["NUGET_PACKAGES"] = Environment.GetEnvironmentVariable("NUGET_PACKAGES")
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages"),
-    };
+        string? configured = Environment.GetEnvironmentVariable("HX_GATE_TEST_TIMEOUT_SECONDS");
+        return int.TryParse(configured, out int seconds) && seconds > 0
+            ? TimeSpan.FromSeconds(seconds)
+            : TimeSpan.FromSeconds(120);
+    }
 
     private static GateStep Step(string name, StageOutcome outcome, string message) =>
         new(name, outcome, [new GateEvidence(name, message)]);

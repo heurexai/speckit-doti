@@ -97,9 +97,24 @@ public static partial class RunnerCommands
 
     public static CliResult InstallHooks(CliMeta meta, string repo)
     {
-        string hookPath = HookInstaller.Install(repo);
-        return CliResults.Ok(meta, "doti install-hooks", "Installed the insurance pre-commit hook.",
-            new { hookPath }, effects: [new CliEffect("write", hookPath, "insurance pre-commit hook")]);
+        DotiHookInstallResult result = HookInstaller.InstallIfSafe(repo);
+        if (!result.Success)
+        {
+            return CliResults.Fail(meta, "doti install-hooks", ExitClass.Validation,
+                [Diag.Of(ErrorCodes.Validation_Failed, result.Message, target: result.Inspection.HookPath)],
+                "Insurance hook was not installed.", result,
+                nextActions:
+                [
+                    new CliNextAction(
+                        "Review the existing hook",
+                        $"Doti will not overwrite a non-Doti pre-commit hook automatically: {result.Inspection.HookPath}"),
+                ]);
+        }
+
+        IReadOnlyList<CliEffect> effects = result.Changed && result.Inspection.HookPath is not null
+            ? [new CliEffect("write", result.Inspection.HookPath, "insurance pre-commit hook")]
+            : [];
+        return CliResults.Ok(meta, "doti install-hooks", result.Message, result, effects);
     }
 
     private static bool PrecommitGuard_IsSanctioned() => global::Hx.Cycle.Core.PrecommitGuard.IsSanctioned();

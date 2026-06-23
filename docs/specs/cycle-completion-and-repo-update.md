@@ -45,6 +45,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - A trusted prerequisite manifest and preflight experience for `hx new`, `hx update`, repo-aware version checks, and generated-repo validation so required external tools such as the .NET SDK and Git are detected before work starts.
 - No-coder-friendly remediation output for missing prerequisites: hard failure, exact missing/outdated items, and trusted installation instructions that an operator can approve outside the deterministic command.
 - Windows-only, operator-approved automatic prerequisite installation through winget when the trusted prerequisite manifest declares a supported winget package for the missing prerequisite and winget itself is available.
+- Automatic arming of the local Doti insurance pre-commit hook when `hx` creates or updates a Git-backed repository, so Codex, Claude, and humans using normal `git commit` are redirected to the sanctioned `doti cycle commit` path by default.
+- Safe handling of existing pre-commit hooks: absent or Doti-owned hooks can be installed/refreshed automatically, but non-Doti or modified hooks must be reported and must not be silently overwritten.
+- Replacement of the older vendored Sentrux fork with the updated HeurEx fork release `v0.5.11`, using the release-provided platform assets and integrity metadata so Doti benefits from the richer help and more detailed gate-failure output.
 - Release classification for this feature as a minor speckit-doti version update when it is eventually released.
 
 **Excluded**
@@ -71,6 +74,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Automatically installing prerequisites on non-Windows platforms; Linux/macOS prerequisite remediation remains instructions-only unless a future platform-specific installer flow is specified.
 - Automatically installing prerequisites on Windows through any mechanism other than winget.
 - Trusting target-repo, cache-local, or user-editable configuration to supply executable download URLs or to weaken the release-defined prerequisite policy.
+- Treating automatic hook installation as permission to overwrite an unrelated or locally customized pre-commit hook without an explicit diagnostic and operator-controlled resolution.
+- Treating the auto-installed hook as protection against `git commit --no-verify`, direct Git plumbing, deleting the hook, or forging the hook sentinel; those remain bypass cases that command-backed status/check/release validation must detect.
+- Refreshing, deleting, or rewriting Sentrux baselines merely because the Sentrux executable version changes.
 
 ## Functional Requirements
 
@@ -282,6 +288,26 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - `FR-159`: Non-Windows hosts MUST reject any automatic-install option or command with a platform-unsupported diagnostic and MUST provide trusted manual remediation instructions without invoking a package manager.
 - `FR-160`: If a prerequisite is missing but the trusted manifest has no Windows winget package for it, `hx` MUST NOT attempt a fallback executable download or arbitrary command; it MUST fail with instructions-only remediation.
 
+### Q. Automatically armed Doti commit hook
+
+- `FR-161`: After `hx new` has created or initialized the generated Git repository, the system MUST automatically install or refresh the Doti insurance pre-commit hook in the target repository's resolved Git hooks path.
+- `FR-162`: After a successful `hx update` against a Git-backed target repository, the system MUST ensure the target repository has the expected Doti insurance pre-commit hook installed, even when the update determines that managed files are already current.
+- `FR-163`: `doti install` and any scaffold-owned install path that writes Doti workflow assets into an existing Git repository MUST automatically install or refresh the same Doti insurance pre-commit hook unless the target is not a Git repository.
+- `FR-164`: Automatic hook installation MUST be idempotent: if the expected Doti hook is absent, install it; if the expected Doti hook is already present, report it as already armed; if an older Doti-owned hook is present, refresh it to the current expected content.
+- `FR-165`: If the resolved pre-commit hook exists and is not recognized as Doti-owned, or is a modified Doti hook whose ownership cannot be proven, automatic hook installation MUST fail before managed update mutation where possible, and MUST report the hook path, current hook identity, expected Doti hook identity, and remediation.
+- `FR-166`: `hx update --dry-run`, the repo-aware version report, and `doti cycle status/check` MUST report hook health as missing, expected, older-Doti, modified-Doti, or non-Doti-existing without mutating the hook.
+- `FR-167`: Hook installation MUST respect Git's resolved hooks location, including worktree-specific hooks and `core.hooksPath`, and MUST record the resolved hook path in JSON output without relying on a hard-coded `.git/hooks` path.
+- `FR-168`: The installed hook MUST remain a thin local redirection layer; it MUST NOT contain the full cycle verification logic, and the sanctioned commit decision MUST remain in the command-backed Doti cycle.
+- `FR-169`: `--force`, prerequisite auto-install permission, update delegation, and retry behavior MUST NOT silently bypass hook conflict reporting or overwrite a non-Doti hook.
+
+### R. Vendored Sentrux fork refresh
+
+- `FR-170`: The next release carrying this feature MUST replace the older vendored Sentrux fork with `heurexai/sentrux` release `v0.5.11`, verified from GitHub release metadata published on 2026-06-23.
+- `FR-171`: The Sentrux tool manifest MUST record the `v0.5.11` release tag, HeurEx fork source remote, platform asset names, download URLs, and release-provided SHA-256 digests for every supported RID it declares.
+- `FR-172`: `tools fetch`, shared tool-store provisioning, `hx new`, `hx update`, and generated-repo validation MUST use the updated Sentrux manifest and MUST NOT fetch or verify the older Sentrux release after the manifest is refreshed.
+- `FR-173`: `sentrux verify`, `sentrux check`, and `gate run` MUST preserve and surface the richer help and gate-failure detail emitted by the updated Sentrux fork in both human output and the JSON proof envelope, without reducing existing structured diagnostics.
+- `FR-174`: Updating the Sentrux executable MUST NOT refresh, normalize, delete, or otherwise replace target-owned Sentrux baselines, `.sentrux` live configuration, or repo-local Sentrux rule decisions.
+
 ## Success Criteria
 
 - `SC-001`: Immediately after a successful sanctioned `doti cycle commit`, `doti cycle status --json` reports the cycle as completed with the commit SHA instead of reporting all prior stages stale due only to `HEAD` movement.
@@ -360,6 +386,15 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - `SC-074`: A repo-local prerequisite extension that attempts to add or override winget package/source metadata is refused and the release-defined prerequisite result remains unchanged.
 - `SC-075`: If winget installation exits unsuccessfully, is cancelled, or completes without satisfying the post-install probe, `hx new`/`hx update` does not mutate output/target files and reports the failed prerequisite plus winget/probe result.
 - `SC-076`: A dry-run or preview of prerequisite installation reports the exact winget package/source plan and manifest identity without executing winget.
+- `SC-077`: A repository generated by `hx new` has the Doti pre-commit hook installed in the resolved Git hooks path, and a normal bare `git commit` is redirected while `doti cycle commit` can still create its Git commit through the sanctioned sentinel path.
+- `SC-078`: Running `hx update` against an existing clean Doti repo with no pre-commit hook installs the expected hook, reports the hook path and expected hook identity, and leaves managed assets unchanged when the repo is already current.
+- `SC-079`: Running `hx update --dry-run --json` against a repo with a missing hook reports the planned hook installation but does not write the hook.
+- `SC-080`: Running `hx update` against a repo with an unrelated pre-commit hook fails before managed mutation with a diagnostic that identifies the hook conflict and does not overwrite the existing hook.
+- `SC-081`: Codex and Claude operating in the same generated or updated Git checkout are both blocked by the same Git hook when either attempts a normal bare `git commit`.
+- `SC-082`: The Sentrux manifest used by Doti reports `releaseTag` `v0.5.11`, `sourceRemote` `https://github.com/heurexai/sentrux`, and release-provided SHA-256 digests for the declared platform assets.
+- `SC-083`: `sentrux verify --repo . --json` and `gate run --repo . --profile normal --json` use the updated Sentrux executable and fail closed if the binary hash, asset tag, or executable identity does not match the refreshed manifest.
+- `SC-084`: A Sentrux gate failure includes the richer rule/file/failure detail from the updated fork in the human output and enough structured data in JSON for an agent to identify the problematic files without rerunning a separate raw Sentrux command.
+- `SC-085`: Updating to the refreshed Sentrux executable leaves existing `.sentrux/baseline.json` and target-owned Sentrux configuration byte-for-byte unchanged.
 
 ## Completed-Cycle Recovery Scenario Analysis
 
@@ -433,6 +468,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - **Repository-local prerequisite extension** - optional target-owned additive prerequisite metadata for project-specific checks; it can add checks but cannot weaken release-defined requirements or provide executable download URLs accepted by `hx`.
 - **Windows prerequisite install plan** - an operator-approved plan for installing one or more missing prerequisites through winget on Windows, derived only from trusted release-defined prerequisite metadata.
 - **Winget package mapping** - the trusted package/source metadata in the prerequisite manifest that allows `hx` to install a specific prerequisite through winget; target repositories cannot provide or override this mapping.
+- **Auto-armed Doti hook** - the expected local pre-commit hook installed by `hx new`, `hx update`, or `doti install` into the Git-resolved hooks path so normal Git commits are redirected to `doti cycle commit`.
+- **Hook ownership verdict** - the classification used before hook mutation: absent, expected Doti hook, older Doti hook, modified Doti hook, or non-Doti hook.
+- **Vendored Sentrux release** - the release-pinned HeurEx fork Sentrux executable and grammar metadata used by Doti gates, including release tag, source remote, platform asset names, and byte-exact hashes.
 
 ## Deterministic Surfaces
 
@@ -450,6 +488,8 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Existing shared-store surfaces that may be reused by the plan: `ToolStore`, `ToolStoreIndex`, `StorePopulator`, release manifests, and platform/RID classification.
 - Implemented in the current working tree, pending final command proof: trusted prerequisite manifest in the release payload and generated repos, `hx prereq check`, automatic preflight inside `hx new` and `hx update`, prerequisite health in repo-aware version reports, `CliResult` diagnostics/next actions for missing or untrusted prerequisites, and generated `.doti/prerequisites.json` carriage.
 - Implemented in the current working tree, pending final command proof: explicit operator-approved `hx prereq install` for trusted manifest-backed Windows winget package mappings; unsupported on non-Windows and unavailable when winget or trusted package metadata is absent.
+- Newly specified and still advisory until implemented/proven: automatic hook arming from `hx new`, `hx update`, and `doti install`; hook ownership/conflict classification before automatic writes; and dry-run/version hook-health reporting.
+- Newly specified and still advisory until implemented/proven: Sentrux manifest and tool-store refresh from the current vendored fork to `heurexai/sentrux` `v0.5.11`, including preservation of richer Sentrux failure details in `gate run`.
 
 ## Architecture Impact
 
@@ -477,6 +517,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Prerequisite policy loading belongs in scaffold core or a shared prerequisite core; CLI commands stay thin and ask the core for preflight results before side effects.
 - The release-defined prerequisite manifest is a trust boundary: target repositories may add project-specific checks, but cannot override source locations, weaken hard requirements, or make an agent run arbitrary installers.
 - Windows winget installation belongs behind the same prerequisite core and must be modeled as a permissioned remediation step with post-install probe verification, not as a side effect hidden inside normal command execution.
+- Automatic hook arming must reuse the existing hook installer/guard decision surface rather than duplicating hook content in scaffold command bodies; if project references would create an architecture cycle, the hook-install core should be moved or factored into a shared core before wiring `hx new`/`update`.
+- Hook conflict detection must happen before managed update mutation whenever the command intends to write the hook in the same run, so an unrelated pre-commit hook cannot be overwritten after Doti assets have already changed.
+- Sentrux executable refresh is a managed tool-manifest and tool-store concern; it must not change the target-owned Sentrux baseline/config boundary.
 - The plan must decide the exact persisted version-stamp format and completed-cycle JSON shape, and must keep `describe --json` stable except for the additive `update` command.
 
 ## Sentrux And Hygiene Impact
@@ -498,6 +541,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Prerequisite manifests and committed fixtures must not contain machine-local absolute paths, private package feeds, personal access tokens, or mutable untrusted download URLs.
 - Prerequisite failures should be concise in human output but complete in JSON so no-coder operators can approve remediation while agents can stop safely.
 - Winget install reporting must persist package/source/probe provenance and exit status only; it must not persist full environment dumps, machine-specific package cache paths, or private winget source credentials.
+- Hook-health diagnostics may report the repo-relative or Git-resolved hook path and content hash, but MUST NOT persist raw hook contents if the hook is non-Doti or otherwise target-owned.
+- The updated Sentrux executable and platform assets are large binary/runtime artifacts and MUST remain gitignored or store/cache managed; committed changes should be manifests, hashes, docs, tests, and small metadata only.
+- Richer Sentrux failure output should help identify problematic files, but committed fixtures must avoid private absolute paths and must redact or normalize machine-local paths.
 
 ## Assumptions
 
@@ -528,12 +574,14 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Official install guidance can name vendor/package-manager sources, but executable URLs must be controlled by the verified release-defined manifest or immutable trust anchors and cannot be supplied by target repos or update caches.
 - Exact winget package identifiers and minimum supported versions are plan-level decisions; they must be verified against the trusted release-defined manifest before implementation and should not be guessed in the spec.
 - The operator has classified the eventual release containing this feature as a minor version update; no release, tag, or version bump is performed during specify.
+- GitHub release metadata checked during this specify pass reports `heurexai/sentrux` latest release as `v0.5.11`, published 2026-06-23, with assets for Windows x86_64, Linux x86_64/aarch64, and macOS x86_64/arm64; implementation must still copy the exact release-provided digests into the manifest and verify them in code/tests.
+- Automatic hook arming can be implemented safely only for Git-backed targets whose hooks path can be resolved; non-Git doti-shaped targets remain no-mutation/no-hook until a future explicit migration mode exists.
 
 ## Acceptance
 
 - **Command-backed today:** source inspection; existing `doti cycle commit` / `status` / `check`; existing affected-test proof recomputation; existing commit scope inspection; existing pre-commit hook installer/guard; existing `Hx.Scaffold.Cli --version`; existing `Hx.Scaffold.Cli describe --json`; existing release archive naming docs; existing doti install/render surfaces; existing shared-store primitives.
 - **Implemented in current working tree, pending final full-gate proof:** completed-cycle persisted status, commit-completion intent, completed-cycle recovery verdicts for `status`/`check`/`stamp`/`commit`, explicit post-commit completion-write failure reporting, staged-tree identity, gate-proof digest and runner identity in commit intent/trailers, canonical scaffold version identity with release-asset fields, target-repo version stamp, repo-aware version report, target-to-latest update relation, managed asset manifest with source-format/canonicalizer/identity-policy/conflict-policy metadata, canonical managed-asset hash set, parser-backed YAML/JSON canonicalization, safer normalized text hashing for formats without a parser-backed semantic profile, template/skill customization detection, generated/replaced metadata classification, missing/corrupt hash-metadata refusal, live configuration/baseline preservation, dirty planned-write boundary, `--force` replacement semantics, `hx update`, older-updater handoff/delegated temporary `hx`, delegated option forwarding, delegated executable at-use verification, GitHub latest-release resolution, update cache reuse/prune behavior, backup worktree creation/reversal reporting, `--noworktree` no-backup replacement, existing-repo managed-asset reconciliation, legacy pre-versioned migration mode, possible-orphan legacy reporting, LLM-agent follow-up sweep instructions, update dry-run, update proof/report tests, and release checksum metadata.
-- **Still advisory unless separately implemented and proven:** full appended error-code registry coverage for every update/version/cycle diagnostic, broader persisted `GateProof` producer provenance and proof digest beyond the current commit-intent/trailer binding, per-test execution artifact identity, hook-health reporting beyond the existing hook installer/guard path, external/bypass commit classification beyond local refusal, clean-checkout merge/release proof, local review artifact packaging, broader repo-local prerequisite extension handling beyond refusing executable install metadata, and the final minor-release proof.
+- **Still advisory unless separately implemented and proven:** full appended error-code registry coverage for every update/version/cycle diagnostic, broader persisted `GateProof` producer provenance and proof digest beyond the current commit-intent/trailer binding, per-test execution artifact identity, hook-health reporting beyond the existing hook installer/guard path, automatic hook arming from `hx new`/`hx update`/`doti install`, hook ownership conflict handling, external/bypass commit classification beyond local refusal, clean-checkout merge/release proof, local review artifact packaging, broader repo-local prerequisite extension handling beyond refusing executable install metadata, vendored Sentrux `v0.5.11` replacement with richer gate-failure detail, and the final minor-release proof.
 
 ## Research Basis
 
@@ -562,3 +610,10 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - A second Codex subagent review found implementation/status mismatches around older-updater handoff forwarding, delegated executable verification, update report thickness, completion-write failure reporting, hash metadata, version release-asset identity, and plan/task status language. The current working tree and this spec were updated so delegated update forwards `--dry-run`/force/worktree/json intent, verifies the delegated executable against the verified archive at use time, reports structured worktree/delegation/file-plan/diagnostic metadata, returns an explicit recovery-needed result when completion persistence fails after Git commit, records hash source-format/canonicalizer/identity/conflict policy metadata, records release asset identity in version stamps, and distinguishes implemented current-tree behavior from still-advisory proof-provenance/error-code/release work.
 - The prerequisite wrinkle was added: `hx` must use a trusted manifest-backed preflight for `new`, `update`, repo-aware version reporting, and generated-repo validation; missing .NET/Git or invalid directories fail hard before mutation; remediation is no-coder-friendly but does not silently install tools; and target-repo/cache-local configuration cannot inject executable download locations or weaken release-defined prerequisite policy.
 - The Windows automation refinement was added: missing prerequisites may be installed automatically only on Windows, only through winget, only from trusted release-defined package/source metadata, and only after explicit operator permission for the exact install plan; non-Windows remains instructions-only.
+
+### 2026-06-24
+- The hook-arming refinement was added: `hx new`, `hx update`, and `doti install` must automatically install or refresh the Doti insurance pre-commit hook for Git-backed targets, while dry-run/version/status surfaces report hook health without mutation.
+- Existing hook safety was tightened: absent or recognized Doti hooks may be installed/refreshed, but unrelated or unproven modified hooks must not be silently overwritten, and `--force` does not suppress hook conflict reporting.
+- The Sentrux fork refresh was added: Doti must replace the older vendored Sentrux fork with `heurexai/sentrux` release `v0.5.11`, using release-provided asset digests and preserving richer Sentrux help/gate-failure details in Doti gate output.
+- The Sentrux update boundary was kept explicit: executable/manifest refresh is managed tool state, but Sentrux baselines, `.sentrux` live config, and repo-local rule decisions remain target-owned and must not be refreshed or overwritten.
+- A `/doti-clarify` pass found no remaining blocking operator questions. The non-blocking existing-hook policy stays conservative: automatic arming may install or refresh absent/known Doti hooks, but existing non-Doti or unproven modified hooks fail hard with diagnostics instead of being chained, merged, or overwritten silently.

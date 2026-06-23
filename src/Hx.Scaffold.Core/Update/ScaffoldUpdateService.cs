@@ -1,3 +1,4 @@
+using Hx.Cycle.Core;
 using Hx.Runner.Core.Platform;
 using Hx.Scaffold.Core.Versioning;
 
@@ -17,13 +18,17 @@ public static partial class ScaffoldUpdateService
         var diagnostics = new List<ScaffoldUpdateDiagnostic>();
         bool legacyPreVersioned = version.Target is null && version.ManagedAssets is null && IsDotiShaped(gitRoot);
         AddManagedAssetBlockers(version, request.Force, legacyPreVersioned, blockers, diagnostics);
+        DotiHookInspection hookPlan = HookInstaller.Inspect(gitRoot);
+        AddHookBlockers(hookPlan, blockers, diagnostics);
         List<string> actions = InitialActions(request);
+        AddHookAction(hookPlan, actions);
         ReleasePlan release = ResolveReleasePlan(rid, services, actions, blockers, diagnostics);
         expectedAsset = release.ExpectedAsset ?? expectedAsset;
         IReadOnlyList<DesiredManagedFile> desired = release.Desired;
         ManagedFilePlan filePlan = desired.Count > 0 ? BuildFilePlan(gitRoot, desired) : new ManagedFilePlan([], []);
         AddDirtyPathBlockers(gitRoot, filePlan, desired.Count, blockers, diagnostics);
-        MutationResult mutation = ExecuteMutation(request, services, gitRoot, version, release.Cache, desired, blockers, diagnostics);
+        MutationResult mutation = ExecuteMutation(request, services, gitRoot, version, release.Cache, desired,
+            hookPlan, blockers, diagnostics);
         var possibleOrphans = legacyPreVersioned && desired.Count > 0
             ? PossibleLegacyOrphans(gitRoot, desired.Select(d => d.Path).ToHashSet(StringComparer.OrdinalIgnoreCase))
             : [];

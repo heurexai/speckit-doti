@@ -243,7 +243,7 @@ doti's architecture gate runs on **two** independent engines: [ArchUnitNET](http
 - **Cycle edge diagnostics** — per-cycle edge chains pinpoint the exact imports forming each dependency cycle.
 - **Fork build identity** — an embedded Windows version resource; the gate verifies the binary reports `Heurex fork`.
 
-The fork is MIT-licensed, released at [heurexai/sentrux/releases](https://github.com/heurexai/sentrux/releases), and **vendored here pinned + SHA-256-verified** (win-x64; the binary is fetched operationally and gitignored to keep the repo lean). `sentrux verify` checks the manifest, hash, grammar, and fork identity before the gate runs.
+The fork is MIT-licensed, released at [heurexai/sentrux/releases](https://github.com/heurexai/sentrux/releases), and **vendored here pinned + SHA-256-verified** (currently `v0.5.11` for declared RIDs with matching C# grammars; binaries are fetched operationally and gitignored to keep the repo lean). `sentrux verify` checks the manifest, hash, grammar, and fork identity before the gate runs.
 
 ---
 
@@ -289,7 +289,7 @@ Use the same standalone `hx` to inspect or update an existing doti-enabled repos
 .\hx.exe update --repo . --json
 ```
 
-`hx update` resolves the latest non-prerelease `heurexai/speckit-doti` release for the host platform, verifies the release checksum, reuses a verified temporary cache entry when possible, and creates a backup Git worktree before mutating the original checkout. Pass `--noworktree` to skip that backup or `--force` to replace modified managed Doti assets after they are reported. Live repo configuration and baselines, including Sentrux state, remain target-owned and are not replaced.
+`hx update` resolves the latest non-prerelease `heurexai/speckit-doti` release for the host platform, verifies the release checksum, reuses a verified temporary cache entry when possible, and creates a backup Git worktree before mutating the original checkout. Pass `--noworktree` to skip that backup or `--force` to replace modified managed Doti assets after they are reported. Live repo configuration and baselines, including Sentrux state, remain target-owned and are not replaced. Git targets also report hook health and automatically install or refresh the Doti insurance pre-commit hook after a successful update; an existing non-Doti `pre-commit` hook is a hard blocker and is never overwritten by `--force`.
 
 Package-manager manifest templates are prepared under `packaging/`; publishing them still requires the released archive hashes and external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
 
@@ -304,12 +304,13 @@ Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` i
 dotnet build scaffold-dotnet.slnx -c Release
 dotnet test  scaffold-dotnet.slnx -c Release
 
-# 2. check prerequisites, then scaffold a new agent-first .NET solution (doti is installed automatically)
+# 2. check prerequisites, then scaffold a new agent-first .NET solution
+#    (doti and the insurance hook are installed automatically)
 dotnet run --project tools/Hx.Scaffold.Cli -- prereq check --for new --output ./Acme.Widget --json
 dotnet run --project tools/Hx.Scaffold.Cli -- new \
   --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
 
-# 3. (optional) install the insurance pre-commit hook in the new repo
+# 3. (optional) repair/re-arm the insurance pre-commit hook in an existing repo
 dotnet run --project tools/Hx.Runner.Cli -- doti install-hooks --repo ./Acme.Widget
 
 # 4. run the deterministic gate
@@ -344,7 +345,7 @@ Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- 
 | `plan` _(Hx.Impact.Cli)_ | Affected-test planner (project-graph reverse closure → covering test projects) |
 | `doti cycle stamp \| status \| check \| commit` | Stamp a stage (prereq-checked) / show cycle state / fail-closed prereq check / sanctioned commit |
 | `doti question check` | Validate operator-question format compliance |
-| `doti render-skills` / `doti install` / `doti install-hooks` | Re-render skills / install the workflow / install the pre-commit hook |
+| `doti render-skills` / `doti install` / `doti install-hooks` | Re-render skills / install the workflow and auto-arm the hook / repair the pre-commit hook |
 | `describe` | Self-describe the CLI surface as JSON |
 
 ## The deterministic gate
@@ -365,7 +366,7 @@ The gate never creates a Sentrux baseline, and persists its proof so `doti cycle
 
 Current release: [v0.4.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.4.0). GitHub CI is green on Windows, Linux, and macOS, and the release workflow publishes win-x64, linux-x64, and osx-arm64 archives with matching `.sha256` files. The deterministic release gate remains command-backed and fail-closed; the local release proof for v0.4.0 passed on win-x64 with full tests, hygiene, version calculation, Sentrux, and security scan.
 
-The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary (including GitVersion) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with a working GitVersion plus Gitleaks and Sentrux without a manual step.
+The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary (including GitVersion and Sentrux `v0.5.11`) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with a working GitVersion plus Gitleaks and Sentrux without a manual step.
 
 ## Acknowledgements
 

@@ -22,7 +22,79 @@ public sealed partial class CycleEnforcementTests
             ProcessRunResult sanctioned = ProcessRunner.Run(new ToolCommand(
                 "git", ["commit", "-m", "sanctioned"], dir,
                 new Dictionary<string, string> { [PrecommitGuard.SentinelEnvVar] = "1" }));
-            Assert.Equal(0, sanctioned.ExitCode);
+            Assert.True(sanctioned.ExitCode == 0, sanctioned.StandardError + sanctioned.StandardOutput);
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
+    public void InsuranceHook_RefusesToOverwriteExternalPreCommitHook()
+    {
+        string dir = InitRepo();
+        try
+        {
+            string hook = Path.Combine(dir, ".git", "hooks", "pre-commit");
+            File.WriteAllText(hook, "#!/bin/sh\necho custom hook\n");
+
+            DotiHookInspection inspection = HookInstaller.Inspect(dir);
+            Assert.Equal(HookInstaller.VerdictExternal, inspection.Verdict);
+            Assert.False(inspection.CanInstallOrRefresh);
+
+            DotiHookInstallResult result = HookInstaller.InstallIfSafe(dir);
+            Assert.False(result.Success);
+            Assert.False(result.Changed);
+            Assert.Contains("refusing to overwrite", result.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("custom hook", File.ReadAllText(hook));
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
+    public void InsuranceHook_RefreshesDotiOwnedStaleHook()
+    {
+        string dir = InitRepo();
+        try
+        {
+            string hook = Path.Combine(dir, ".git", "hooks", "pre-commit");
+            File.WriteAllText(hook, "#!/bin/sh\n# doti insurance pre-commit hook\nexit 0\n");
+
+            DotiHookInspection inspection = HookInstaller.Inspect(dir);
+            Assert.Equal(HookInstaller.VerdictDotiOwned, inspection.Verdict);
+
+            DotiHookInstallResult result = HookInstaller.InstallIfSafe(dir);
+            Assert.True(result.Success);
+            Assert.True(result.Changed);
+            Assert.Equal(HookInstaller.VerdictExpected, result.Inspection.Verdict);
+            Assert.Equal(HookInstaller.HookScript, File.ReadAllText(hook));
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
+    public void InsuranceHook_HonorsConfiguredGitHooksPath()
+    {
+        string dir = InitRepo();
+        try
+        {
+            Git(dir, "config", "core.hooksPath", ".githooks");
+
+            DotiHookInstallResult result = HookInstaller.InstallIfSafe(dir);
+
+            string configuredHook = Path.Combine(dir, ".githooks", "pre-commit");
+            Assert.True(result.Success);
+            Assert.True(result.Changed);
+            Assert.Equal(configuredHook, result.Inspection.HookPath);
+            Assert.Equal(HookInstaller.HookScript, File.ReadAllText(configuredHook));
+            Assert.False(File.Exists(Path.Combine(dir, ".git", "hooks", "pre-commit")));
         }
         finally
         {
