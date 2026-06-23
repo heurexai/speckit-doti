@@ -16,6 +16,15 @@
 - [ ] `T008` (FR-001/002/004) — Installer self-containment: `src/Hx.Scaffold.Core/EmbeddedPayloadExtractor.cs` (new) extracts the embedded payload to a temp source root; `ScaffoldCommands.New`/`ScaffoldNewRunner` use it (keep `ScaffoldRoot.Find` as dev fallback); `TemplateGenerator.cs` installs the embedded prebuilt nupkg (no runtime `dotnet pack`); `ScaffoldNewRunner` calls `StorePopulator` before first smoke. `tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj`: `StageEmbeddedPayload` pre-pack target + conditional self-contained single-file publish profile + GitVersion-wired `<Version>`.
 - [ ] `T009` (SC-001/002/003) — Tests — `test/Hx.Scaffold.Tests`: `new` runs with no `scaffold-dotnet.slnx` ancestor (extractor path); generated solution has NO tool `bin/`; resolution finds the store. (Heavy end-to-end is env-gated like existing smokes.)
 
+**P1b — trusted prerequisite preflight + Windows winget remediation**
+
+- [ ] `T025` (FR-020, FR-021, FR-024, FR-025, SC-009) — Tests — `test/Hx.Scaffold.Tests`: trusted prerequisite manifest loads from release-managed data, generated repos carry the policy, tampered/missing manifests fail closed, and repo-local extensions cannot override official sources, hard requirements, or winget package/source metadata.
+- [ ] `T026` (FR-020, FR-021, FR-024, FR-025) — Implement `doti/core/prerequisites.json`, `src/Hx.Scaffold.Core/Prerequisites/*` manifest loader/models, optional `tools/Hx.Tooling.Contracts/PrerequisiteResult.cs`, generated `.doti/prerequisites.json` carriage, and trusted mappings for `Microsoft.DotNet.SDK.10` and `Git.Git`.
+- [ ] `T027` (FR-020, FR-021, FR-022, FR-023, SC-008, SC-010) — Tests — `test/Hx.Scaffold.Tests`: `new` fails before output mutation when .NET SDK/Git probes fail, unsupported versions are detected, output/temp/cache/store directories are unavailable, or trusted manifest evaluation fails; human and JSON diagnostics include safe next actions.
+- [ ] `T028` (FR-020, FR-021, FR-022, FR-023) — Wire prerequisite and directory preflight into `src/Hx.Scaffold.Core/ScaffoldNewRunner.cs`, `tools/Hx.Scaffold.Cli/ScaffoldCommands.cs`, and `tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs` before payload extraction side effects, template install, store population, first smoke, Git initialization, or output mutation.
+- [ ] `T029` (FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, SC-011, SC-012, SC-013) — Tests — `test/Hx.Scaffold.Tests`: `hx prereq install` presents exact plan/digest, requires explicit approval, rejects `--force`/JSON/retry as approval, handles winget unavailable/no mapping/failed install/post-install probe failure, refuses repo-local winget override, and returns platform-unsupported on non-Windows without invoking a package manager.
+- [ ] `T030` (FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, SC-011, SC-012, SC-013) — Implement `hx prereq check` and `hx prereq install` in `src/Hx.Scaffold.Core/Prerequisites/*`, `tools/Hx.Scaffold.Cli/Program.cs`, `tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs`, and `tools/Hx.Scaffold.Cli/ScaffoldCommands.cs`; verify winget availability/identity, bind approval to the plan digest, execute only trusted release-defined winget package/source actions, rerun probes, and stop before generation unless every hard prerequisite verifies.
+
 **P2 — localised version-stamped skills + doctor/update**
 
 - [ ] `T010` (FR-008) — `tools/Hx.Doti.Core/DotiInstaller.cs`: `WriteMetadata` also writes `.doti/tool-stamp.json` (scaffoldVersion + per-tool version/rid/sha from the vendored manifests); extend the `DotiIntegration` record.
@@ -62,12 +71,18 @@
 | FR-017 | T020 |
 | FR-018 | T021 |
 | FR-019 | T022 |
+| FR-020, FR-021 | T025, T026, T027, T028 |
+| FR-022, FR-023 | T027, T028 |
+| FR-024, FR-025 | T025, T026 |
+| FR-026..FR-031 | T029, T030 |
 | SC-001, SC-002 | T009, T024 |
 | SC-003 | T005, T009, T024 |
 | SC-004 | T013, T024 |
 | SC-005 | T016, T017, T023 |
 | SC-006 | T020, T024 |
 | SC-007 | T022 |
+| SC-008..SC-010 | T025, T026, T027, T028 |
+| SC-011..SC-013 | T029, T030 |
 
 ## Dependencies
 
@@ -76,6 +91,9 @@
 - `T003`/`T004` → `T006`, `T008` (resolver+populator before routing + populate-on-new).
 - `T005` precedes `T002`-consumers' completion (tests-first for the store).
 - `T007` independent of `T006` but both before `T009`.
+- `T025` blocks `T026`, `T027`, `T028`, `T029`, and `T030`.
+- `T026` blocks generated-repo policy carriage in `T028`; `T027` blocks `T028`; `T029` blocks `T030`.
+- `T028` depends on the `T008` `new` wiring surface and must land before `T009`/`T024` can claim no-coder-safe `new`; `T030` blocks `T024` live proof when missing-prerequisite remediation is part of the scenario.
 - `T010` → `T011` (stamp before classification).
 - `T014`/`T015` (doti assets) → `T019` (`render-skills --check`).
 - `T016`/`T017` before `T023` (families must compile + pass).
@@ -86,5 +104,5 @@
 ## Gate Notes
 
 - Command-backed today: `dotnet build`/`test`, `architecture test`, `errorcodes check`, `tools fetch`, `render-skills --check`, hygiene — all win-x64.
-- Advisory until built this cycle (NOT gate proof until they exist): `ToolStore`/`ToolStoreResolver`/`StorePopulator`, location-independent `new`, `hx doctor`/`hx update` + `doti tools doctor`/`update`, the two new ArchUnit families, `test/Hx.Architecture.Tests`, the CLI complexity budget, `release.yml`, the self-contained installer, CHANGELOG/release automation.
+- Advisory until built this cycle (NOT gate proof until they exist): `ToolStore`/`ToolStoreResolver`/`StorePopulator`, location-independent `new`, `hx doctor`/`hx update` + `doti tools doctor`/`update`, the two new ArchUnit families, `test/Hx.Architecture.Tests`, the CLI complexity budget, `release.yml`, the self-contained installer, CHANGELOG/release automation. Trusted prerequisite manifest/preflight and Windows-only winget prerequisite installation are implemented in the current working tree, pending final command proof.
 - Commit/release go through PR + CI (the enforced gate); the full local `gate run` needs the win-x64 binaries + sentrux grammar.

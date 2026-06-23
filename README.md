@@ -293,18 +293,19 @@ Use the same standalone `hx` to inspect or update an existing doti-enabled repos
 
 Package-manager manifests for `v0.3.1` are prepared under `packaging/`; publishing them still requires external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
 
-Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution.
+Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution; `hx prereq check` reports those prerequisites and directory readiness before `new` or `update` mutates anything.
 
 ### Build from source
 
-**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/) (10.0.300+), Git, and PowerShell or bash. Vendored tools (Gitleaks, Sentrux, GitVersion) are pinned and SHA-256-verified per their manifests under `tools/`, and fetched operationally — the large binaries are gitignored.
+**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/) (10.0.300+), Git, and PowerShell or bash. Vendored tools (Gitleaks, Sentrux, GitVersion) are pinned and SHA-256-verified per their manifests under `tools/`, and fetched operationally — the large binaries are gitignored. The scaffold CLI uses `doti/core/prerequisites.json` as the trusted prerequisite manifest; Windows automatic remediation is available only through `hx prereq install` with release-defined winget package/source metadata and an exact `--confirm-plan` digest.
 
 ```bash
 # 1. build + test the toolkit itself
 dotnet build scaffold-dotnet.slnx -c Release
 dotnet test  scaffold-dotnet.slnx -c Release
 
-# 2. scaffold a new agent-first .NET solution (doti is installed automatically)
+# 2. check prerequisites, then scaffold a new agent-first .NET solution (doti is installed automatically)
+dotnet run --project tools/Hx.Scaffold.Cli -- prereq check --for new --output ./Acme.Widget --json
 dotnet run --project tools/Hx.Scaffold.Cli -- new \
   --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
 
@@ -324,13 +325,15 @@ Then drive development with the slash-commands, in order — each stage's proof 
 
 ## CLI reference
 
-Every command is `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, `Hx.Scaffold.Cli` for `new`). Add `--json` for the machine envelope. Human `--help` is rich by default on capable terminals and supports `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR` for ANSI-free output.
+Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, and `Hx.Scaffold.Cli` for `new`, `version`, `update`, and `prereq`). Add `--json` for the machine envelope. Human `--help` is rich by default on capable terminals and supports `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR` for ANSI-free output.
 
 | Command | What it does |
 | --- | --- |
 | `new` _(Hx.Scaffold.Cli)_ | Generate a new agent-first .NET solution and install doti |
 | `version --repo <path>` _(Hx.Scaffold.Cli)_ | Report running hx identity, target repo scaffold version, and managed Doti modification state |
 | `update [--repo <path>] [--dry-run] [--force] [--noworktree]` _(Hx.Scaffold.Cli)_ | Update an existing doti-enabled Git repo from the latest verified release while preserving live repo configuration |
+| `prereq check --for <new\|update\|version\|generated-validation>` _(Hx.Scaffold.Cli)_ | Check trusted .NET SDK/Git/directory prerequisites without installing anything |
+| `prereq install --for <new\|update> --confirm-plan <digest>` _(Hx.Scaffold.Cli)_ | Run an explicitly approved Windows winget install plan from trusted manifest metadata, then re-check prerequisites |
 | `gate run --profile <auto\|advisory\|normal\|release>` | Run the full deterministic gate ladder → one fail-closed `GateProof` |
 | `security scan` | Package-vulnerability SCA (`dotnet list package --vulnerable`) + analyzer SAST status |
 | `architecture test` | ArchUnitNET per-family proof |

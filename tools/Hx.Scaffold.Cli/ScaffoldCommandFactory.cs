@@ -12,6 +12,7 @@ internal static class ScaffoldCommandFactory
         AddNew(rootCommand, meta);
         AddVersion(rootCommand, meta);
         AddUpdate(rootCommand, meta);
+        AddPrereq(rootCommand, meta);
         CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
         return rootCommand;
     }
@@ -91,5 +92,58 @@ internal static class ScaffoldCommandFactory
                 CliApp.ForceJson(parseResult, json) == true),
             forceJson: CliApp.ForceJson(parseResult, json)));
         rootCommand.Subcommands.Add(command);
+    }
+
+    private static void AddPrereq(RootCommand rootCommand, CliMeta meta)
+    {
+        Command group = new("prereq", "Check or install trusted system prerequisites.");
+        AddPrereqCheck(group, meta);
+        AddPrereqInstall(group, meta);
+        rootCommand.Subcommands.Add(group);
+    }
+
+    private static void AddPrereqCheck(Command group, CliMeta meta)
+    {
+        Command command = new("check", "Check trusted prerequisites without installing anything.");
+        Option<string> targetCommand = new("--for") { Description = "Command to check: new, update, version, or generated-validation.", DefaultValueFactory = _ => "new" };
+        Option<string> repo = new("--repo") { Description = "Repository root for repo-aware checks.", DefaultValueFactory = _ => "." };
+        Option<string> output = new("--output") { Description = "Output directory for new-solution checks.", DefaultValueFactory = _ => "" };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(targetCommand);
+        command.Options.Add(repo);
+        command.Options.Add(output);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "prereq check",
+            () => ScaffoldCommands.PrereqCheck(
+                meta,
+                parseResult.GetValue(targetCommand)!,
+                parseResult.GetValue(repo)!,
+                parseResult.GetValue(output)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        group.Subcommands.Add(command);
+    }
+
+    private static void AddPrereqInstall(Command group, CliMeta meta)
+    {
+        Command command = new("install", "Install missing trusted prerequisites through an approved Windows winget plan.");
+        Option<string> targetCommand = new("--for") { Description = "Command to unblock: new or update.", DefaultValueFactory = _ => "new" };
+        Option<string> repo = new("--repo") { Description = "Repository root for repo-aware checks.", DefaultValueFactory = _ => "." };
+        Option<string> output = new("--output") { Description = "Output directory for new-solution checks.", DefaultValueFactory = _ => "" };
+        Option<string> confirmPlan = new("--confirm-plan") { Description = "Digest of the exact install plan approved by the operator.", DefaultValueFactory = _ => "" };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(targetCommand);
+        command.Options.Add(repo);
+        command.Options.Add(output);
+        command.Options.Add(confirmPlan);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "prereq install",
+            () => ScaffoldCommands.PrereqInstall(
+                meta,
+                parseResult.GetValue(targetCommand)!,
+                parseResult.GetValue(repo)!,
+                parseResult.GetValue(output)!,
+                parseResult.GetValue(confirmPlan)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        group.Subcommands.Add(command);
     }
 }

@@ -42,6 +42,12 @@ public static partial class ScaffoldUpdateService
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(target.Content));
         }
 
+        string prerequisites = Path.Combine(payloadRoot, "doti", "core", "prerequisites.json");
+        if (File.Exists(prerequisites))
+        {
+            AddFile(".doti/prerequisites.json", ManagedAssetCategory.Metadata, File.ReadAllBytes(prerequisites));
+        }
+
         return files.Values.OrderBy(f => f.Path, StringComparer.Ordinal).ToArray();
     }
 

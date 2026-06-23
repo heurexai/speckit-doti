@@ -42,6 +42,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Creation of a backup Git worktree from the target repository before managed files in the original target checkout are mutated by default.
 - An explicit `--noworktree` no-backup direct-replacement option that can switch off worktree creation while still mutating the original target checkout.
 - A machine-readable update report showing checked version, selected asset, cache decision, target repo, files changed, and follow-up validation commands.
+- A trusted prerequisite manifest and preflight experience for `hx new`, `hx update`, repo-aware version checks, and generated-repo validation so required external tools such as the .NET SDK and Git are detected before work starts.
+- No-coder-friendly remediation output for missing prerequisites: hard failure, exact missing/outdated items, and trusted installation instructions that an operator can approve outside the deterministic command.
+- Windows-only, operator-approved automatic prerequisite installation through winget when the trusted prerequisite manifest declares a supported winget package for the missing prerequisite and winget itself is available.
 - Release classification for this feature as a minor speckit-doti version update when it is eventually released.
 
 **Excluded**
@@ -64,6 +67,10 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Removing older cached versions before the latest replacement has been verified.
 - Making local cache presence alone proof that a version is still the latest when GitHub cannot be reached.
 - Using an LLM or agent judgment inside the deterministic updater to decide which legacy files should be deleted or which live configuration should be edited.
+- Silently installing .NET, Git, package managers, shells, or other system prerequisites without explicit operator approval and a trusted install plan.
+- Automatically installing prerequisites on non-Windows platforms; Linux/macOS prerequisite remediation remains instructions-only unless a future platform-specific installer flow is specified.
+- Automatically installing prerequisites on Windows through any mechanism other than winget.
+- Trusting target-repo, cache-local, or user-editable configuration to supply executable download URLs or to weaken the release-defined prerequisite policy.
 
 ## Functional Requirements
 
@@ -243,6 +250,38 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - `FR-130`: A clean-checkout verification path, such as CI or the release gate, MUST rerun the command-backed gate from source and MUST NOT accept a developer-machine `.doti/gate-proof.json` as the sole proof for publication or merge.
 - `FR-131`: The CLI capability model and diagnostics MUST document which commands are diagnostic-only and which commands mint accepted proofs, so agents can discover that direct `dotnet test` is advisory and `gate run` plus `doti cycle commit` is the sanctioned path.
 
+### P. Trusted prerequisite manifest and preflight
+
+- `FR-132`: The standalone scaffold executable MUST expose a prerequisite check surface in human help and `describe --json` so an agent or no-coder can discover which external tools are required before running `new`, `update`, or generated-repo validation.
+- `FR-133`: `hx new` MUST run prerequisite preflight before template packing, `dotnet new`, tool-store population, Git initialization, or output-directory mutation.
+- `FR-134`: `hx update` MUST run prerequisite preflight before Git worktree creation, cache pruning, delegated updater launch, managed-asset reconciliation, or target mutation.
+- `FR-135`: Generated repositories MUST carry the release-defined prerequisite policy needed to build, test, gate, update, and recover the repository, and scaffold-owned validation commands MUST evaluate that policy before attempting work that depends on external tools.
+- `FR-136`: Prerequisite checks MUST be manifest-driven: the trusted manifest declares required tool identifiers, command probes, minimum/maximum supported versions when applicable, platform/RID applicability, whether a tool is required or advisory for a command, and remediation text.
+- `FR-137`: The implementation MAY contain the schema, built-in trust anchors, and bootstrap logic required to find and verify the trusted manifest, but it MUST NOT hard-code the complete per-command prerequisite list in command bodies.
+- `FR-138`: At minimum, the release-defined prerequisite policy MUST treat a compatible .NET SDK and Git as hard requirements for creating a new solution and for running generated-repo development gates; update MUST treat Git as a hard requirement for Git-backed target mutation and worktree backup.
+- `FR-139`: A missing, outdated, unsupported, or unverifiable hard prerequisite MUST fail the command before side effects and MUST return stable diagnostics that identify the prerequisite, command that needs it, detected value if any, required version/range, and affected operation.
+- `FR-140`: Prerequisite output MUST include human-readable and JSON `nextActions` that offer trusted installation guidance, including official vendor/package-manager instructions where available, but MUST NOT execute installers or package-manager commands unless a future explicitly named operator-approved install command is specified.
+- `FR-141`: Installation guidance MUST come only from the trusted release-defined prerequisite manifest or from immutable built-in trust anchors; target-repo manifests, cache manifests, environment variables, and user-editable config MUST NOT be able to replace official source locations or inject executable download URLs.
+- `FR-142`: The trusted prerequisite manifest MUST be integrity protected as part of the release payload and managed asset set; if it is missing, schema-invalid, hash-mismatched, signed by an untrusted source, or otherwise unverifiable, prerequisite evaluation MUST fail closed before using any install guidance.
+- `FR-143`: A repository-local prerequisite extension MAY add project-specific checks or textual instructions, but it MUST NOT weaken release-defined requirements, reclassify hard prerequisites as advisory, override official install sources, or add executable download URLs accepted by `hx`.
+- `FR-144`: `hx new` MUST validate required directories before mutation, including output path availability, parent directory existence or creatability, write permission, temporary/cache directory availability, payload-root readability, and shared tool-store accessibility.
+- `FR-145`: `hx update` MUST validate required directories before mutation, including target repository containment, `.git`/worktree accessibility, backup-worktree parent availability when worktree backup is enabled, temporary-cache containment, payload extraction directory safety, and write permission for every planned managed path.
+- `FR-146`: Directory and prerequisite failures MUST leave the target repository or output directory unchanged except for documented diagnostic/cache probes that are explicitly safe to discard.
+- `FR-147`: Prerequisite reports MUST be no-coder-friendly and agent-actionable: they MUST distinguish "missing", "found but unsupported", "found but not on PATH", "permission denied", "manifest cannot be trusted", and "directory not writable", with concrete next actions and links/instructions suitable for an operator to approve.
+- `FR-148`: The repo-aware version report MUST include prerequisite health when run against a target repo, but it MUST remain read-only: no installs, downloads, cache pruning, worktree creation, or target mutation.
+- `FR-149`: Automatic prerequisite installation MUST be offered when supported only on Windows, only through winget, only for prerequisites with trusted release-defined winget package metadata, and only after explicit operator permission for the exact install plan.
+- `FR-150`: The CLI capability model MUST identify which commands require prerequisite preflight, which prerequisites are hard versus advisory, and whether a failure occurs before or after any possible side effects.
+- `FR-151`: The prerequisite install surface MUST be separately discoverable from ordinary `new`, `update`, and `version` execution, and the exact command/option shape MUST make operator-approved installation intentional rather than implied by `--force`, `--dry-run`, JSON mode, or an agent retry.
+- `FR-152`: Before any winget install is executed, `hx` MUST present and record an install plan containing prerequisite id, reason, trusted package identifier, trusted source identifier, expected version/range, winget command intent, whether elevation or user interaction may be needed, and the command that will be retried or unblocked after install.
+- `FR-153`: The operator permission MUST apply only to the presented install plan; if the package id, source, prerequisite set, target command, or manifest identity changes, `hx` MUST require fresh permission before executing winget.
+- `FR-154`: `hx` MUST verify winget availability and identity before using it; if winget is missing, unsupported, blocked by policy, or cannot be executed safely, automatic install MUST be unavailable and the command MUST fall back to trusted instructions-only remediation.
+- `FR-155`: `hx` MUST use only winget package identifiers, source identifiers, and installer metadata from the verified release-defined prerequisite manifest or immutable trust anchors; repository-local prerequisite extensions MUST NOT add or override winget install actions.
+- `FR-156`: After a winget install completes, `hx` MUST rerun the prerequisite probes and MUST treat the install as unsuccessful unless the required prerequisite is detected at a supported version.
+- `FR-157`: Failed, cancelled, or partially completed winget installs MUST stop before scaffold/update mutation and MUST report which prerequisite remains unsatisfied, the winget exit status when available, and safe next actions.
+- `FR-158`: The JSON report for automatic installs MUST include provenance for the manifest identity, package/source selected, operator permission, winget execution result, and post-install probe result; it MUST NOT persist secrets, private package feeds, or raw environment dumps.
+- `FR-159`: Non-Windows hosts MUST reject any automatic-install option or command with a platform-unsupported diagnostic and MUST provide trusted manual remediation instructions without invoking a package manager.
+- `FR-160`: If a prerequisite is missing but the trusted manifest has no Windows winget package for it, `hx` MUST NOT attempt a fallback executable download or arbitrary command; it MUST fail with instructions-only remediation.
+
 ## Success Criteria
 
 - `SC-001`: Immediately after a successful sanctioned `doti cycle commit`, `doti cycle status --json` reports the cycle as completed with the commit SHA instead of reporting all prior stages stale due only to `HEAD` movement.
@@ -308,6 +347,19 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - `SC-061`: A managed JSON content hash fails closed with a structured diagnostic for duplicate object names, unsupported JSON-with-comments or trailing commas, unsupported encodings or byte-order marks, invalid JSON, or numeric values that cannot be represented deterministically by the selected JCS/I-JSON-compatible profile.
 - `SC-062`: When the original target checkout has staged, unstaged, untracked, or ignored non-managed edits, a default `hx update` report states that the backup worktree preserves committed `HEAD` only and identifies those edits separately from the recoverable backup state.
 - `SC-063`: A doti-shaped directory without Git worktree support is not mutated by default; `hx update --json` returns a no-Git-recovery diagnostic that distinguishes it from an ordinary invalid path and from a Git-backed legacy pre-versioned target.
+- `SC-064`: On a machine without a compatible .NET SDK, `hx new --json` fails before creating or mutating the output directory and reports the missing SDK, required version/range, trusted installation instructions, and no side effects.
+- `SC-065`: On a machine without Git on PATH, `hx update --repo <target> --json` fails before creating a backup worktree or mutating files and reports the missing Git prerequisite with trusted installation instructions.
+- `SC-066`: If a trusted prerequisite manifest in the release payload is tampered with, missing, or schema-invalid, `hx new`, `hx update`, and the prerequisite check surface fail closed with a manifest-trust diagnostic instead of using install guidance from that manifest.
+- `SC-067`: A repo-local prerequisite extension that attempts to override the .NET or Git official install source, downgrade a hard requirement, or add an executable download URL is refused with a structured diagnostic and does not alter the release-defined prerequisite result.
+- `SC-068`: `hx new --json` against an unavailable or non-writable output parent reports the directory failure before template generation and leaves no partial solution behind.
+- `SC-069`: `hx update --dry-run --json` includes prerequisite health, directory readiness, and trusted-manifest identity while remaining read-only and performing no installs, downloads for prerequisites, cache pruning, worktree creation, or target mutation.
+- `SC-070`: `describe --json` and rich/plain help expose the prerequisite check surface, the command-to-prerequisite mapping, and whether missing prerequisites fail before side effects.
+- `SC-071`: On Windows with winget available, when a hard prerequisite is missing and the trusted manifest declares a supported winget package, the automatic-install flow presents the exact install plan, waits for explicit operator permission, executes winget only after approval, reruns the probe, and proceeds only when the prerequisite verifies.
+- `SC-072`: On Windows with winget unavailable or blocked, the automatic-install flow refuses before mutation and reports trusted manual installation guidance rather than attempting another installer mechanism.
+- `SC-073`: On Linux or macOS, requesting automatic prerequisite installation returns a platform-unsupported diagnostic with manual guidance and does not invoke any package manager.
+- `SC-074`: A repo-local prerequisite extension that attempts to add or override winget package/source metadata is refused and the release-defined prerequisite result remains unchanged.
+- `SC-075`: If winget installation exits unsuccessfully, is cancelled, or completes without satisfying the post-install probe, `hx new`/`hx update` does not mutate output/target files and reports the failed prerequisite plus winget/probe result.
+- `SC-076`: A dry-run or preview of prerequisite installation reports the exact winget package/source plan and manifest identity without executing winget.
 
 ## Completed-Cycle Recovery Scenario Analysis
 
@@ -375,6 +427,12 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - **Older-updater handoff** - the fail-closed delegation path where an older parent `hx` downloads or reuses a verified latest temporary release and asks that temporary `hx` to update the target repo.
 - **Delegated updater** - the verified temporary `hx` process that receives `--repo <target>` and performs the actual update mutation when the parent `hx` is too old or locked.
 - **Update report** - the machine-readable result that records target repo, current version, latest version, cache decision, changed files, skipped files, and follow-up checks.
+- **Prerequisite manifest** - the trusted release-defined inventory of external system requirements, probes, version policies, command applicability, and operator-facing install guidance.
+- **Prerequisite check result** - the machine-readable status for each prerequisite: found/missing/unsupported/untrusted/advisory, detected version/path, required policy, command impact, and safe next actions.
+- **Trusted installation instruction** - operator-facing remediation text or official source reference that originates from the verified release-defined prerequisite manifest or immutable trust anchors, never from target-repo mutable configuration.
+- **Repository-local prerequisite extension** - optional target-owned additive prerequisite metadata for project-specific checks; it can add checks but cannot weaken release-defined requirements or provide executable download URLs accepted by `hx`.
+- **Windows prerequisite install plan** - an operator-approved plan for installing one or more missing prerequisites through winget on Windows, derived only from trusted release-defined prerequisite metadata.
+- **Winget package mapping** - the trusted package/source metadata in the prerequisite manifest that allows `hx` to install a specific prerequisite through winget; target repositories cannot provide or override this mapping.
 
 ## Deterministic Surfaces
 
@@ -390,6 +448,8 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Existing versioning surfaces: `version calculate` and `version bump --major|--minor`; this feature is specified as an eventual minor release, with the actual bump/tag deferred to the release workflow.
 - Existing install/render surfaces: `doti install`, `doti render-skills`, rendered `.agents`/`.claude` skills, `.doti/agent-context.md`, `AGENTS.md`, `CLAUDE.md`, and doti source assets.
 - Existing shared-store surfaces that may be reused by the plan: `ToolStore`, `ToolStoreIndex`, `StorePopulator`, release manifests, and platform/RID classification.
+- Implemented in the current working tree, pending final command proof: trusted prerequisite manifest in the release payload and generated repos, `hx prereq check`, automatic preflight inside `hx new` and `hx update`, prerequisite health in repo-aware version reports, `CliResult` diagnostics/next actions for missing or untrusted prerequisites, and generated `.doti/prerequisites.json` carriage.
+- Implemented in the current working tree, pending final command proof: explicit operator-approved `hx prereq install` for trusted manifest-backed Windows winget package mappings; unsupported on non-Windows and unavailable when winget or trusted package metadata is absent.
 
 ## Architecture Impact
 
@@ -414,6 +474,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Legacy pre-versioned reconciliation must be manifest-driven and conservative: only current managed asset paths are created/replaced, unknown old files are reported but left in place, and the new version/hash baseline is established only after a successful update.
 - Semantic content-hash canonicalization must be centralized so parse, normalization, canonical serialization, and hash-profile metadata cannot diverge between install, update, version reporting, and drift checks.
 - Live configuration and baseline preservation must be encoded as an allow/deny boundary, not as a best-effort convention.
+- Prerequisite policy loading belongs in scaffold core or a shared prerequisite core; CLI commands stay thin and ask the core for preflight results before side effects.
+- The release-defined prerequisite manifest is a trust boundary: target repositories may add project-specific checks, but cannot override source locations, weaken hard requirements, or make an agent run arbitrary installers.
+- Windows winget installation belongs behind the same prerequisite core and must be modeled as a permissioned remediation step with post-install probe verification, not as a side effect hidden inside normal command execution.
 - The plan must decide the exact persisted version-stamp format and completed-cycle JSON shape, and must keep `describe --json` stable except for the additive `update` command.
 
 ## Sentrux And Hygiene Impact
@@ -432,6 +495,9 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Commit-completion intent and recovery records are local workflow state under `.doti/`; they must not leak secrets, machine-local absolute paths beyond repo-relative diagnostics, or stale gate payloads into committed fixtures.
 - Gate proof provenance, execution transcript digests, and hook-health diagnostics must not persist raw secrets, full environment dumps, or machine-local absolute paths beyond what is needed for local diagnostics.
 - Clean-checkout release or merge validation must regenerate proof from source rather than importing developer-local proof state, because `.doti/gate-proof.json` and hook files are local workflow artifacts.
+- Prerequisite manifests and committed fixtures must not contain machine-local absolute paths, private package feeds, personal access tokens, or mutable untrusted download URLs.
+- Prerequisite failures should be concise in human output but complete in JSON so no-coder operators can approve remediation while agents can stop safely.
+- Winget install reporting must persist package/source/probe provenance and exit status only; it must not persist full environment dumps, machine-specific package cache paths, or private winget source credentials.
 
 ## Assumptions
 
@@ -457,13 +523,17 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - Legacy pre-versioned repositories may not have enough metadata to prove whether old Doti files were customized. For those targets, replacing only current release-managed paths and leaving unknown old files untouched is safer than deleting or attempting a full cleanup.
 - A versioned repository with broken hash metadata is different from a legacy pre-versioned repository; it should fail closed by default because the installer claimed a managed baseline exists but it cannot be trusted.
 - LLM-agent follow-up sweeps are expected for legacy pre-versioned migrations that may leave orphaned old files, but those sweeps are advisory workflow work and not part of deterministic `hx update` mutation.
+- The first release-defined hard prerequisites are expected to include a compatible .NET SDK and Git; exact minimum versions, per-platform package-manager wording, and any optional shell requirements are plan-level decisions captured in the prerequisite manifest.
+- Missing prerequisites are a preflight failure, not an implicit install request. Windows offers an explicit operator-approved winget install flow when trusted package metadata exists; `--force`, `--dry-run`, JSON mode, and ordinary agent retries do not imply install permission.
+- Official install guidance can name vendor/package-manager sources, but executable URLs must be controlled by the verified release-defined manifest or immutable trust anchors and cannot be supplied by target repos or update caches.
+- Exact winget package identifiers and minimum supported versions are plan-level decisions; they must be verified against the trusted release-defined manifest before implementation and should not be guessed in the spec.
 - The operator has classified the eventual release containing this feature as a minor version update; no release, tag, or version bump is performed during specify.
 
 ## Acceptance
 
 - **Command-backed today:** source inspection; existing `doti cycle commit` / `status` / `check`; existing affected-test proof recomputation; existing commit scope inspection; existing pre-commit hook installer/guard; existing `Hx.Scaffold.Cli --version`; existing `Hx.Scaffold.Cli describe --json`; existing release archive naming docs; existing doti install/render surfaces; existing shared-store primitives.
 - **Implemented in current working tree, pending final full-gate proof:** completed-cycle persisted status, commit-completion intent, completed-cycle recovery verdicts for `status`/`check`/`stamp`/`commit`, explicit post-commit completion-write failure reporting, staged-tree identity, gate-proof digest and runner identity in commit intent/trailers, canonical scaffold version identity with release-asset fields, target-repo version stamp, repo-aware version report, target-to-latest update relation, managed asset manifest with source-format/canonicalizer/identity-policy/conflict-policy metadata, canonical managed-asset hash set, parser-backed YAML/JSON canonicalization, safer normalized text hashing for formats without a parser-backed semantic profile, template/skill customization detection, generated/replaced metadata classification, missing/corrupt hash-metadata refusal, live configuration/baseline preservation, dirty planned-write boundary, `--force` replacement semantics, `hx update`, older-updater handoff/delegated temporary `hx`, delegated option forwarding, delegated executable at-use verification, GitHub latest-release resolution, update cache reuse/prune behavior, backup worktree creation/reversal reporting, `--noworktree` no-backup replacement, existing-repo managed-asset reconciliation, legacy pre-versioned migration mode, possible-orphan legacy reporting, LLM-agent follow-up sweep instructions, update dry-run, update proof/report tests, and release checksum metadata.
-- **Still advisory unless separately implemented and proven:** full appended error-code registry coverage for every update/version/cycle diagnostic, broader persisted `GateProof` producer provenance and proof digest beyond the current commit-intent/trailer binding, per-test execution artifact identity, hook-health reporting beyond the existing hook installer/guard path, external/bypass commit classification beyond local refusal, clean-checkout merge/release proof, local review artifact packaging, and the final minor-release proof.
+- **Still advisory unless separately implemented and proven:** full appended error-code registry coverage for every update/version/cycle diagnostic, broader persisted `GateProof` producer provenance and proof digest beyond the current commit-intent/trailer binding, per-test execution artifact identity, hook-health reporting beyond the existing hook installer/guard path, external/bypass commit classification beyond local refusal, clean-checkout merge/release proof, local review artifact packaging, broader repo-local prerequisite extension handling beyond refusing executable install metadata, and the final minor-release proof.
 
 ## Research Basis
 
@@ -490,3 +560,5 @@ For update to be trustworthy, speckit-doti needs a clear product version identit
 - A follow-up Codex subagent review found no blocker or high-severity gaps, then tightened medium/low edges around dirty planned-write collisions, JSON semantic-hash fail-closed cases, the committed-`HEAD` limit of backup worktrees, external absolute-path dry-run reporting, and no-Git doti-shaped target diagnostics.
 - A `/doti-clarify` pass after those updates found no remaining blocking operator questions. Remaining open choices, such as temporary-cache location details, update-worktree naming, persisted completed-cycle JSON shape, and exact hash-profile schema, are plan-level design decisions already marked for `/doti-plan` rather than scope clarifications.
 - A second Codex subagent review found implementation/status mismatches around older-updater handoff forwarding, delegated executable verification, update report thickness, completion-write failure reporting, hash metadata, version release-asset identity, and plan/task status language. The current working tree and this spec were updated so delegated update forwards `--dry-run`/force/worktree/json intent, verifies the delegated executable against the verified archive at use time, reports structured worktree/delegation/file-plan/diagnostic metadata, returns an explicit recovery-needed result when completion persistence fails after Git commit, records hash source-format/canonicalizer/identity/conflict policy metadata, records release asset identity in version stamps, and distinguishes implemented current-tree behavior from still-advisory proof-provenance/error-code/release work.
+- The prerequisite wrinkle was added: `hx` must use a trusted manifest-backed preflight for `new`, `update`, repo-aware version reporting, and generated-repo validation; missing .NET/Git or invalid directories fail hard before mutation; remediation is no-coder-friendly but does not silently install tools; and target-repo/cache-local configuration cannot inject executable download locations or weaken release-defined prerequisite policy.
+- The Windows automation refinement was added: missing prerequisites may be installed automatically only on Windows, only through winget, only from trusted release-defined package/source metadata, and only after explicit operator permission for the exact install plan; non-Windows remains instructions-only.

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Hx.Doti.Core.ManagedAssets;
+using Hx.Scaffold.Core.Prerequisites;
 using Hx.Tooling.Contracts;
 using Hx.Version.Core;
 
@@ -39,7 +40,8 @@ public sealed record ScaffoldVersionReport(
     ScaffoldVersionIdentity? Target,
     string TargetRelation,
     ManagedAssetModificationSummary? ManagedAssets,
-    IReadOnlyList<string> Diagnostics);
+    IReadOnlyList<string> Diagnostics,
+    PrerequisiteCheckReport? Prerequisites = null);
 
 public static class ScaffoldVersionReporter
 {
@@ -81,7 +83,10 @@ public static class ScaffoldVersionReporter
             new ScaffoldVersionStamp(JsonContractDefaults.SchemaVersion, identity), options));
     }
 
-    public static ScaffoldVersionReport Report(string runningVersion, string? repoRoot)
+    public static ScaffoldVersionReport Report(
+        string runningVersion,
+        string? repoRoot,
+        PrerequisiteCheckReport? prerequisites = null)
     {
         ScaffoldVersionIdentity running = IdentityFromVersion(runningVersion, "hx-scaffold");
         if (string.IsNullOrWhiteSpace(repoRoot))
@@ -92,7 +97,8 @@ public static class ScaffoldVersionReporter
                 null,
                 ScaffoldVersionRelation.Unknown,
                 null,
-                []);
+                [],
+                prerequisites);
         }
 
         string root = Path.GetFullPath(repoRoot);
@@ -109,7 +115,8 @@ public static class ScaffoldVersionReporter
             target,
             relation,
             managed,
-            diagnostics);
+            diagnostics,
+            prerequisites);
     }
 
     private static ScaffoldVersionIdentity? ReadStamp(string repoRoot, List<string> diagnostics)

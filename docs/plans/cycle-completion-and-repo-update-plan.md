@@ -4,15 +4,16 @@
 
 ## Technical Context
 
-The work spans five existing scaffold surfaces plus one additive managed-manifest surface:
+The work spans six scaffold surfaces, including the new prerequisite manifest/policy surface:
 
 1. **Cycle completion and recovery** in `Hx.Cycle.Core`. `doti cycle stamp`, `status`, `check`, and `commit` share `CycleService`, `CycleStateStore`, `FreshnessEvaluator`, `GateProofStore`, `CommitScopeInspector`, `PrecommitGuard`, and `GateProofValidator`. The current working tree persists completed-cycle records, writes pre-commit intent, recovers completed commits, and returns an explicit recovery-needed result if completion-state persistence fails after Git creates the commit; final full-gate proof is still pending.
 2. **Gate proof provenance and bypass hardening** across `Hx.Gate.Core`, `Hx.Cycle.Core`, and `Hx.Tooling.Contracts`. The gate already persists a change-set-bound proof and recomputable affected-test hashes, but the planned feature needs stronger producer provenance, proof digest identity, execution artifact identity, staged-tree binding, final commit trailers, hook-health reporting, and external/bypass commit verdicts.
 3. **Existing-repo update** in the standalone scaffold executable (`Hx.Scaffold.Cli`). `Hx.Scaffold.Cli new` delegates to `Hx.Scaffold.Core`; `hx update`, repo-aware version reporting, older-updater handoff, dry-run, worktree backup, manifest reconciliation, and live-config preservation are implemented in the current working tree and covered by focused tests. Network-backed GitHub behavior remains release-environment dependent until release assets exist with checksums.
 4. **Managed Doti asset ownership** in `Hx.Doti.Core` and source assets under `doti/`, `.doti/`, `.agents/`, and `.claude/`. `doti install` and `doti render-skills` install and render assets; the current working tree adds a managed-asset manifest, canonical hash baseline, category-specific modification report, and source-format/canonicalizer/conflict-policy metadata.
 5. **Version and release asset identity** in `Hx.Version.Core`, packaging assets, and release manifests. `version calculate` and `version bump` exist; the current working tree adds a canonical scaffold product version stamp, repo-aware version report, target-to-latest relation in update reports, and release asset name/hash identity when a GitHub release payload installs or updates a repo.
+6. **Trusted prerequisite policy and preflight** in `Hx.Scaffold.Core` with optional contracts in `Hx.Tooling.Contracts`. No prerequisite implementation exists yet; this plan adds a manifest-driven preflight before `hx new`, `hx update`, repo-aware version reporting, and generated-repo validation, plus Windows-only operator-approved winget remediation. The first hard requirements are a compatible .NET SDK and Git. On 2026-06-23, `winget show --id Microsoft.DotNet.SDK.10 --exact` verified `Microsoft.DotNet.SDK.10` and `winget show --id Git.Git --exact` verified `Git.Git`; exact supported version ranges remain trusted manifest data.
 
-Stack and constraints: .NET source only, existing `System.CommandLine` and `CliResult` envelope, existing shared rich/plain help renderer, YamlDotNet 18.0.0 already pinned, `System.Text.Json` already used for contracts, GitVersion already vendored, no shell runners, no committed release binaries, and no release action during this cycle. Network access is explicit for `hx update`; offline gates remain offline.
+Stack and constraints: .NET source only, existing `System.CommandLine` and `CliResult` envelope, existing shared rich/plain help renderer, YamlDotNet 18.0.0 already pinned, `System.Text.Json` already used for contracts, GitVersion already vendored, no shell runners, no committed release binaries, and no release action during this cycle. Network access is explicit for `hx update`; winget execution is explicit, Windows-only, and operator-approved; offline gates remain offline.
 
 ## Constitution Check (gate)
 
@@ -26,6 +27,7 @@ PASS before design:
 - **Codified Cycle** - the design strengthens cycle stamps, `gate run`, and `doti cycle commit`; final commits remain through the sanctioned path.
 - **Engineering Discipline** - implementation must prove update/report/recovery behavior with tests and command-backed gates before claiming completion.
 - **Channel Independence** - logic lives in core libraries; CLI projects only parse options, inject adapters, and render `CliResult`.
+- **Prerequisite trust boundary** - prerequisite policy and winget package metadata are release-defined managed assets or immutable built-in anchors; repo-local extensions cannot weaken requirements or inject executable URLs.
 
 No violation, so Complexity Tracking is empty.
 
@@ -58,6 +60,18 @@ No violation, so Complexity Tracking is empty.
 - **Decision:** Completed-cycle recovery uses a durable commit-completion intent plus Git evidence and converges to completed, retryable-active, or ambiguous.
 - **Rationale:** Once `git commit` created the sanctioned commit, users should not be trapped in a stale-proof loop or asked to create a second commit. Ambiguous history changes must still fail closed.
 - **Alternatives rejected:** Restamp old stages after commit (breaks proof boundary); rerun gate as primary recovery (does not prove the already-created commit); auto-reset/amend/delete commits (explicitly excluded).
+
+- **Decision:** Implement prerequisites as a release-defined manifest and core preflight service in `Hx.Scaffold.Core`, with shared result contracts only if needed for generated-repo validation.
+- **Rationale:** `hx new`, `hx update`, and repo-aware `hx version` are `Hx.Scaffold.Cli` surfaces backed by `Hx.Scaffold.Core`; placing policy/probe/install planning there keeps CLI bodies thin while avoiding a new project. Generated repos can carry the same trusted manifest as a managed Doti asset.
+- **Alternatives rejected:** Hard-code checks in each command body (violates manifest-driven requirement and thin CLI); allow target repos to provide package metadata (trojan risk); create shell bootstrap scripts (violates Cross-Platform Rule).
+
+- **Decision:** Add a separate `hx prereq check` / `hx prereq install` command group while also running read-only preflight automatically inside `new`, `update`, and repo-aware `version`.
+- **Rationale:** Ordinary commands must fail before side effects when hard prerequisites are missing, but installation must be intentional, separately discoverable, and not implied by `--force`, JSON mode, dry-run, or an agent retry. Non-interactive/JSON install flows should emit an install plan with a digest and `requiresOperator=true`; executing the plan requires an explicit confirmation bound to that digest.
+- **Alternatives rejected:** `hx new --install-missing` (too easy for agents to retry into mutation); silent install on failure (explicitly excluded); instructions-only forever on Windows (does not meet the approved winget automation requirement).
+
+- **Decision:** The initial Windows winget mappings are `Microsoft.DotNet.SDK.10` for the .NET SDK and `Git.Git` for Git, both from the default `winget` source.
+- **Rationale:** These identifiers were verified from the local winget source on 2026-06-23 with `winget show --id Microsoft.DotNet.SDK.10 --exact` and `winget show --id Git.Git --exact`. The manifest records package/source identifiers and supported version policy; it must not trust repo-local executable URLs.
+- **Alternatives rejected:** Record raw installer URLs from winget output (stale and easier to subvert); use broad search terms like `dotnet` or `git` (ambiguous); add Linux/macOS package-manager automation now (operator explicitly withdrew that expansion).
 
 ## Design
 
@@ -191,7 +205,35 @@ Approach:
 
 Architecture delta: no new project expected. `Hx.Scaffold.Core` may reference `Hx.Version.Core`, `Hx.Doti.Core`, and existing runner/tool helpers. If cache/release clients need an abstraction for network/process execution, define interfaces in `Hx.Scaffold.Core` and inject from CLI wiring without moving logic into `Hx.Scaffold.Cli`. `.sentrux/rules.toml` remains valid if no new project is added. If implementation introduces `Hx.Update.Core`, add it to `scaffold-dotnet.slnx`, `.sentrux/rules.toml` core layer paths, and document that in `rules/architecture.json`.
 
-### 6. Installed generated surfaces and docs
+### 6. Trusted prerequisite policy, preflight, and Windows winget remediation
+
+Likely files:
+
+- new `src/Hx.Scaffold.Core/Prerequisites/PrerequisiteManifest.cs`
+- new `src/Hx.Scaffold.Core/Prerequisites/PrerequisitePolicyLoader.cs`
+- new `src/Hx.Scaffold.Core/Prerequisites/PrerequisiteProbeRunner.cs`
+- new `src/Hx.Scaffold.Core/Prerequisites/PrerequisitePreflight.cs`
+- new `src/Hx.Scaffold.Core/Prerequisites/PrerequisiteInstallPlanner.cs`
+- new `src/Hx.Scaffold.Core/Prerequisites/WingetPrerequisiteInstaller.cs`
+- optional `tools/Hx.Tooling.Contracts/PrerequisiteResult.cs`
+- source manifest under `doti/core/prerequisites.json`
+- target metadata under `.doti/prerequisites.json` so generated repos carry the release-defined policy they were created with
+- `tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs`
+- `tools/Hx.Scaffold.Cli/ScaffoldCommands.cs`
+- tests in `test/Hx.Scaffold.Tests`
+
+Approach:
+
+- Define a release-managed prerequisite manifest with schema version, manifest identity/hash, command applicability, hard/advisory classification, probes, version policy, directory checks, trusted instruction text, and Windows winget mappings.
+- Treat compatible .NET SDK and Git as initial hard requirements. The initial Windows winget mappings are `Microsoft.DotNet.SDK.10` and `Git.Git` from source `winget`; minimum supported versions are manifest data and must be tested by probe output, not by trusting installer output.
+- Load the manifest through the same managed-asset trust boundary as other Doti assets. A repo-local extension may add project-specific probes and text-only instructions, but cannot weaken release-defined hard requirements, replace package/source metadata, or add executable URLs accepted by `hx`.
+- Run preflight before `new` mutates output, before `update` creates a backup worktree/download-prunes/reconciles files, and inside repo-aware `version` as read-only health reporting. Directory checks must run before side effects and report no-coder-friendly diagnostics.
+- Add `hx prereq check --for <new|update|version|generated-validation> [--repo <path>] --json` and `hx prereq install --for <new|update> [--repo <path>] [--confirm-plan <digest>] --json`. The check command never installs. The install command is Windows-only, emits the exact install plan, requires explicit operator approval tied to a plan digest, executes only trusted winget package/source actions, reruns probes, and continues only when the hard requirement verifies.
+- Non-Windows automatic install requests return platform-unsupported diagnostics and trusted manual instructions without invoking a package manager. Windows without winget, blocked winget, failed winget, cancelled prompts, changed plan digest, or missing package mapping all fail before scaffold/update mutation.
+
+Architecture delta: no new project expected. Prerequisite policy/probe/install planning lives in `Hx.Scaffold.Core`; `Hx.Scaffold.Cli` only parses options, injects process/console adapters, and renders `CliResult`. If generated-repo validation needs shared records, contracts go in `Hx.Tooling.Contracts`. No `rules/architecture.json` or `.sentrux/rules.toml` layer change is expected unless implementation introduces a new core project.
+
+### 7. Installed generated surfaces and docs
 
 Likely files:
 
@@ -220,6 +262,14 @@ New operation: `hx update`.
 - **Planned error-code registry additions:** validation update target not repository; validation update target no Git recovery; validation update dirty managed path; validation update modified templates; validation update modified skills; validation update hash metadata invalid; validation update too-new target; validation update handoff failed; validation update unsupported RID; validation update network latest unavailable; integrity update asset hash mismatch; integrity update executable hash mismatch; integrity update cache tampered; integrity managed asset hash unsupported.
 - **`describe` entry:** add `update` with all options and diagnostics in `Hx.Scaffold.Cli describe --json`.
 - **Envelope:** every result emits `CliResult` with target repo, running/delegated version, latest version, cache action, worktree/no-worktree decision, file plan or changed paths, preserved live paths, possible-orphan legacy files, diagnostics, and follow-up validation commands.
+
+New operation group: `hx prereq`.
+
+- **Options:** `check --for <new|update|version|generated-validation> [--repo <path>] --json`; `install --for <new|update> [--repo <path>] [--confirm-plan <digest>] --json`; shared help-mode controls.
+- **Exit classes:** Success when all hard prerequisites pass or an approved install completes and probes verify; Usage for invalid command/target combinations; Validation for missing/unsupported prerequisites, unsupported platform install, winget unavailable/blocked, install not approved, changed plan digest, missing trusted package mapping, directory failures, or failed post-install probe; Integrity for untrusted/tampered prerequisite manifest or package/source metadata mismatch; Internal for unexpected process or I/O failures.
+- **Planned error-code registry additions:** validation prerequisite missing; validation prerequisite unsupported version; validation prerequisite directory unavailable; validation prerequisite install unsupported platform; validation prerequisite install not approved; validation prerequisite winget unavailable; validation prerequisite winget failed; validation prerequisite winget mapping missing; integrity prerequisite manifest untrusted; integrity prerequisite package source mismatch.
+- **`describe` entry:** add `prereq` group and expose automatic preflight behavior on `new`, `update`, and repo-aware `version`, including whether failures happen before side effects.
+- **Envelope:** includes manifest identity, command requested, per-prerequisite probe result, directory readiness, trusted next actions, install-plan digest when present, operator permission provenance, winget execution result when attempted, and post-install probe result. It must not include secrets, private feeds, or full environment dumps.
 
 New operation: repo-aware version report.
 
@@ -253,6 +303,8 @@ Changed operation: `doti cycle status/check/stamp/commit`.
 | Scaffold update | `dotnet run --project tools/Hx.Scaffold.Cli -- update ... --json` / standalone `hx update` | implemented in current working tree with dry-run, force, noworktree, cache, handoff, worktree, live-preservation, and report metadata; GitHub latest behavior depends on published release assets/checksums |
 | Repo-aware version report | `dotnet run --project tools/Hx.Scaffold.Cli -- version ... --repo <path> --json` or equivalent | implemented in current working tree |
 | GitHub latest-release client | update-only network path | implemented in current working tree; network-enabled and not part of offline gate |
+| Prerequisite preflight | `dotnet run --project tools/Hx.Scaffold.Cli -- prereq check ... --json` plus automatic preflight in `new`/`update`/repo-aware `version` | NEW (advisory until built); manifest-driven and fail-before-side-effects |
+| Windows prerequisite install | `dotnet run --project tools/Hx.Scaffold.Cli -- prereq install ... --json` | NEW (advisory until built); Windows-only, winget-only, explicit operator approval required |
 | Release | `/doti-release`, tag, publish assets | intentionally not run in this cycle; user review comes first |
 
 ## Constitution Check (after design)
@@ -263,6 +315,7 @@ PASS after design:
 - It encodes deterministic ownership through manifests, metadata, hashes, and proof records.
 - It preserves the template boundary by rendering skills from source and treating generated files as generated.
 - It keeps network and release-cache effects outside offline gates and outside the repo.
+- It keeps prerequisite install effects outside ordinary command retries and binds them to a trusted release manifest plus explicit operator approval.
 - It does not add shell runners or trust local hooks as security boundaries.
 - It stops before release and keeps the eventual minor release as release-lane work.
 
@@ -280,3 +333,5 @@ No justified constitution violations.
 - **Worktree recovery risk:** Reports must not imply dirty edits are preserved by the backup worktree.
 - **Gate runtime risk:** Full normal/release gates may be slow or sensitive to local build servers. Use command-backed proof, isolate build output if needed, and report any gate that cannot be completed.
 - **Release boundary risk:** Do not run `version bump`, create tags, publish assets, or invoke `/doti-release` until the operator has reviewed the final deliverable.
+- **Prerequisite trust risk:** A mutable repo/cache manifest could turn remediation into arbitrary code execution. Treat release-defined package/source metadata as the only executable install source, hash/sign the manifest as a managed asset, and reject repo-local executable URL or winget overrides.
+- **Install side-effect risk:** Winget may require elevation, UI, policy approval, or PATH/session refresh. The installer must report this honestly, rerun probes after completion, and refuse scaffold/update mutation unless the new process environment can verify the prerequisite.

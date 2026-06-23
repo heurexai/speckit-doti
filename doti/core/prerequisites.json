@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "requirements": [
+    {
+      "id": "dotnet-sdk",
+      "displayName": ".NET SDK",
+      "hardFor": [ "new", "generated-validation" ],
+      "advisoryFor": [ "update", "version" ],
+      "minimumVersion": "10.0.0",
+      "probe": {
+        "executable": "dotnet",
+        "arguments": [ "--list-sdks" ],
+        "versionPattern": "^(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+      },
+      "instructions": [
+        "Install the .NET SDK 10 from the official .NET download page or through the trusted Windows winget package Microsoft.DotNet.SDK.10."
+      ],
+      "winget": {
+        "packageId": "Microsoft.DotNet.SDK.10",
+        "source": "winget"
+      }
+    },
+    {
+      "id": "git",
+      "displayName": "Git",
+      "hardFor": [ "new", "update", "generated-validation" ],
+      "advisoryFor": [ "version" ],
+      "minimumVersion": "2.40.0",
+      "probe": {
+        "executable": "git",
+        "arguments": [ "--version" ],
+        "versionPattern": "(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+      },
+      "instructions": [
+        "Install Git from the official Git for Windows site or through the trusted Windows winget package Git.Git."
+      ],
+      "winget": {
+        "packageId": "Git.Git",
+        "source": "winget"
+      }
+    }
+  ]
+}

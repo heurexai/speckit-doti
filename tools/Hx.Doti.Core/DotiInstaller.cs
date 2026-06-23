@@ -47,6 +47,7 @@ public static class DotiInstaller
 
         // 4. Repo-specific metadata.
         WriteMetadata(targetRepoRoot, repoName, agents);
+        CopyPrerequisitePolicy(sourceRepoRoot, targetRepoRoot);
         ManagedAssetScanner.WriteBaseline(targetRepoRoot, DotiRenderer.BuildTargets(targetRepoRoot, agents));
 
         return new DotiInstallResult(JsonContractDefaults.SchemaVersion, render.Outcome, render.Written, copied);
@@ -70,6 +71,19 @@ public static class DotiInstaller
             JsonContractDefaults.SchemaVersion, "dotnet-cli", agentKeys, "command-aware-advisory",
             "doti/profiles/dotnet-cli/profile.json");
         File.WriteAllText(Path.Combine(dotiDir, "init-options.json"), JsonSerializer.Serialize(init, options));
+    }
+
+    private static void CopyPrerequisitePolicy(string sourceRepoRoot, string targetRepoRoot)
+    {
+        string source = Path.Combine(sourceRepoRoot, "doti", "core", "prerequisites.json");
+        if (!File.Exists(source))
+        {
+            return;
+        }
+
+        string target = Path.Combine(targetRepoRoot, ".doti", "prerequisites.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.Copy(source, target, overwrite: true);
     }
 
     private static void CopyDirectory(string sourceDir, string targetDir)

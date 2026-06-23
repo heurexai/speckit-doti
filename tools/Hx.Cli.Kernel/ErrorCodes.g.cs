@@ -21,6 +21,13 @@ public static class ErrorCodes
     public const string Validation_ToolStoreVersionTooNew = "VAL0004";
     public const string Integrity_ToolStoreHashMismatch = "ITG0004";
     public const string Internal_ToolStorePopulateFailed = "INT0003";
+    public const string Validation_PrerequisiteMissing = "VAL0005";
+    public const string Validation_PrerequisiteUnsupportedVersion = "VAL0006";
+    public const string Validation_PrerequisiteDirectoryUnavailable = "VAL0007";
+    public const string Validation_PrerequisiteInstallNotApproved = "VAL0008";
+    public const string Validation_PrerequisiteWingetUnavailable = "VAL0009";
+    public const string Validation_PrerequisiteWingetFailed = "VAL0010";
+    public const string Integrity_PrerequisiteManifestUntrusted = "ITG0005";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -49,5 +56,19 @@ public static class ErrorCodes
             "A shared-store tool binary's SHA-256 does not match the manifest.", "Do not use the binary; run `doti tools update` to re-populate the store from a verified source."),
         new("INT0003", "internal", "INT", 3, Severity.Error, ExitClass.Internal, "internal.tool-store-populate-failed",
             "Populating the shared tool store failed.", "Check disk space and permissions for the configured tool-store location, then retry."),
+        new("VAL0005", "validation", "VAL", 5, Severity.Error, ExitClass.Validation, "validation.prerequisite-missing",
+            "A required prerequisite is missing.", "Install the missing prerequisite from the trusted next action and re-run the command."),
+        new("VAL0006", "validation", "VAL", 6, Severity.Error, ExitClass.Validation, "validation.prerequisite-unsupported-version",
+            "A prerequisite was found but its version is not supported.", "Install a supported version from the trusted prerequisite instructions and re-run the command."),
+        new("VAL0007", "validation", "VAL", 7, Severity.Error, ExitClass.Validation, "validation.prerequisite-directory-unavailable",
+            "A required directory is unavailable.", "Fix the output, repository, temp, cache, or payload directory before re-running the command."),
+        new("VAL0008", "validation", "VAL", 8, Severity.Error, ExitClass.Validation, "validation.prerequisite-install-not-approved",
+            "A prerequisite install plan was not approved.", "Review the exact install plan and re-run with the matching --confirm-plan digest only if approved."),
+        new("VAL0009", "validation", "VAL", 9, Severity.Error, ExitClass.Validation, "validation.prerequisite-winget-unavailable",
+            "Windows Package Manager is unavailable.", "Install or enable winget, or use the trusted manual prerequisite instructions."),
+        new("VAL0010", "validation", "VAL", 10, Severity.Error, ExitClass.Validation, "validation.prerequisite-winget-failed",
+            "Windows Package Manager failed to install a prerequisite.", "Review the winget result, install the prerequisite manually if needed, and re-run the prerequisite check."),
+        new("ITG0005", "integrity", "ITG", 5, Severity.Error, ExitClass.Integrity, "integrity.prerequisite-manifest-untrusted",
+            "The trusted prerequisite manifest is missing or invalid.", "Use a verified speckit-doti release payload; do not use repo-local install sources."),
     ];
 }
