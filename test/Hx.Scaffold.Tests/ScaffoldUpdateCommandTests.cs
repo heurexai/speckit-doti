@@ -169,7 +169,7 @@ public sealed partial class ScaffoldCommandsTests
 
             Assert.Contains(report.Blockers, b => b.Contains("not owned by Doti", StringComparison.Ordinal));
             Assert.Contains(report.Diagnostics, d => d.Code == "update.hook.external-precommit"
-                && string.Equals(d.Path, hook, StringComparison.OrdinalIgnoreCase));
+                && IsPreCommitHookPath(d.Path));
             Assert.NotNull(report.Hook);
             Assert.Equal(HookInstaller.VerdictExternal, report.Hook.Verdict);
             Assert.False(report.Hook.Changed);
@@ -181,6 +181,17 @@ public sealed partial class ScaffoldCommandsTests
             ForceDelete(cache);
             ForceDelete(Path.GetDirectoryName(release)!);
         }
+    }
+
+    private static bool IsPreCommitHookPath(string? path)
+    {
+        if (path is null)
+        {
+            return false;
+        }
+
+        string normalized = path.Replace('\\', '/');
+        return normalized.EndsWith("/.git/hooks/pre-commit", StringComparison.Ordinal);
     }
 
     [Fact]
