@@ -1,6 +1,4 @@
 using Hx.Runner.Core.Platform;
-using Hx.Runner.Core.Process;
-using Hx.Runner.Core.Repository;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Sentrux.Core;
@@ -11,7 +9,7 @@ namespace Hx.Sentrux.Core;
 /// (`gate`) against the committed baseline, with the operator tolerance band.
 /// Fails closed when Sentrux is enabled but unverified.
 /// </summary>
-public static class SentruxChecker
+public static partial class SentruxChecker
 {
     public static SentruxCheckResult Check(string repositoryRoot)
     {
@@ -26,89 +24,29 @@ public static class SentruxChecker
 
         ToolVerificationResult verification = SentruxManifestValidator.Verify(root, rid, policy);
 
-        if (!policy.SentruxEnabled)
+        if (TryDisabled(policy, verification, advisory, out SentruxCheckResult? disabled))
         {
-            advisory.Add("Sentrux is disabled in rules/sentrux.json.");
-            return Build(StageOutcome.Skipped, verification, StageOutcome.Skipped, [], null, null,
-                policy.SignalToleranceBand, StageOutcome.Skipped, ["Sentrux disabled."], advisory);
+            return disabled!;
         }
 
-        if (!verification.Verified)
+        if (TryUnverified(policy, verification, advisory, out SentruxCheckResult? unverified))
         {
-            advisory.Add("Sentrux structural gating is unavailable (fail-closed): "
-                + (verification.Message ?? string.Join("; ", verification.Problems)));
-            return Build(StageOutcome.Blocked, verification, StageOutcome.Skipped, [], null, null,
-                policy.SignalToleranceBand, StageOutcome.Skipped, [], advisory);
+            return unverified!;
         }
 
-        // Verified path. Stage the vendored grammar so analysis is reproducible
-        // offline and does not rely on a pre-existing global ~/.sentrux/plugins install.
-        IReadOnlyList<string> staged = SentruxGrammarStager.EnsureStaged(root, rid);
-        if (staged.Count > 0)
-        {
-            advisory.Add($"Staged {staged.Count} vendored grammar(s) into the Sentrux plugins directory.");
-        }
-
+        StageGrammars(root, rid, advisory);
         string executable = SentruxToolPathResolver.ResolveExecutable(root, rid);
-
-        ProcessRunResult checkRun = ProcessRunner.Run(SentruxProcessAdapter.Check(executable, root));
-        SentruxOutputParser.CheckReport check = SentruxOutputParser.ParseCheck(checkRun.StandardOutput);
-        StageOutcome rulesOutcome = check.Passed ? StageOutcome.Pass : StageOutcome.Fail;
-
-        // The regression gate needs a committed baseline; fail closed when it is absent.
-        RepositoryPath baselinePath = RepositoryPathResolver.ResolveInside(root, policy.BaselinePath);
-        if (!File.Exists(baselinePath.FullPath))
+        RulesCheck rules = RunRules(executable, root);
+        if (TryMissingBaseline(root, policy, verification, rules, advisory, out SentruxCheckResult? missingBaseline))
         {
-            advisory.Add($"Sentrux baseline missing at {policy.BaselinePath}; run `sentrux baseline` before the regression gate.");
-            return Build(StageOutcome.Blocked, verification, rulesOutcome, check.Violations,
-                check.QualitySignal, null, policy.SignalToleranceBand, StageOutcome.Blocked, [], advisory);
+            return missingBaseline!;
         }
 
-        ProcessRunResult gateRun = ProcessRunner.Run(SentruxProcessAdapter.GateCompare(executable, root));
-        SentruxOutputParser.GateReport gate = SentruxOutputParser.ParseGate(gateRun.StandardOutput);
+        RegressionCheck regression = RunRegression(executable, root, policy, rules.QualitySignal);
 
-        int? before = gate.SignalBefore;
-        int? after = gate.SignalAfter ?? check.QualitySignal;
-        (StageOutcome regressionOutcome, int? delta) = SentruxRegression.Evaluate(before, after, policy.SignalToleranceBand);
-
-        List<string> notes = [];
-        if (before is null)
-        {
-            // Baseline exists but the gate signal could not be read — fail closed, never pass blindly.
-            regressionOutcome = StageOutcome.Blocked;
-            notes.Add("Could not read the Sentrux gate baseline signal; failing closed.");
-        }
-        else if (regressionOutcome == StageOutcome.Fail)
-        {
-            notes.Add($"Quality signal dropped {-delta!.Value} (> tolerance {policy.SignalToleranceBand}).");
-        }
-
-        if (gate.Degraded)
-        {
-            notes.Add("Sentrux gate reported structural degradation; absolute constraints are enforced by the rule check.");
-        }
-
-        StageOutcome outcome = Worst(verification.Outcome, rulesOutcome, regressionOutcome);
-        return Build(outcome, verification, rulesOutcome, check.Violations,
-            check.QualitySignal, before, policy.SignalToleranceBand, regressionOutcome, notes, advisory);
+        StageOutcome outcome = Worst(verification.Outcome, rules.Outcome, regression.Outcome);
+        return Build(outcome, verification, rules.Outcome, rules.Violations,
+            rules.QualitySignal, regression.BaselineSignal, policy.SignalToleranceBand, regression.Outcome, regression.Notes, advisory);
     }
 
-    private static SentruxCheckResult Build(
-        StageOutcome outcome, ToolVerificationResult verification, StageOutcome rulesOutcome,
-        IReadOnlyList<string> violations, int? quality, int? baseline, int toleranceBand,
-        StageOutcome regressionOutcome, IReadOnlyList<string> notes, IReadOnlyList<string> advisory)
-    {
-        int? delta = quality is not null && baseline is not null ? quality - baseline : null;
-        return new SentruxCheckResult(
-            JsonContractDefaults.SchemaVersion, outcome, verification, rulesOutcome, violations,
-            quality, baseline, delta, toleranceBand, regressionOutcome, notes, advisory);
-    }
-
-    private static StageOutcome Worst(params StageOutcome[] outcomes)
-    {
-        if (outcomes.Contains(StageOutcome.Blocked)) return StageOutcome.Blocked;
-        if (outcomes.Contains(StageOutcome.Fail)) return StageOutcome.Fail;
-        if (outcomes.Contains(StageOutcome.Pass)) return StageOutcome.Pass;
-        return StageOutcome.Skipped;
-    }
 }

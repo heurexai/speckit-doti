@@ -47,39 +47,58 @@ public static class StoreProvisioner
         }
 
         using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
-        JsonElement root = doc.RootElement;
-
-        string tool = GetString(root, "tool") ?? "unknown";
-        string? version = GetString(root, "version") ?? GetString(root, "releaseTag");
-        if (string.IsNullOrWhiteSpace(version) || !root.TryGetProperty("assets", out JsonElement assets))
+        if (!TryReadToolManifest(doc.RootElement, out string tool, out string version, out JsonElement assets))
         {
             return;
         }
 
+        JsonElement? asset = FindAssetForRid(assets, rid);
+        if (asset is null)
+        {
+            return;
+        }
+
+        TryInstallAsset(sourceRepoRoot, tool, version, rid, asset.Value);
+    }
+
+    private static bool TryReadToolManifest(JsonElement root, out string tool, out string version, out JsonElement assets)
+    {
+        tool = GetString(root, "tool") ?? "unknown";
+        version = GetString(root, "version") ?? GetString(root, "releaseTag") ?? "";
+        bool hasAssets = root.TryGetProperty("assets", out assets);
+        return !string.IsNullOrWhiteSpace(version) && hasAssets;
+    }
+
+    private static JsonElement? FindAssetForRid(JsonElement assets, string rid)
+    {
         foreach (JsonElement asset in assets.EnumerateArray())
         {
-            if (!string.Equals(GetString(asset, "rid"), rid, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(GetString(asset, "rid"), rid, StringComparison.OrdinalIgnoreCase))
             {
-                continue;
+                return asset;
             }
+        }
 
-            string? exePathRel = GetString(asset, "executablePath");
-            string? exeSha = GetString(asset, "executableSha256");
-            string? exeName = GetString(asset, "executableName");
-            if (string.IsNullOrWhiteSpace(exePathRel) || string.IsNullOrWhiteSpace(exeSha) || string.IsNullOrWhiteSpace(exeName))
-            {
-                return;
-            }
+        return null;
+    }
 
-            string exeFull = Path.Combine(sourceRepoRoot, exePathRel.Replace('/', Path.DirectorySeparatorChar));
-            if (!File.Exists(exeFull))
-            {
-                return; // binary not vendored locally; the generated repo self-provisions in-repo via `tools fetch`.
-            }
-
-            StorePopulator.InstallBytes(tool, version, rid, exeName, File.ReadAllBytes(exeFull), exeSha, source: "vendored");
+    private static void TryInstallAsset(string sourceRepoRoot, string tool, string version, string rid, JsonElement asset)
+    {
+        string? exePathRel = GetString(asset, "executablePath");
+        string? exeSha = GetString(asset, "executableSha256");
+        string? exeName = GetString(asset, "executableName");
+        if (string.IsNullOrWhiteSpace(exePathRel) || string.IsNullOrWhiteSpace(exeSha) || string.IsNullOrWhiteSpace(exeName))
+        {
             return;
         }
+
+        string exeFull = Path.Combine(sourceRepoRoot, exePathRel.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(exeFull))
+        {
+            return; // binary not vendored locally; the generated repo self-provisions in-repo via `tools fetch`.
+        }
+
+        StorePopulator.InstallBytes(tool, version, rid, exeName, File.ReadAllBytes(exeFull), exeSha, source: "vendored");
     }
 
     private static string? GetString(JsonElement obj, string name) =>

@@ -7,6 +7,7 @@ public enum StageFreshness
 {
     Fresh,
     Stale,
+    Completed,
 }
 
 /// <summary>Per-stage freshness verdict computed at read time (never stored).</summary>

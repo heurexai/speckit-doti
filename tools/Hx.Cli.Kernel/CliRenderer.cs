@@ -40,7 +40,7 @@ public static class CliRenderer
             return;
         }
 
-        WriteRichHelp(root, command, path, meta, banner, tagline, console);
+        WriteRichHelp(root, command, path, meta, banner, tagline, mode, console);
     }
 
     public static string RenderPlainHelp(
@@ -83,9 +83,10 @@ public static class CliRenderer
         CliMeta meta,
         string banner,
         string tagline,
+        CliHelpMode mode,
         IAnsiConsole? console = null)
     {
-        IAnsiConsole c = console ?? AnsiConsole.Console;
+        IAnsiConsole c = ResolveConsole(mode, console);
         c.WriteLine();
         c.Write(new FigletText(banner).LeftJustified().Color(Gold));
         c.MarkupLine($"  [{MutedHex}]{Markup.Escape(tagline)}[/]   [{GoldHex}]{Markup.Escape(meta.Version)}[/]");
@@ -132,6 +133,16 @@ public static class CliRenderer
 
     private static bool ShouldWritePlain(CliHelpMode mode) =>
         mode == CliHelpMode.Plain || mode == CliHelpMode.Auto && Console.IsOutputRedirected;
+
+    private static IAnsiConsole ResolveConsole(CliHelpMode mode, IAnsiConsole? console) =>
+        console ?? (mode == CliHelpMode.Rich
+            ? AnsiConsole.Create(new AnsiConsoleSettings
+            {
+                Ansi = AnsiSupport.Yes,
+                ColorSystem = ColorSystemSupport.TrueColor,
+                Out = new AnsiConsoleOutput(Console.Out),
+            })
+            : AnsiConsole.Console);
 
     private static string Invocation(CliMeta meta, IReadOnlyList<string> path) =>
         path.Count == 0 ? meta.Tool : meta.Tool + " " + string.Join(' ', path);

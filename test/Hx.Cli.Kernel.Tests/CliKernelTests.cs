@@ -146,4 +146,32 @@ public sealed class CliKernelTests
             Console.SetOut(original);
         }
     }
+
+    [Fact]
+    public void CliApp_Invoke_ExplicitRichHelp_ForcesAnsiWhenCaptured()
+    {
+        var root = new RootCommand("test tool");
+        var group = new Command("group", "Grouped commands.");
+        var leaf = new Command("leaf", "Leaf command.");
+        group.Subcommands.Add(leaf);
+        root.Subcommands.Add(group);
+
+        TextWriter original = Console.Out;
+        using var writer = new StringWriter();
+        try
+        {
+            Console.SetOut(writer);
+            int exit = CliApp.Invoke(root, Meta,
+                ["group", "leaf", "--help-mode", "rich", "--help"], "speckit-doti", "tagline");
+
+            Assert.Equal(0, exit);
+            string help = writer.ToString();
+            Assert.Contains("hx-test group leaf", help);
+            Assert.Contains("\x1b[", help, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+    }
 }

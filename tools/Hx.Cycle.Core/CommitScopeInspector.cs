@@ -1,14 +1,20 @@
 using Hx.Runner.Core.Process;
+using Hx.Runner.Core.Io;
 
 namespace Hx.Cycle.Core;
 
 /// <summary>The staged/unstaged shape of the working tree for the codified commit's scope check.</summary>
-public sealed record CommitScope(bool HasStaged, bool HasUnstagedTrackedChanges, int StagedCount);
+public sealed record CommitScope(
+    bool HasStaged,
+    bool HasUnstagedTrackedChanges,
+    bool HasUntrackedChanges,
+    int StagedCount,
+    string StagedTreeId);
 
 /// <summary>
 /// Inspects <c>git status --porcelain=v1 -z</c> to decide whether the tree is a clean, deliberate scope
-/// for <c>cycle commit</c>: a non-empty staged set and no unstaged tracked modifications. Untracked files
-/// (<c>??</c>) are ignored — they are not part of a staged commit. Fails closed (throws) on a git error.
+/// for <c>cycle commit</c>: a non-empty staged set, no unstaged tracked modifications, and no untracked
+/// files. Fails closed (throws) on a git error.
 /// </summary>
 public static class CommitScopeInspector
 {
@@ -21,9 +27,20 @@ public static class CommitScopeInspector
             throw new InvalidOperationException($"git status failed: {result.StandardError.Trim()}");
         }
 
-        int staged = 0;
-        bool unstagedTracked = false;
-        string[] tokens = result.StandardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        ParsedScope parsed = ParseStatus(result.StandardOutput);
+        return new CommitScope(
+            parsed.StagedCount > 0,
+            parsed.HasUnstagedTrackedChanges,
+            parsed.HasUntrackedChanges,
+            parsed.StagedCount,
+            ComputeStagedTreeId(repositoryRoot, parsed.StagedPaths ?? []));
+    }
+
+    private static ParsedScope ParseStatus(string porcelain)
+    {
+        var parsed = new ParsedScope();
+        var stagedPaths = new List<string>();
+        string[] tokens = porcelain.Split('\0', StringSplitOptions.RemoveEmptyEntries);
         for (int i = 0; i < tokens.Length; i++)
         {
             string entry = tokens[i];
@@ -32,31 +49,61 @@ public static class CommitScopeInspector
                 continue;
             }
 
-            char index = entry[0];
-            char worktree = entry[1];
-
-            // Rename/copy entries (`-z`) are followed by the original-path token — skip it.
-            if (index is 'R' or 'C')
+            PorcelainEntry parsedEntry = PorcelainEntry.Parse(entry);
+            if (parsedEntry.SkipsFollowingPath)
             {
                 i++;
             }
 
-            if (index == '?' && worktree == '?')
+            if (parsedEntry.IsUntracked)
             {
-                continue; // untracked — not part of a staged commit
+                parsed = parsed with { HasUntrackedChanges = true };
+                continue;
             }
 
-            if (index != ' ' && index != '?')
+            if (parsedEntry.IsStaged)
             {
-                staged++; // staged (index) change
+                stagedPaths.Add(parsedEntry.Path);
+                parsed = parsed with { StagedCount = parsed.StagedCount + 1 };
             }
 
-            if (worktree != ' ' && worktree != '?')
+            if (parsedEntry.HasUnstagedTrackedChange)
             {
-                unstagedTracked = true; // a tracked file changed in the worktree but not staged
+                parsed = parsed with { HasUnstagedTrackedChanges = true };
             }
         }
 
-        return new CommitScope(staged > 0, unstagedTracked, staged);
+        return parsed with { StagedPaths = stagedPaths };
+    }
+
+    private static string ComputeStagedTreeId(string repositoryRoot, IEnumerable<string> paths)
+    {
+        var lines = new List<string>();
+        foreach (string path in paths.OrderBy(p => p, StringComparer.Ordinal))
+        {
+            ProcessRunResult blob = ProcessRunner.Run(
+                new ToolCommand("git", ["rev-parse", "--verify", $":{path}"], repositoryRoot));
+            string blobId = blob.ExitCode == 0 ? blob.StandardOutput.Trim() : "absent";
+            lines.Add($"{path}\t{blobId}");
+        }
+
+        return FileHashing.Sha256OfText(string.Join("\n", lines));
+    }
+
+    private sealed record ParsedScope(
+        bool HasUnstagedTrackedChanges = false,
+        bool HasUntrackedChanges = false,
+        int StagedCount = 0,
+        IReadOnlyList<string>? StagedPaths = null);
+
+    private sealed record PorcelainEntry(char Index, char Worktree, string Path)
+    {
+        public bool SkipsFollowingPath => Index is 'R' or 'C';
+        public bool IsUntracked => Index == '?' && Worktree == '?';
+        public bool IsStaged => Index != ' ' && Index != '?';
+        public bool HasUnstagedTrackedChange => Worktree != ' ' && Worktree != '?';
+
+        public static PorcelainEntry Parse(string entry) =>
+            new(entry[0], entry[1], entry[3..].Replace('\\', '/'));
     }
 }

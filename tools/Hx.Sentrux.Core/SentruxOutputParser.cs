@@ -27,26 +27,39 @@ public static class SentruxOutputParser
 
         bool passed = TryBool(root, "passed") ?? TryBool(root, "pass") ?? false;
         int? quality = ReadSignal(root, "quality", "qualitySignal", "quality_signal", "signal");
+        return new CheckReport(passed, quality, ReadViolations(root));
+    }
 
+    private static IReadOnlyList<string> ReadViolations(JsonElement root)
+    {
         List<string> violations = [];
         if (root.TryGetProperty("violations", out JsonElement v) && v.ValueKind == JsonValueKind.Array)
         {
             foreach (JsonElement item in v.EnumerateArray())
             {
-                if (item.ValueKind == JsonValueKind.String)
+                string? violation = FormatViolation(item);
+                if (violation is not null)
                 {
-                    violations.Add(item.GetString() ?? string.Empty);
-                }
-                else if (item.ValueKind == JsonValueKind.Object)
-                {
-                    string rule = TryString(item, "rule") ?? "rule";
-                    string message = TryString(item, "message") ?? "violation";
-                    violations.Add($"[{rule}] {message}");
+                    violations.Add(violation);
                 }
             }
         }
 
-        return new CheckReport(passed, quality, violations);
+        return violations;
+    }
+
+    private static string? FormatViolation(JsonElement item) => item.ValueKind switch
+    {
+        JsonValueKind.String => item.GetString() ?? string.Empty,
+        JsonValueKind.Object => FormatObjectViolation(item),
+        _ => null,
+    };
+
+    private static string FormatObjectViolation(JsonElement item)
+    {
+        string rule = TryString(item, "rule") ?? "rule";
+        string message = TryString(item, "message") ?? "violation";
+        return $"[{rule}] {message}";
     }
 
     private static readonly Regex QualityArrow = new(

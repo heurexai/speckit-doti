@@ -13,6 +13,8 @@ internal static class TemplateRepo
     public static string PackProject => Path.Combine(Root, "scaffold", "Hx.Scaffold.Templates.csproj");
     public static string ArchTests => Path.Combine(
         TemplateDir, "test", "HxScaffoldSample.Architecture.Tests", "ArchitectureTests.cs");
+    public static string ArchCapabilityTests => Path.Combine(
+        TemplateDir, "test", "HxScaffoldSample.Architecture.Tests", "ArchitectureCapabilityTests.cs");
     public static string ArchitectureJson => Path.Combine(TemplateDir, "rules", "architecture.json");
     public static string HygieneJson => Path.Combine(TemplateDir, "rules", "hygiene.json");
     public static string SentruxJson => Path.Combine(TemplateDir, "rules", "sentrux.json");

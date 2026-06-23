@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Hx.Doti.Core.ManagedAssets;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Doti.Core;
@@ -46,6 +47,7 @@ public static class DotiInstaller
 
         // 4. Repo-specific metadata.
         WriteMetadata(targetRepoRoot, repoName, agents);
+        ManagedAssetScanner.WriteBaseline(targetRepoRoot, DotiRenderer.BuildTargets(targetRepoRoot, agents));
 
         return new DotiInstallResult(JsonContractDefaults.SchemaVersion, render.Outcome, render.Written, copied);
     }

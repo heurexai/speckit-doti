@@ -59,7 +59,10 @@ jobs:
           foreach ($t in 'gitleaks','sentrux','gitversion') { if (Test-Path "tools/$t/bin") { Copy-Item -Recurse -Force "tools/$t/bin" "$name/tools/$t/bin" } }
           Copy-Item "publish/Hx.Scaffold.Cli.exe" "$name/${{ matrix.exe }}"
           Compress-Archive -Path "$name/*" -DestinationPath "$name.${{ matrix.ext }}" -Force
+          $hash = (Get-FileHash "$name.${{ matrix.ext }}" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $name.${{ matrix.ext }}" | Out-File -Encoding ascii -NoNewline "$name.${{ matrix.ext }}.sha256"
           "ASSET=$name.${{ matrix.ext }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "CHECKSUM=$name.${{ matrix.ext }}.sha256" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Assemble installer (tar.gz)
         if: matrix.ext == 'tar.gz'
@@ -73,9 +76,11 @@ jobs:
           cp "publish/Hx.Scaffold.Cli" "$name/${{ matrix.exe }}"
           chmod +x "$name/${{ matrix.exe }}"
           tar czf "$name.${{ matrix.ext }}" -C "$name" .
+          sha256sum "$name.${{ matrix.ext }}" > "$name.${{ matrix.ext }}.sha256"
           echo "ASSET=$name.${{ matrix.ext }}" >> "$GITHUB_ENV"
+          echo "CHECKSUM=$name.${{ matrix.ext }}.sha256" >> "$GITHUB_ENV"
 
       - name: Upload ${{ matrix.rid }} archive to the Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.ref_name }}" "${{ env.ASSET }}" --repo "${{ github.repository }}" --clobber
+        run: gh release upload "${{ github.ref_name }}" "${{ env.ASSET }}" "${{ env.CHECKSUM }}" --repo "${{ github.repository }}" --clobber

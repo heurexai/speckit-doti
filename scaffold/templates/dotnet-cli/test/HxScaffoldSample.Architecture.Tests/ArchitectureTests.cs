@@ -17,7 +17,7 @@ namespace HxScaffoldSample.Architecture.Tests;
 /// generated repo's default `dotnet test`. Code-level insecure patterns are caught separately by
 /// the .NET analyzer security rules enabled in Directory.Build.props.
 /// </summary>
-public sealed class ArchitectureTests
+public sealed partial class ArchitectureTests
 {
     private static readonly ArchUnitNET.Domain.Architecture Arch =
         new ArchLoader()
@@ -133,78 +133,4 @@ public sealed class ArchitectureTests
         Assert.True(rule.HasNoViolations(Arch));
     }
 
-    // 7. Security architecture (capability confinement / least privilege) — the domain library
-    //    must not reach for dangerous capabilities: process execution, networking, or dynamic
-    //    code generation. Those belong in the CLI or dedicated adapters, keeping the domain's
-    //    attack surface small. (Insecure code patterns are caught by the analyzer security rules.)
-    [Fact]
-    public void Domain_library_does_not_depend_on_dangerous_capabilities()
-    {
-        var dangerous = Types().That().ResideInNamespaceMatching(@"^System\.Net\.")
-            .Or().ResideInNamespaceMatching(@"^System\.Reflection\.Emit")
-            .Or().HaveFullNameMatching(@"System\.Diagnostics\.Process");
-        IArchRule rule = Types().That().ResideInNamespaceMatching(LibraryNs)
-            .Should().NotDependOnAny(dangerous);
-        Assert.True(rule.HasNoViolations(Arch));
-    }
-
-    [Fact]
-    public void Capability_namespaces_are_loaded_so_the_security_rule_is_not_vacuous()
-    {
-        // Guard against a silently-passing rule (the System.CommandLine family taught this lesson):
-        // the forbidden capability types must actually be present in the analyzed architecture.
-        Assert.Contains(Arch.Types, t => t.FullName.StartsWith("System.Net.Http", System.StringComparison.Ordinal));
-        Assert.Contains(Arch.Types, t => t.FullName.StartsWith("System.Diagnostics.Process", System.StringComparison.Ordinal));
-        Assert.Contains(Arch.Types, t => t.FullName.StartsWith("System.Reflection.Emit", System.StringComparison.Ordinal));
-    }
-
-    // 8. Output confinement (agent-first) — every command renders through the Agent host (the CliResult
-    //    envelope, JSON-first); only the Agent type writes to the console, so output stays one
-    //    machine-consumable chokepoint instead of scattered Console.Write calls.
-    [Fact]
-    public void Only_the_agent_host_writes_to_the_console()
-    {
-        IArchRule rule = Types().That().ResideInNamespaceMatching(CliNs).And().DoNotHaveName("Agent")
-            .Should().NotDependOnAny(Types().That().HaveFullNameMatching(@"^System\.Console$"));
-        Assert.True(rule.HasNoViolations(Arch));
-    }
-
-    [Fact]
-    public void Agent_host_is_the_console_chokepoint_so_output_confinement_is_not_vacuous()
-    {
-        // The capability must be present AND actually reached by the Agent host — otherwise the rule
-        // above could pass simply because nothing depends on System.Console.
-        Assert.Contains(Arch.Types, t => t.FullName == "System.Console");
-        IArchRule rule = Classes().That().HaveName("Agent")
-            .Should().DependOnAny(Types().That().HaveFullNameMatching(@"^System\.Console$"));
-        Assert.True(rule.HasNoViolations(Arch));
-    }
-
-    // 9. CLI surface confinement (Channel Independence / thin adapter) — the CLI carries no business-logic
-    //    types (*Service/*Repository/*Validator/*Calculator/*Engine/*Manager/*Scanner/*Provider); those
-    //    live in the domain library, so the CLI stays a thin channel adapter the core never depends on.
-    [Fact]
-    public void Cli_carries_no_business_logic_types()
-    {
-        IArchRule rule = Classes().That().ResideInNamespaceMatching(CliNs)
-            .Should().NotHaveNameEndingWith("Service")
-            .AndShould().NotHaveNameEndingWith("Repository")
-            .AndShould().NotHaveNameEndingWith("Validator")
-            .AndShould().NotHaveNameEndingWith("Calculator")
-            .AndShould().NotHaveNameEndingWith("Engine")
-            .AndShould().NotHaveNameEndingWith("Manager")
-            .AndShould().NotHaveNameEndingWith("Scanner")
-            .AndShould().NotHaveNameEndingWith("Provider");
-        Assert.True(rule.HasNoViolations(Arch));
-    }
-
-    [Fact]
-    public void Negative_cli_surface_confinement_is_detected()
-    {
-        // GreetingService (a *Service) lives in the library, so asserting *Service types reside in the CLI
-        // MUST report violations — proving the confinement matcher is enforced, not vacuous.
-        IArchRule wrong = Classes().That().HaveNameEndingWith("Service")
-            .Should().ResideInNamespaceMatching(CliNs);
-        Assert.False(wrong.HasNoViolations(Arch));
-    }
 }

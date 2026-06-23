@@ -23,39 +23,15 @@ public static class ScaffoldHygieneChecks
 
         foreach (ScanFile file in files)
         {
-            string extension = Path.GetExtension(file.RepoRelativePath).ToLowerInvariant();
-
-            if (policy.ShellRunnerExtensions.Contains(extension))
-            {
-                findings.Add(new HygieneFinding(
-                    HygieneFindingCategory.ShellRunner, HygieneSeverity.Error,
-                    "scaffold.shell-runner", file.RepoRelativePath, null,
-                    $"Generated shell runner '{extension}' is not allowed; runner logic must be .NET tooling."));
-                continue;
-            }
-
-            if (policy.BinaryExtensions.Contains(extension))
-            {
-                findings.Add(new HygieneFinding(
-                    HygieneFindingCategory.BinaryMaterial, HygieneSeverity.Error,
-                    "scaffold.binary-material", file.RepoRelativePath, null,
-                    $"Unexpected binary material '{extension}'; vendor binaries only with a manifest and hash."));
-                continue;
-            }
-
-            string content;
-            try
-            {
-                content = File.ReadAllText(file.ContentPath);
-            }
-            catch (IOException)
+            if (TryAddExtensionFinding(policy, file, findings))
             {
                 continue;
             }
 
-            if (content.Contains('\0'))
+            string? content = TryReadText(file.ContentPath);
+            if (content is null || content.Contains('\0'))
             {
-                continue; // binary content; extension allowlist governs deliberate binaries
+                continue;
             }
 
             ScanContent(policy, file.RepoRelativePath, content, findings);
@@ -64,10 +40,54 @@ public static class ScaffoldHygieneChecks
         return findings;
     }
 
+    private static bool TryAddExtensionFinding(HygienePolicy policy, ScanFile file, List<HygieneFinding> findings)
+    {
+        string extension = Path.GetExtension(file.RepoRelativePath).ToLowerInvariant();
+        if (policy.ShellRunnerExtensions.Contains(extension))
+        {
+            findings.Add(new HygieneFinding(
+                HygieneFindingCategory.ShellRunner, HygieneSeverity.Error,
+                "scaffold.shell-runner", file.RepoRelativePath, null,
+                $"Generated shell runner '{extension}' is not allowed; runner logic must be .NET tooling."));
+            return true;
+        }
+
+        if (!policy.BinaryExtensions.Contains(extension))
+        {
+            return false;
+        }
+
+        findings.Add(new HygieneFinding(
+            HygieneFindingCategory.BinaryMaterial, HygieneSeverity.Error,
+            "scaffold.binary-material", file.RepoRelativePath, null,
+            $"Unexpected binary material '{extension}'; vendor binaries only with a manifest and hash."));
+        return true;
+    }
+
+    private static string? TryReadText(string path)
+    {
+        try
+        {
+            return File.ReadAllText(path);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
     private static void ScanContent(HygienePolicy policy, string repoRelativePath, string content, List<HygieneFinding> findings)
     {
-        // Private key / certificate material: require a real BEGIN...END block so
-        // marker definitions in source/policy files are not self-flagged.
+        ScanPrivateKeyMarkers(policy, repoRelativePath, content, findings);
+        ScanLines(policy, repoRelativePath, content, findings);
+    }
+
+    private static void ScanPrivateKeyMarkers(
+        HygienePolicy policy,
+        string repoRelativePath,
+        string content,
+        List<HygieneFinding> findings)
+    {
         foreach (string beginMarker in policy.PrivateKeyMarkers)
         {
             string endMarker = beginMarker.Replace("BEGIN", "END");
@@ -81,37 +101,67 @@ public static class ScaffoldHygieneChecks
                 break;
             }
         }
+    }
 
+    private static void ScanLines(HygienePolicy policy, string repoRelativePath, string content, List<HygieneFinding> findings)
+    {
         string[] lines = content.Split('\n');
         for (int index = 0; index < lines.Length; index++)
         {
-            string line = lines[index];
-            int lineNumber = index + 1;
+            ScanLine(policy, repoRelativePath, lines[index], index + 1, findings);
+        }
+    }
 
-            foreach (string marker in policy.LocalPathMarkers)
-            {
-                if (line.Contains(marker, StringComparison.OrdinalIgnoreCase))
-                {
-                    findings.Add(new HygieneFinding(
-                        HygieneFindingCategory.LocalPath, HygieneSeverity.Error,
-                        "scaffold.local-path", repoRelativePath, lineNumber,
-                        $"Developer-local path marker '{marker}' is not safe for public release."));
-                }
-            }
+    private static void ScanLine(
+        HygienePolicy policy,
+        string repoRelativePath,
+        string line,
+        int lineNumber,
+        List<HygieneFinding> findings)
+    {
+        AddLocalPathFindings(policy, repoRelativePath, line, lineNumber, findings);
+        AddExternalUrlFindings(policy, repoRelativePath, line, lineNumber, findings);
+    }
 
-            foreach (Match match in UrlPattern.Matches(line))
+    private static void AddLocalPathFindings(
+        HygienePolicy policy,
+        string repoRelativePath,
+        string line,
+        int lineNumber,
+        List<HygieneFinding> findings)
+    {
+        foreach (string marker in policy.LocalPathMarkers)
+        {
+            if (line.Contains(marker, StringComparison.OrdinalIgnoreCase))
             {
-                string url = match.Value.TrimEnd('.', ',', ')', ']', '>');
-                bool allowed = policy.AllowedUrlPrefixes.Any(prefix =>
-                    url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-                if (!allowed)
-                {
-                    findings.Add(new HygieneFinding(
-                        HygieneFindingCategory.ExternalUrl, HygieneSeverity.Warning,
-                        "scaffold.external-url", repoRelativePath, lineNumber,
-                        $"External URL not in the allowlist: {url}"));
-                }
+                findings.Add(new HygieneFinding(
+                    HygieneFindingCategory.LocalPath, HygieneSeverity.Error,
+                    "scaffold.local-path", repoRelativePath, lineNumber,
+                    $"Developer-local path marker '{marker}' is not safe for public release."));
             }
         }
     }
+
+    private static void AddExternalUrlFindings(
+        HygienePolicy policy,
+        string repoRelativePath,
+        string line,
+        int lineNumber,
+        List<HygieneFinding> findings)
+    {
+        foreach (Match match in UrlPattern.Matches(line))
+        {
+            string url = match.Value.TrimEnd('.', ',', ')', ']', '>');
+            if (!UrlAllowed(policy, url))
+            {
+                findings.Add(new HygieneFinding(
+                    HygieneFindingCategory.ExternalUrl, HygieneSeverity.Warning,
+                    "scaffold.external-url", repoRelativePath, lineNumber,
+                    $"External URL not in the allowlist: {url}"));
+            }
+        }
+    }
+
+    private static bool UrlAllowed(HygienePolicy policy, string url) =>
+        policy.AllowedUrlPrefixes.Any(prefix => url.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 }

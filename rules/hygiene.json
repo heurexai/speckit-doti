@@ -23,6 +23,7 @@
   "allowedUrlPrefixes": [
     "https://github.com/",
     "https://api.github.com/",
+    "https://img.shields.io/",
     "https://learn.microsoft.com/",
     "https://www.nuget.org/",
     "https://dotnet.microsoft.com/",

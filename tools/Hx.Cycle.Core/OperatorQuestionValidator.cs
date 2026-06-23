@@ -40,12 +40,24 @@ public static class OperatorQuestionValidator
 
         for (int i = 0; i < question.Options.Count; i++)
         {
-            OperatorQuestionOption option = question.Options[i];
-            string id = string.IsNullOrWhiteSpace(option.Label) ? $"option[{i}]" : $"option '{option.Label}'";
-            if (string.IsNullOrWhiteSpace(option.Label)) { errors.Add($"{id}: label is empty"); }
-            if (option.Pros is null || option.Pros.Count == 0) { errors.Add($"{id}: no pros"); }
-            if (option.Cons is null || option.Cons.Count == 0) { errors.Add($"{id}: no cons"); }
-            if (string.IsNullOrWhiteSpace(option.Consequence)) { errors.Add($"{id}: no consequence"); }
+            ValidateOption(question.Options[i], i, errors);
+        }
+    }
+
+    private static void ValidateOption(OperatorQuestionOption option, int index, List<string> errors)
+    {
+        string id = string.IsNullOrWhiteSpace(option.Label) ? $"option[{index}]" : $"option '{option.Label}'";
+        AddIf(errors, string.IsNullOrWhiteSpace(option.Label), $"{id}: label is empty");
+        AddIf(errors, option.Pros is null || option.Pros.Count == 0, $"{id}: no pros");
+        AddIf(errors, option.Cons is null || option.Cons.Count == 0, $"{id}: no cons");
+        AddIf(errors, string.IsNullOrWhiteSpace(option.Consequence), $"{id}: no consequence");
+    }
+
+    private static void AddIf(List<string> errors, bool condition, string message)
+    {
+        if (condition)
+        {
+            errors.Add(message);
         }
     }
 

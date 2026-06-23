@@ -7,6 +7,48 @@ public static class CycleStageOutcome
 }
 
 /// <summary>
+/// A durable intent written immediately before the sanctioned <c>git commit</c> subprocess is invoked.
+/// If the process exits after Git creates the commit but before completion state is written, the cycle
+/// recovery evaluator can prove whether <c>HEAD</c> is that sanctioned commit.
+/// </summary>
+public sealed record CycleCompletionIntent(
+    int SchemaVersion,
+    string Feature,
+    string Stage,
+    string BaseRef,
+    string PreCommitHead,
+    string ChangeSetId,
+    string GateChangeSetId,
+    string MessageHash,
+    string CreatedAtUtc,
+    string? StagedTreeId = null,
+    IReadOnlyList<string>? StageProofHashes = null,
+    string? GateProofDigest = null,
+    string? RunnerIdentity = null,
+    string? ExpectedCompletionShape = null);
+
+/// <summary>
+/// A completed sanctioned cycle. The stage proofs that authorized the commit are preserved for audit, but
+/// the completion record is the terminal state: those proofs must not authorize another commit.
+/// </summary>
+public sealed record CycleCompletionRecord(
+    int SchemaVersion,
+    string Feature,
+    string Stage,
+    string BaseRef,
+    string PreCommitHead,
+    string CommitSha,
+    string ChangeSetId,
+    string GateChangeSetId,
+    string MessageHash,
+    string CompletedAtUtc,
+    string? StagedTreeId = null,
+    IReadOnlyList<string>? StageProofHashes = null,
+    string? GateProofDigest = null,
+    string? RunnerIdentity = null,
+    string? ExpectedCompletionShape = null);
+
+/// <summary>
 /// A non-forgeable record that a doti cycle stage was completed, bound to the diff at stamp time.
 /// <see cref="ChangeSetId"/> is the code-state identity (the sorted changed-path set + each
 /// path's content hash; named <c>...Id</c> rather than <c>...Identity</c> so the contracts layer
@@ -35,4 +77,6 @@ public sealed record CycleState(
     string Feature,
     string BaseRef,
     string CurrentStage,
-    IReadOnlyList<CycleStageProof> Stages);
+    IReadOnlyList<CycleStageProof> Stages,
+    CycleCompletionIntent? PendingCommit = null,
+    CycleCompletionRecord? Completion = null);

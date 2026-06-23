@@ -1,8 +1,4 @@
-using System.IO.Compression;
-using System.Security.Cryptography;
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using Hx.Runner.Core.Io;
 using Hx.Runner.Core.Repository;
 using Hx.Tooling.Contracts;
 
@@ -20,7 +16,7 @@ namespace Hx.Runner.Core.Tools;
 /// <see cref="Gitleaks.GitleaksUpdateChecker"/>'s graceful, short-timeout network use). The fetch is
 /// fetch-if-missing: an already-present executable whose hash matches is reported <c>Fetched</c> without a download.
 /// </summary>
-public static class ToolFetcher
+public static partial class ToolFetcher
 {
     /// <summary>The vendored tool manifests this scaffold provisions (relative to the repo root).</summary>
     public static readonly IReadOnlyList<string> ManifestRelativePaths =
@@ -51,111 +47,28 @@ public static class ToolFetcher
     public static ToolFetchOutcome Fetch(string manifestPath, string rid, Func<Uri, byte[]> fetchBytes, string? repoRoot = null)
     {
         repoRoot ??= ResolveRepoRoot(manifestPath);
-
-        ToolManifestDto? manifest;
         try
         {
-            manifest = JsonSerializer.Deserialize<ToolManifestDto>(File.ReadAllText(manifestPath), JsonContractSerializerOptions.Create());
-        }
-        catch (Exception ex)
-        {
-            return Failed("unknown", rid, ToolFetchFailureKind.DownloadFailed, null,
-                $"Could not read the tool manifest '{manifestPath}': {ex.Message}");
-        }
-
-        if (manifest is null)
-        {
-            return Failed("unknown", rid, ToolFetchFailureKind.DownloadFailed, null,
-                $"Tool manifest is empty: {manifestPath}");
-        }
-
-        string tool = string.IsNullOrWhiteSpace(manifest.Tool) ? "unknown" : manifest.Tool;
-        ToolAssetDto? asset = manifest.Assets?.FirstOrDefault(a =>
-            string.Equals(a.Rid, rid, StringComparison.OrdinalIgnoreCase));
-        if (asset is null)
-        {
-            return new ToolFetchOutcome(tool, rid, ToolFetchStatus.Skipped, ToolFetchFailureKind.AssetUnavailable,
-                null, $"No '{tool}' asset is mapped for host RID '{rid}'.");
-        }
-
-        if (string.IsNullOrWhiteSpace(asset.ExecutablePath) || string.IsNullOrWhiteSpace(asset.ExecutableSha256))
-        {
-            return Failed(tool, rid, ToolFetchFailureKind.DownloadFailed, asset.ExecutablePath,
-                $"The '{tool}' asset for '{rid}' is missing executablePath/executableSha256.");
-        }
-
-        string exeFullPath = RepositoryPathResolver.ResolveInside(repoRoot, asset.ExecutablePath).FullPath;
-
-        // Fetch-if-missing: an already-present executable whose hash matches needs no download.
-        if (File.Exists(exeFullPath) &&
-            HashMatches(FileHashing.Sha256OfFile(exeFullPath), asset.ExecutableSha256))
-        {
-            return new ToolFetchOutcome(tool, rid, ToolFetchStatus.Fetched, ToolFetchFailureKind.None,
-                asset.ExecutablePath, $"'{tool}' already present and verified.");
-        }
-
-        byte[] downloaded;
-        try
-        {
-            if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? url))
+            ToolManifestDto manifest = ReadManifestOrThrow(manifestPath, rid);
+            string tool = ToolName(manifest);
+            ToolAssetDto asset = SelectAssetOrThrow(manifest, tool, rid);
+            ValidateAssetOrThrow(tool, rid, asset);
+            string exeFullPath = RepositoryPathResolver.ResolveInside(repoRoot, asset.ExecutablePath).FullPath;
+            if (AlreadyVerified(exeFullPath, asset.ExecutableSha256))
             {
-                return Failed(tool, rid, ToolFetchFailureKind.DownloadFailed, asset.ExecutablePath,
-                    $"The '{tool}' asset for '{rid}' has an invalid downloadUrl.");
+                return new ToolFetchOutcome(tool, rid, ToolFetchStatus.Fetched, ToolFetchFailureKind.None,
+                    asset.ExecutablePath, $"'{tool}' already present and verified.");
             }
 
-            downloaded = fetchBytes(url);
+            byte[] downloaded = DownloadOrThrow(tool, rid, asset, fetchBytes);
+            byte[] executableBytes = BuildExecutableBytesOrThrow(tool, rid, asset, downloaded);
+            EnsureExecutableHash(tool, rid, asset, executableBytes);
+            return WriteExecutable(tool, rid, asset, exeFullPath, executableBytes);
         }
-        catch (Exception ex)
+        catch (ToolFetchFailed ex)
         {
-            return Failed(tool, rid, ToolFetchFailureKind.DownloadFailed, asset.ExecutablePath,
-                $"Download failed for '{tool}' ({rid}): {ex.Message}");
+            return ex.Outcome;
         }
-
-        // Archive present → verify its hash, then extract executableName (.zip on win, .tar.gz on linux/macOS).
-        // Else the download IS the executable (e.g. the raw sentrux binary).
-        byte[] executableBytes;
-        if (!string.IsNullOrWhiteSpace(asset.ArchiveSha256))
-        {
-            if (!HashMatches(Sha256OfBytes(downloaded), asset.ArchiveSha256))
-            {
-                return Failed(tool, rid, ToolFetchFailureKind.ArchiveHashMismatch, asset.ExecutablePath,
-                    $"Downloaded '{tool}' archive SHA-256 does not match the manifest.");
-            }
-
-            try
-            {
-                executableBytes = ExtractExecutable(downloaded, asset.ExecutableName, asset.DownloadUrl);
-            }
-            catch (Exception ex)
-            {
-                return Failed(tool, rid, ToolFetchFailureKind.DownloadFailed, asset.ExecutablePath,
-                    $"Could not extract '{asset.ExecutableName}' from the '{tool}' archive: {ex.Message}");
-            }
-        }
-        else
-        {
-            executableBytes = downloaded;
-        }
-
-        if (!HashMatches(Sha256OfBytes(executableBytes), asset.ExecutableSha256))
-        {
-            return Failed(tool, rid, ToolFetchFailureKind.ExecutableHashMismatch, asset.ExecutablePath,
-                $"Fetched '{tool}' executable SHA-256 does not match the manifest.");
-        }
-
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(exeFullPath)!);
-            File.WriteAllBytes(exeFullPath, executableBytes);
-        }
-        catch (Exception ex)
-        {
-            return Failed(tool, rid, ToolFetchFailureKind.DownloadFailed, asset.ExecutablePath,
-                $"Could not write the '{tool}' executable to '{asset.ExecutablePath}': {ex.Message}");
-        }
-
-        return new ToolFetchOutcome(tool, rid, ToolFetchStatus.Fetched, ToolFetchFailureKind.None,
-            asset.ExecutablePath, $"'{tool}' fetched and verified for '{rid}'.");
     }
 
     /// <summary>Pass when every tool is present + verified; Fail if any failed closed (a skipped RID alone does not fail).</summary>
@@ -167,54 +80,6 @@ public static class ToolFetcher
             StageOutcome.Blocked;
         return new ToolFetchResult(JsonContractDefaults.SchemaVersion, outcome, rid, outcomes);
     }
-
-    private static byte[] ExtractFromZip(byte[] archive, string executableName)
-    {
-        using var stream = new MemoryStream(archive, writable: false);
-        using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
-
-        // Match the entry by file name (the executable may sit at the archive root or under a directory).
-        ZipArchiveEntry entry = zip.Entries.FirstOrDefault(e =>
-                string.Equals(e.Name, executableName, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException($"Archive does not contain '{executableName}'.");
-
-        using Stream entryStream = entry.Open();
-        using var buffer = new MemoryStream();
-        entryStream.CopyTo(buffer);
-        return buffer.ToArray();
-    }
-
-    /// <summary>Extract <paramref name="executableName"/> from a .zip (Windows) or .tar.gz (linux/macOS), chosen by the download URL.</summary>
-    private static byte[] ExtractExecutable(byte[] archive, string executableName, string downloadUrl) =>
-        downloadUrl.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase) || downloadUrl.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase)
-            ? ExtractFromTarGz(archive, executableName)
-            : ExtractFromZip(archive, executableName);
-
-    private static byte[] ExtractFromTarGz(byte[] archive, string executableName)
-    {
-        using var stream = new MemoryStream(archive, writable: false);
-        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
-        using var tar = new System.Formats.Tar.TarReader(gzip);
-
-        // Match the entry by file name (the executable may sit at the archive root or under a directory).
-        while (tar.GetNextEntry() is { } entry)
-        {
-            if (entry.DataStream is not null &&
-                string.Equals(Path.GetFileName(entry.Name), executableName, StringComparison.OrdinalIgnoreCase))
-            {
-                using var buffer = new MemoryStream();
-                entry.DataStream.CopyTo(buffer);
-                return buffer.ToArray();
-            }
-        }
-
-        throw new InvalidOperationException($"Archive does not contain '{executableName}'.");
-    }
-
-    private static string Sha256OfBytes(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
-
-    private static bool HashMatches(string actual, string expected) =>
-        string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
 
     private static ToolFetchOutcome Failed(
         string tool, string rid, ToolFetchFailureKind kind, string? executablePath, string reason) =>
@@ -240,4 +105,9 @@ public static class ToolFetcher
         [property: JsonPropertyName("executablePath")] string ExecutablePath,
         [property: JsonPropertyName("executableSha256")] string ExecutableSha256,
         [property: JsonPropertyName("executableName")] string ExecutableName);
+
+    private sealed class ToolFetchFailed(ToolFetchOutcome outcome) : Exception
+    {
+        public ToolFetchOutcome Outcome { get; } = outcome;
+    }
 }

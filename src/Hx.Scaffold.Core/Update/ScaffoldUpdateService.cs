@@ -1,0 +1,56 @@
+using Hx.Runner.Core.Platform;
+using Hx.Scaffold.Core.Versioning;
+
+namespace Hx.Scaffold.Core.Update;
+
+public static partial class ScaffoldUpdateService
+{
+    public static ScaffoldUpdateReport Plan(ScaffoldUpdateRequest request, ScaffoldUpdateServices? services = null)
+    {
+        services ??= new ScaffoldUpdateServices();
+        string target = Path.GetFullPath(string.IsNullOrWhiteSpace(request.RepositoryRoot) ? "." : request.RepositoryRoot);
+        string gitRoot = ResolveGitRoot(target);
+        ScaffoldVersionReport version = ScaffoldVersionReporter.Report(request.RunningVersion, gitRoot);
+        string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
+        string expectedAsset = ExpectedAssetName("v*", rid);
+        var blockers = new List<string>();
+        var diagnostics = new List<ScaffoldUpdateDiagnostic>();
+        bool legacyPreVersioned = version.Target is null && version.ManagedAssets is null && IsDotiShaped(gitRoot);
+        AddManagedAssetBlockers(version, request.Force, legacyPreVersioned, blockers, diagnostics);
+        List<string> actions = InitialActions(request);
+        ReleasePlan release = ResolveReleasePlan(rid, services, actions, blockers, diagnostics);
+        expectedAsset = release.ExpectedAsset ?? expectedAsset;
+        IReadOnlyList<DesiredManagedFile> desired = release.Desired;
+        ManagedFilePlan filePlan = desired.Count > 0 ? BuildFilePlan(gitRoot, desired) : new ManagedFilePlan([], []);
+        AddDirtyPathBlockers(gitRoot, filePlan, desired.Count, blockers, diagnostics);
+        MutationResult mutation = ExecuteMutation(request, services, gitRoot, version, release.Cache, desired, blockers, diagnostics);
+        var possibleOrphans = legacyPreVersioned && desired.Count > 0
+            ? PossibleLegacyOrphans(gitRoot, desired.Select(d => d.Path).ToHashSet(StringComparer.OrdinalIgnoreCase))
+            : [];
+        return BuildReport(request, gitRoot, rid, expectedAsset, version, release, mutation, filePlan,
+            blockers, diagnostics, actions, possibleOrphans, legacyPreVersioned);
+    }
+
+    private static string ResolveGitRoot(string target)
+    {
+        Hx.Runner.Core.Process.ProcessRunResult result = Hx.Runner.Core.Process.ProcessRunner.Run(
+            new Hx.Runner.Core.Process.ToolCommand("git", ["rev-parse", "--show-toplevel"], target));
+        if (result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.StandardOutput))
+        {
+            bool dotiShaped = IsDotiShaped(target);
+            string kind = dotiShaped ? "recognizable doti-shaped target has no Git worktree recovery support" : "target is not a Git repository";
+            throw new InvalidOperationException(kind + ": " + target);
+        }
+
+        return Path.GetFullPath(result.StandardOutput.Trim());
+    }
+
+    private static string ExpectedAssetName(string tag, string rid)
+    {
+        string ext = OperatingSystem.IsWindows() ? "zip" : "tar.gz";
+        return $"speckit-doti-{tag}-{rid}.{ext}";
+    }
+
+    private static bool IsDotiShaped(string target) =>
+        Directory.Exists(Path.Combine(target, ".doti")) || Directory.Exists(Path.Combine(target, "doti"));
+}

@@ -151,34 +151,11 @@ public static class Agent
 
     private static bool TryHelp(RootCommand root, string[] args, out Command? command, out List<string>? path, out HelpMode mode)
     {
-        mode = HelpModeFromEnvironment();
         command = null;
         path = null;
-
-        var remaining = new List<string>();
-        for (int i = 0; i < args.Length; i++)
-        {
-            string token = args[i];
-            if (EqualsToken(token, "--plain-help") || EqualsToken(token, "--no-ansi-help"))
-            {
-                mode = HelpMode.Plain;
-                continue;
-            }
-
-            if (token.StartsWith("--help-mode=", StringComparison.OrdinalIgnoreCase))
-            {
-                mode = ParseHelpMode(token["--help-mode=".Length..]);
-                continue;
-            }
-
-            if (EqualsToken(token, "--help-mode") && i + 1 < args.Length)
-            {
-                mode = ParseHelpMode(args[++i]);
-                continue;
-            }
-
-            remaining.Add(token);
-        }
+        HelpArgs helpArgs = NormalizeHelpArgs(args);
+        mode = helpArgs.Mode;
+        List<string> remaining = helpArgs.Remaining;
 
         if (remaining.Count == 0)
         {
@@ -193,13 +170,57 @@ public static class Agent
             return false;
         }
 
-        List<string> pathTokens = EqualsToken(remaining[helpIndex], "help")
-            ? remaining.Skip(helpIndex + 1).Where(IsCommandToken).ToList()
-            : remaining.Take(helpIndex).Where(IsCommandToken).ToList();
+        List<string> pathTokens = HelpPathTokens(remaining, helpIndex);
         command = Resolve(root, pathTokens);
         path = PathFrom(root, command);
         return true;
     }
+
+    private static HelpArgs NormalizeHelpArgs(string[] args)
+    {
+        HelpMode mode = HelpModeFromEnvironment();
+        var remaining = new List<string>();
+        for (int i = 0; i < args.Length; i++)
+        {
+            string token = args[i];
+            if (TryConsumeHelpMode(args, ref i, token, ref mode))
+            {
+                continue;
+            }
+
+            remaining.Add(token);
+        }
+
+        return new HelpArgs(mode, remaining);
+    }
+
+    private static bool TryConsumeHelpMode(string[] args, ref int index, string token, ref HelpMode mode)
+    {
+        if (EqualsToken(token, "--plain-help") || EqualsToken(token, "--no-ansi-help"))
+        {
+            mode = HelpMode.Plain;
+            return true;
+        }
+
+        if (token.StartsWith("--help-mode=", StringComparison.OrdinalIgnoreCase))
+        {
+            mode = ParseHelpMode(token["--help-mode=".Length..]);
+            return true;
+        }
+
+        if (!EqualsToken(token, "--help-mode") || index + 1 >= args.Length)
+        {
+            return false;
+        }
+
+        mode = ParseHelpMode(args[++index]);
+        return true;
+    }
+
+    private static List<string> HelpPathTokens(List<string> remaining, int helpIndex) =>
+        EqualsToken(remaining[helpIndex], "help")
+            ? remaining.Skip(helpIndex + 1).Where(IsCommandToken).ToList()
+            : remaining.Take(helpIndex).Where(IsCommandToken).ToList();
 
     private static void WriteHelp(Command command, IReadOnlyList<string> path, HelpMode mode)
     {
@@ -351,4 +372,6 @@ public static class Agent
     private static bool IsCommandToken(string token) => !token.StartsWith("-", StringComparison.Ordinal);
 
     private static JsonNode? ToNode(object? data) => data is null ? null : JsonSerializer.SerializeToNode(data, Json);
+
+    private sealed record HelpArgs(HelpMode Mode, List<string> Remaining);
 }

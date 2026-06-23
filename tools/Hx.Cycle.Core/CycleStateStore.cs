@@ -33,6 +33,8 @@ public sealed class CycleStateStore
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         JsonSerializerOptions options = JsonContractSerializerOptions.Create();
         options.WriteIndented = true;
-        File.WriteAllText(_path, JsonSerializer.Serialize(state, options));
+        string temp = _path + ".tmp";
+        File.WriteAllText(temp, JsonSerializer.Serialize(state, options));
+        File.Move(temp, _path, overwrite: true);
     }
 }

@@ -27,64 +27,65 @@ public static class GateRunner
     public static GateProof Run(string repositoryRoot, Lane lane, Action<GateStep>? onStep = null)
     {
         var steps = new List<GateStep>();
-
-        // Record each completed step and (optionally) stream it live — the kernel's NDJSON consumer.
-        void Emit(GateStep step)
-        {
-            steps.Add(step);
-            onStep?.Invoke(step);
-        }
-
-        string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
-
-        // 1. Hygiene (lane-scoped: advisory skips, normal = changed, release = full).
+        void Emit(GateStep step) => EmitStep(steps, onStep, step);
         Emit(HygieneStep(repositoryRoot, lane));
-
-        // 2. Gitleaks verify.
-        ToolVerificationResult gitleaks = GitleaksManifestValidator.Verify(repositoryRoot, rid);
-        Emit(Step("gitleaks-verify", gitleaks.Outcome,
-            gitleaks.Verified ? "verified" : string.Join("; ", gitleaks.Problems)));
-
-        // 3. Sentrux verify.
-        SentruxPolicy policy = SentruxPolicyLoader.Load(repositoryRoot, out _);
-        ToolVerificationResult sentruxVerify = SentruxManifestValidator.Verify(repositoryRoot, rid, policy);
-        Emit(Step("sentrux-verify", sentruxVerify.Outcome,
-            sentruxVerify.Verified ? "verified" : string.Join("; ", sentruxVerify.Problems)));
-
-        // 4. Affected-test planning (selects the test set; fail-safe to full on a planner error).
+        Emit(GitleaksVerifyStep(repositoryRoot));
+        Emit(SentruxVerifyStep(repositoryRoot));
         AffectedGatePlan affected = AffectedChangeStep(repositoryRoot);
-        AffectedPlan plan = affected.Plan;
-        GateStep affectedStep = affected.Step;
-        Emit(affectedStep);
-
-        // 5. Restore + full build + lane-scoped unit tests (arch families excluded; they run next).
-        BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, plan);
+        Emit(affected.Step);
+        BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, affected.Plan);
         Emit(buildAndTest.Step);
-
-        // 5. Architecture test (per-family proof; Skipped when there is no arch project).
-        ArchitectureTestResult arch = ArchitectureTestRunner.Run(repositoryRoot);
-        Emit(Step("architecture-test", arch.Outcome,
-            $"{arch.PassedCount}/{arch.TestCount} passed; {arch.Families.Count} families"));
-
-        // 6. Skill render drift (fail closed on drift).
-        DotiRenderResult drift = DotiRenderer.Render(repositoryRoot, DotiAgentTarget.All, check: true);
-        Emit(Step("skill-drift", drift.Outcome,
-            drift.Outcome == StageOutcome.Pass ? "no drift" : "drifted: " + string.Join(", ", drift.Drifted)));
-
-        // 7. Sentrux check (fail closed if the baseline is missing/stale; never creates one).
-        SentruxCheckResult sentruxCheck = SentruxChecker.Check(repositoryRoot);
-        Emit(Step("sentrux-check", sentruxCheck.Outcome,
-            $"signal={sentruxCheck.QualitySignal}; regression={sentruxCheck.RegressionOutcome}"));
-
-        // Version calculation: required at release (Blocked if unavailable → fail closed), advisory otherwise.
+        Emit(ArchitectureStep(repositoryRoot));
+        Emit(SkillDriftStep(repositoryRoot));
+        Emit(SentruxCheckStep(repositoryRoot));
         Emit(VersionStep(repositoryRoot, lane));
-
-        // Security scan (SCA + analyzer SAST status): enforced at release, advisory elsewhere. The build
-        // already fails on vulnerable packages via NuGetAudit; this adds the explicit proof + release gate.
         Emit(SecurityStep(repositoryRoot, lane));
-
         AffectedTestProof affectedProof = CreateAffectedProof(affected, buildAndTest);
         return new GateProof(JsonContractDefaults.SchemaVersion, Aggregate(steps), steps, [], affectedProof);
+    }
+
+    private static void EmitStep(List<GateStep> steps, Action<GateStep>? onStep, GateStep step)
+    {
+        steps.Add(step);
+        onStep?.Invoke(step);
+    }
+
+    private static GateStep GitleaksVerifyStep(string repositoryRoot)
+    {
+        string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
+        ToolVerificationResult gitleaks = GitleaksManifestValidator.Verify(repositoryRoot, rid);
+        return Step("gitleaks-verify", gitleaks.Outcome,
+            gitleaks.Verified ? "verified" : string.Join("; ", gitleaks.Problems));
+    }
+
+    private static GateStep SentruxVerifyStep(string repositoryRoot)
+    {
+        string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
+        SentruxPolicy policy = SentruxPolicyLoader.Load(repositoryRoot, out _);
+        ToolVerificationResult sentruxVerify = SentruxManifestValidator.Verify(repositoryRoot, rid, policy);
+        return Step("sentrux-verify", sentruxVerify.Outcome,
+            sentruxVerify.Verified ? "verified" : string.Join("; ", sentruxVerify.Problems));
+    }
+
+    private static GateStep ArchitectureStep(string repositoryRoot)
+    {
+        ArchitectureTestResult arch = ArchitectureTestRunner.Run(repositoryRoot);
+        return Step("architecture-test", arch.Outcome,
+            $"{arch.PassedCount}/{arch.TestCount} passed; {arch.Families.Count} families");
+    }
+
+    private static GateStep SkillDriftStep(string repositoryRoot)
+    {
+        DotiRenderResult drift = DotiRenderer.Render(repositoryRoot, DotiAgentTarget.All, check: true);
+        return Step("skill-drift", drift.Outcome,
+            drift.Outcome == StageOutcome.Pass ? "no drift" : "drifted: " + string.Join(", ", drift.Drifted));
+    }
+
+    private static GateStep SentruxCheckStep(string repositoryRoot)
+    {
+        SentruxCheckResult sentruxCheck = SentruxChecker.Check(repositoryRoot);
+        return Step("sentrux-check", sentruxCheck.Outcome,
+            $"signal={sentruxCheck.QualitySignal}; regression={sentruxCheck.RegressionOutcome}");
     }
 
     /// <summary>The gate fails closed: any Fail or Blocked step fails the whole gate; Skipped advisory

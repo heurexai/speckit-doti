@@ -6,5 +6,6 @@
     <ProjectReference Include="..\..\tools\Hx.Doti.Core\Hx.Doti.Core.csproj" />
     <ProjectReference Include="..\..\tools\Hx.Runner.Core\Hx.Runner.Core.csproj" />
     <ProjectReference Include="..\..\tools\Hx.Sentrux.Core\Hx.Sentrux.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Version.Core\Hx.Version.Core.csproj" />
   </ItemGroup>
 </Project>

@@ -33,21 +33,7 @@ public static class HygieneScanner
         string rid = HostPlatformDetector.DetectCurrent().RuntimeIdentifier;
         StageOutcome outcome = StageOutcome.Pass;
 
-        ToolVerificationResult? gitleaksVerification = null;
-        if (policy.GitleaksEnabled)
-        {
-            gitleaksVerification = GitleaksManifestValidator.Verify(root, rid);
-            if (!gitleaksVerification.Verified)
-            {
-                outcome = StageOutcome.Blocked;
-                advisoryGaps.Add("Gitleaks secret scanning is unavailable (fail-closed): "
-                    + (gitleaksVerification.Message ?? string.Join("; ", gitleaksVerification.Problems)));
-            }
-        }
-        else
-        {
-            advisoryGaps.Add("Gitleaks is disabled in rules/hygiene.json; secret detection relies on scaffold checks only.");
-        }
+        ToolVerificationResult? gitleaksVerification = VerifyGitleaks(root, rid, policy, advisoryGaps, ref outcome);
 
         List<HygieneFinding> gitleaksFindings = [];
         StagedBlobMaterializer? materializer = null;
@@ -66,19 +52,7 @@ public static class HygieneScanner
                     0, skipped, gitleaksVerification, [], warnings, advisoryGaps);
             }
 
-            if (policy.GitleaksEnabled && gitleaksVerification is { Verified: true })
-            {
-                try
-                {
-                    gitleaksFindings.AddRange(RunGitleaks(root, rid, request, materializer));
-                }
-                catch (Exception ex)
-                {
-                    // Gitleaks ran but errored — fail closed rather than reporting a clean scan.
-                    outcome = StageOutcome.Blocked;
-                    advisoryGaps.Add($"Gitleaks scan failed (fail-closed): {ex.Message}");
-                }
-            }
+            AddGitleaksFindings(root, rid, request, policy, materializer, gitleaksVerification, gitleaksFindings, advisoryGaps, ref outcome);
 
             IReadOnlyList<HygieneFinding> scaffoldFindings = ScaffoldHygieneChecks.Scan(policy, scanFiles);
             List<HygieneFinding> findings = [.. scaffoldFindings, .. gitleaksFindings];
@@ -97,6 +71,58 @@ public static class HygieneScanner
         finally
         {
             materializer?.Dispose();
+        }
+    }
+
+    private static ToolVerificationResult? VerifyGitleaks(
+        string root,
+        string rid,
+        HygienePolicy policy,
+        List<string> advisoryGaps,
+        ref StageOutcome outcome)
+    {
+        if (!policy.GitleaksEnabled)
+        {
+            advisoryGaps.Add("Gitleaks is disabled in rules/hygiene.json; secret detection relies on scaffold checks only.");
+            return null;
+        }
+
+        ToolVerificationResult verification = GitleaksManifestValidator.Verify(root, rid);
+        if (!verification.Verified)
+        {
+            outcome = StageOutcome.Blocked;
+            advisoryGaps.Add("Gitleaks secret scanning is unavailable (fail-closed): "
+                + (verification.Message ?? string.Join("; ", verification.Problems)));
+        }
+
+        return verification;
+    }
+
+    private static void AddGitleaksFindings(
+        string root,
+        string rid,
+        HygieneScanRequest request,
+        HygienePolicy policy,
+        StagedBlobMaterializer? materializer,
+        ToolVerificationResult? verification,
+        List<HygieneFinding> findings,
+        List<string> advisoryGaps,
+        ref StageOutcome outcome)
+    {
+        if (!policy.GitleaksEnabled || verification is not { Verified: true })
+        {
+            return;
+        }
+
+        try
+        {
+            findings.AddRange(RunGitleaks(root, rid, request, materializer));
+        }
+        catch (Exception ex)
+        {
+            // Gitleaks ran but errored: fail closed rather than reporting a clean scan.
+            outcome = StageOutcome.Blocked;
+            advisoryGaps.Add($"Gitleaks scan failed (fail-closed): {ex.Message}");
         }
     }
 

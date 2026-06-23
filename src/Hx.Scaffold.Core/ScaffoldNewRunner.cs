@@ -1,4 +1,5 @@
 using Hx.Doti.Core;
+using Hx.Scaffold.Core.Versioning;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Scaffold.Core;
@@ -10,7 +11,11 @@ namespace Hx.Scaffold.Core;
 /// </summary>
 public static class ScaffoldNewRunner
 {
-    public static ScaffoldProof Run(ScaffoldRequest request, string sourceRepoRoot, Action<CliEvent>? onEvent = null)
+    public static ScaffoldProof Run(
+        ScaffoldRequest request,
+        string sourceRepoRoot,
+        Action<CliEvent>? onEvent = null,
+        string? scaffoldVersion = null)
     {
         // The optional callback emits one step event per phase so a human channel can render live progress;
         // it is null for agents/tests, leaving behaviour identical. The finish phases (vendor/doti/store)
@@ -42,6 +47,8 @@ public static class ScaffoldNewRunner
             .Cast<DotiAgentTarget>()
             .ToArray();
         DotiInstaller.Install(sourceRepoRoot, targetRoot, agents, request.Name);
+        ScaffoldVersionReporter.WriteStamp(targetRoot,
+            ScaffoldVersionReporter.IdentityFromVersion(scaffoldVersion ?? "0.0.0", "hx-scaffold new"));
         Emit("doti-install", "pass");
 
         // 2b. Populate the shared tool store from the vendored binaries so the generated solution resolves

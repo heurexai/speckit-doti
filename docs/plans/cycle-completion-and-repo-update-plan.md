@@ -1,0 +1,282 @@
+# Plan: Completed cycle status and existing-repo update
+
+> Spec: `docs/specs/cycle-completion-and-repo-update.md`. Complete the Doti cycle through the non-release deliverable, then stop before `/doti-release` so the operator can review the final artifact before any release tag or publication.
+
+## Technical Context
+
+The work spans five existing scaffold surfaces plus one additive managed-manifest surface:
+
+1. **Cycle completion and recovery** in `Hx.Cycle.Core`. `doti cycle stamp`, `status`, `check`, and `commit` share `CycleService`, `CycleStateStore`, `FreshnessEvaluator`, `GateProofStore`, `CommitScopeInspector`, `PrecommitGuard`, and `GateProofValidator`. The current working tree persists completed-cycle records, writes pre-commit intent, recovers completed commits, and returns an explicit recovery-needed result if completion-state persistence fails after Git creates the commit; final full-gate proof is still pending.
+2. **Gate proof provenance and bypass hardening** across `Hx.Gate.Core`, `Hx.Cycle.Core`, and `Hx.Tooling.Contracts`. The gate already persists a change-set-bound proof and recomputable affected-test hashes, but the planned feature needs stronger producer provenance, proof digest identity, execution artifact identity, staged-tree binding, final commit trailers, hook-health reporting, and external/bypass commit verdicts.
+3. **Existing-repo update** in the standalone scaffold executable (`Hx.Scaffold.Cli`). `Hx.Scaffold.Cli new` delegates to `Hx.Scaffold.Core`; `hx update`, repo-aware version reporting, older-updater handoff, dry-run, worktree backup, manifest reconciliation, and live-config preservation are implemented in the current working tree and covered by focused tests. Network-backed GitHub behavior remains release-environment dependent until release assets exist with checksums.
+4. **Managed Doti asset ownership** in `Hx.Doti.Core` and source assets under `doti/`, `.doti/`, `.agents/`, and `.claude/`. `doti install` and `doti render-skills` install and render assets; the current working tree adds a managed-asset manifest, canonical hash baseline, category-specific modification report, and source-format/canonicalizer/conflict-policy metadata.
+5. **Version and release asset identity** in `Hx.Version.Core`, packaging assets, and release manifests. `version calculate` and `version bump` exist; the current working tree adds a canonical scaffold product version stamp, repo-aware version report, target-to-latest relation in update reports, and release asset name/hash identity when a GitHub release payload installs or updates a repo.
+
+Stack and constraints: .NET source only, existing `System.CommandLine` and `CliResult` envelope, existing shared rich/plain help renderer, YamlDotNet 18.0.0 already pinned, `System.Text.Json` already used for contracts, GitVersion already vendored, no shell runners, no committed release binaries, and no release action during this cycle. Network access is explicit for `hx update`; offline gates remain offline.
+
+## Constitution Check (gate)
+
+PASS before design:
+
+- **Deterministic Ownership** - cycle recovery, update reconciliation, hash detection, version comparison, and bypass classification will be source-controlled .NET behavior, not agent convention.
+- **Bootstrap Honesty** - implemented working-tree commands are identified as implemented pending final full-gate proof; broader proof-provenance and release-lane items remain advisory until separately implemented.
+- **Template Boundary** - static template layout remains template-owned; scaffold finishing/update orchestration remains scaffold CLI/core-owned; generated skills remain rendered from `doti/core/skills.json`.
+- **Public Hygiene** - release caches and downloaded assets stay outside the repo; reports avoid committing local machine paths except repo-relative diagnostics.
+- **Cross-Platform Rule** - no PowerShell or Bash runner is added; Git operations, hashing, update, and recovery logic stay in .NET/dotnet-hosted tooling.
+- **Codified Cycle** - the design strengthens cycle stamps, `gate run`, and `doti cycle commit`; final commits remain through the sanctioned path.
+- **Engineering Discipline** - implementation must prove update/report/recovery behavior with tests and command-backed gates before claiming completion.
+- **Channel Independence** - logic lives in core libraries; CLI projects only parse options, inject adapters, and render `CliResult`.
+
+No violation, so Complexity Tracking is empty.
+
+## Research (resolve unknowns)
+
+- **Decision:** Keep update orchestration in `src/Hx.Scaffold.Core` behind a new update service, with `Hx.Scaffold.Cli` adding thin `update` and repo-aware `version` command wiring.
+- **Rationale:** The standalone scaffold executable owns `new` today and is the requested `hx.exe` surface for updating existing repos. `Hx.Scaffold.Core` already orchestrates dynamic finishing and references Doti/tooling cores.
+- **Alternatives rejected:** Put update in `Hx.Runner.Cli` (wrong user-facing executable); create shell scripts (violates Cross-Platform Rule); hand-copy assets (violates Deterministic Ownership).
+
+- **Decision:** Add a managed asset manifest to `Hx.Doti.Core` and target repo metadata under `.doti/` rather than deriving ownership from directory names at update time.
+- **Rationale:** The spec requires deterministic ownership categories, canonical identity policy, conflict policy, generated/replaced metadata classification, legacy possible-orphan reporting, and precise modified-path diagnostics.
+- **Alternatives rejected:** Filename heuristics only (unsafe for legacy repos); use Git tracked status as ownership (does not distinguish live config from managed Doti assets); agent judgment inside updater (explicitly excluded by the spec).
+
+- **Decision:** Use named canonicalization profiles: byte-exact for binary/integrity assets, RFC 8785-compatible JSON canonicalization for JSON, and parser-backed YAML representation canonicalization via YamlDotNet for YAML.
+- **Rationale:** The spec requires presentation-only whitespace/EOL changes not to count as customization for structured textual content, while structural/scalar changes must change the hash. YamlDotNet is already pinned, and RFC 8785 is the accepted JSON reference.
+- **Alternatives rejected:** Raw bytes for all textual files (false positives on formatting-only changes); ad hoc whitespace stripping (unsafe for YAML); LLM semantic comparison (not deterministic).
+
+- **Decision:** Treat non-Git doti-shaped directories as recognizable but unsupported by default, returning a no-Git-recovery diagnostic before mutation.
+- **Rationale:** The default update contract requires a backup Git worktree from committed `HEAD`; supporting non-Git mutation would create a different recovery model and is not needed for the requested existing-repo workflow.
+- **Alternatives rejected:** Allow non-Git update with `--noworktree` now (broadens scope and weakens recovery); silently treat as invalid path (hides useful migration diagnostics).
+
+- **Decision:** The default backup worktree preserves committed `HEAD` only. Dirty non-managed edits in the original checkout are reported separately, not represented as recoverable by the backup worktree.
+- **Rationale:** Git worktrees are commit/ref based. The spec now requires output to state this limit so the report does not overpromise recovery.
+- **Alternatives rejected:** Attempt to copy uncommitted edits into the backup worktree (not a Git worktree backup and risks user-code mutation); require a completely clean repo (unnecessary for non-managed user edits).
+
+- **Decision:** Older-updater handoff happens before managed-asset reconciliation and before backup-worktree creation whenever the selected compatible release is newer than the parent `hx`, the target is newer than the parent, or the installed executable may be locked.
+- **Rationale:** The newer release may define manifest/hash/update semantics the parent must not interpret, and Windows executable locking can prevent self-replacement.
+- **Alternatives rejected:** Let older parent mutate target directly (explicitly excluded); update the running executable in place (lock-prone); require manual download (fails product workflow).
+
+- **Decision:** Completed-cycle recovery uses a durable commit-completion intent plus Git evidence and converges to completed, retryable-active, or ambiguous.
+- **Rationale:** Once `git commit` created the sanctioned commit, users should not be trapped in a stale-proof loop or asked to create a second commit. Ambiguous history changes must still fail closed.
+- **Alternatives rejected:** Restamp old stages after commit (breaks proof boundary); rerun gate as primary recovery (does not prove the already-created commit); auto-reset/amend/delete commits (explicitly excluded).
+
+## Design
+
+### 1. Cycle completion record and recovery evaluator
+
+Likely files:
+
+- `tools/Hx.Cycle.Core/CycleService.cs`
+- `tools/Hx.Cycle.Core/CycleStateStore.cs`
+- `tools/Hx.Cycle.Core/FreshnessEvaluator.cs`
+- `tools/Hx.Cycle.Core/GitRefs.cs`
+- new `tools/Hx.Cycle.Core/Completion/CycleCompletionIntent.cs`
+- new `tools/Hx.Cycle.Core/Completion/CycleCompletionRecord.cs`
+- new `tools/Hx.Cycle.Core/Completion/CycleCompletionRecovery.cs`
+- `tools/Hx.Tooling.Contracts/CycleState.cs`
+- tests in `test/Hx.Runner.Tests` or a new focused cycle test file
+
+Approach:
+
+- Persist a commit-completion intent before invoking `git commit`, atomically enough to survive process termination.
+- Bind the intent to feature/stage, pre-commit `HEAD`, staged-tree identity, change-set identity, gate proof identity/digest, authorizing stage proof identities, commit message digest, and expected completed-record shape.
+- After `git commit` succeeds, write a completed-cycle record carrying commit SHA, feature/stage, proof identities, staged-tree identity, change-set identity, and completion timestamp/run id.
+- Run a shared recovery evaluator at the start of `status`, `check`, `stamp`, and `commit` so each command reaches the same completed/retryable/ambiguous result.
+- Treat repeated `commit` after a proven completed commit as idempotent completed-cycle reporting, not as another `git commit`.
+- Treat new edits after recovery as a new unstamped change set while preserving the prior completed-cycle verdict.
+
+Architecture delta: no new project. New recovery types live in `Hx.Cycle.Core`; public JSON records live in `Hx.Tooling.Contracts` only if shared outside cycle core. No `rules/architecture.json` change is expected. `.sentrux/rules.toml` remains valid because all work stays in the existing core layer.
+
+### 2. Proof provenance, staged-tree binding, and bypass classification
+
+Likely files:
+
+- `tools/Hx.Tooling.Contracts/GateProof.cs`
+- `tools/Hx.Tooling.Contracts/PersistedGateProof.cs`
+- `tools/Hx.Tooling.Contracts/AffectedTestProof.cs`
+- `tools/Hx.Gate.Core/GateRunner.cs`
+- `tools/Hx.Cycle.Core/GateProofStore.cs`
+- `tools/Hx.Cycle.Core/GateProofValidator.cs`
+- `tools/Hx.Cycle.Core/CommitScopeInspector.cs`
+- `tools/Hx.Cycle.Core/HookInstaller.cs`
+- `tools/Hx.Cycle.Core/PrecommitGuard.cs`
+- tests in `test/Hx.Runner.Tests`, `test/Hx.Impact.Tests`, and affected proof tests
+
+Approach:
+
+- Add producer provenance and a canonical accepted-field proof digest to persisted gate proof.
+- Add staged-tree identity and final trailer binding to `doti cycle commit`.
+- Expand affected-test proof execution identity so `cycle commit` can reject stale build outputs, hand-edited proof files, and direct diagnostic command transcripts.
+- Add hook-health reporting for missing/modified/installed pre-commit hook, without treating the hook as a security boundary.
+- Detect external/bypass commits when `HEAD` advances without matching completion intent, proof digest, staged-tree identity, and Doti trailers.
+- Keep direct `dotnet test`, direct impact planning, and direct hygiene commands diagnostic-only; only `gate run` writes commit-acceptable proof.
+
+Architecture delta: no new project/layer. Contracts remain lowest layer; gate/cycle/impact stay core. No rule file change is expected unless implementation introduces new projects.
+
+### 3. Canonical scaffold version identity and repo-aware version report
+
+Likely files:
+
+- `tools/Hx.Tooling.Contracts/VersionResult.cs`
+- new `tools/Hx.Tooling.Contracts/ScaffoldVersionIdentity.cs`
+- `tools/Hx.Version.Core/GitVersionTool.cs`
+- new `src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReporter.cs`
+- `tools/Hx.Scaffold.Cli/Program.cs`
+- `tools/Hx.Scaffold.Cli/ScaffoldCommands.cs`
+- packaging/release manifest files under `packaging/`
+- tests in `test/Hx.Scaffold.Tests` and CLI describe tests
+
+Approach:
+
+- Centralize normalized SemVer, release tag, source commit, build metadata, and release asset identity into one comparable identity model.
+- Record target repo version stamps under `.doti/` on `new`, `install`, and successful `update`.
+- Expose running `hx` version through `hx --version`, `describe --json`, update dry-run/report, and a repo-aware version report with `--repo <path>`.
+- Version report reuses the managed-asset hash classifier but remains strictly read-only: no worktree, cache, downloads, pruning, or file writes.
+- Treat newer target repo stamps as no-direct-mutation cases for older updaters.
+
+Architecture delta: no new project. `Hx.Scaffold.Core` may add a reference to `Hx.Version.Core`; this is an allowed within-core dependency and should be reflected in code comments if needed. No Sentrux layer change is expected.
+
+### 4. Managed asset manifest and semantic hash profiles
+
+Likely files:
+
+- new `tools/Hx.Doti.Core/ManagedAssets/ManagedAssetManifest.cs`
+- new `tools/Hx.Doti.Core/ManagedAssets/ManagedAssetScanner.cs`
+- new `tools/Hx.Doti.Core/ManagedAssets/CanonicalContentHasher.cs`
+- `tools/Hx.Doti.Core/DotiInstaller.cs`
+- `tools/Hx.Doti.Core/DotiRenderer.cs`
+- source manifest under `doti/core/managed-assets.json` or equivalent
+- target metadata under `.doti/managed-assets.json` and `.doti/scaffold-version.json`
+- tests in `test/Hx.Doti.Tests`
+
+Approach:
+
+- Define managed path entries with ownership category, canonical identity policy, update conflict policy, generated/replaced metadata classification, live-config exclusion, and legacy possible-orphan handling.
+- Record canonical managed-asset hashes after `new`, `install`, and successful `update`.
+- Recompute and classify current target paths before update or repo-aware version reporting.
+- Distinguish modified workflow templates, modified doti skills/root entrypoints, missing managed files, unmodified managed files, generated/replaced metadata, live-preserved files, and possible-orphan legacy files.
+- Use named hash profiles in recorded metadata, including profile version, source format, library/version, and canonicalization result identity.
+- Fail closed for malformed YAML/JSON, duplicate YAML/JSON keys where the profile cannot represent them deterministically, unsupported JSONC/trailing commas unless named, unsupported encodings/BOMs, unsupported numeric values, and unsupported hash schema versions.
+
+Architecture delta: `Hx.Doti.Core` adds YamlDotNet dependency. This remains in the core layer. No new Sentrux layer is needed.
+
+### 5. `hx update` orchestration, cache, handoff, worktree backup, and legacy mode
+
+Likely files:
+
+- new `src/Hx.Scaffold.Core/Update/ScaffoldUpdateService.cs`
+- new `src/Hx.Scaffold.Core/Update/ReleaseClient.cs`
+- new `src/Hx.Scaffold.Core/Update/UpdateCache.cs`
+- new `src/Hx.Scaffold.Core/Update/ReleaseAssetVerifier.cs`
+- new `src/Hx.Scaffold.Core/Update/OlderUpdaterHandoff.cs`
+- new `src/Hx.Scaffold.Core/Update/WorktreeBackup.cs`
+- new `src/Hx.Scaffold.Core/Update/ManagedAssetReconciler.cs`
+- `tools/Hx.Scaffold.Cli/Program.cs`
+- `tools/Hx.Scaffold.Cli/ScaffoldCommands.cs`
+- `errorcodes/registry.json`
+- `packaging/PUBLISHING.md` and release manifest generation inputs if checksum metadata is missing
+- tests in `test/Hx.Scaffold.Tests` using temporary Git repos
+
+Approach:
+
+- Add `hx update` with `--repo <path>`, `--dry-run`, `--force`, `--noworktree`, JSON/plain/help-mode controls, and target-root containment.
+- Default target repo to current working directory.
+- Resolve latest non-prerelease GitHub release from `heurexai/speckit-doti`; select host RID asset; verify release checksum/manifest; cache under a speckit-doti-owned temp root.
+- Reuse verified latest cache entries; prune older cached versions only after newer asset verification succeeds; never prune the payload currently executing a delegated updater.
+- Delegate to a verified temporary `hx` before mutation when the parent is older than target, the selected compatible release is newer than parent, or executable locking can apply. Pass `--repo <target>` and preserve `--dry-run`, `--force`, `--noworktree`, JSON/plain/help-mode intent.
+- Create backup Git worktree from committed `HEAD` before mutating the original checkout unless `--noworktree` is supplied. Report that the backup is not the mutation target and does not include dirty edits.
+- Refuse dirty managed planned-write collisions, including staged, unstaged, untracked, and ignored paths. Keep any dirty-path override separate from `--force`.
+- Preserve live configuration and baselines exactly, including Sentrux baselines and repo-local runtime gate state.
+- For legacy pre-versioned targets, replace/create only current manifest-managed paths, preserve live config, leave unknown old files untouched, report possible-orphan files, write new version/hash metadata after success, and include LLM follow-up sweep instructions.
+- Keep a versioned repo with broken hash metadata fail-closed by default.
+
+Architecture delta: no new project expected. `Hx.Scaffold.Core` may reference `Hx.Version.Core`, `Hx.Doti.Core`, and existing runner/tool helpers. If cache/release clients need an abstraction for network/process execution, define interfaces in `Hx.Scaffold.Core` and inject from CLI wiring without moving logic into `Hx.Scaffold.Cli`. `.sentrux/rules.toml` remains valid if no new project is added. If implementation introduces `Hx.Update.Core`, add it to `scaffold-dotnet.slnx`, `.sentrux/rules.toml` core layer paths, and document that in `rules/architecture.json`.
+
+### 6. Installed generated surfaces and docs
+
+Likely files:
+
+- `doti/core/skills.json`
+- `doti/core/templates/agent-context-template.md`
+- rendered `.doti/agent-context.md`
+- rendered `.agents/skills/doti-*`
+- rendered `.claude/skills/doti-*`
+- root `AGENTS.md` / `CLAUDE.md` if generated entrypoints need additive command availability notes
+- README/contributor docs only if they describe implemented behavior after implementation
+
+Approach:
+
+- Update source skill/context definitions only; render installed skills through `doti render-skills`.
+- Keep docs honest: implemented update/version/hash/cycle behavior may be described as current working-tree behavior after focused tests pass; release publication, broader proof-provenance, hook-health, and clean-checkout merge proof remain advisory until separately implemented and proven.
+- Do not update Sentrux baselines or live target config in generated repos.
+
+Architecture delta: no source-layer change.
+
+## CLI surface & error contract
+
+New operation: `hx update`.
+
+- **Options:** `--repo <path>`, `--dry-run`, `--force`, `--noworktree`, `--json`, shared help-mode controls.
+- **Exit classes:** Success when current/update/dry-run succeeds; Usage for invalid arguments; Validation for unsupported target state, dirty planned-write collisions, modified managed assets without `--force`, no-Git-recovery, unsupported RID, too-new target without compatible handoff, and network/latest failures in latest mode; Integrity for release/cache/executable/hash/proof mismatches; Internal for unexpected download/extract/process failures.
+- **Planned error-code registry additions:** validation update target not repository; validation update target no Git recovery; validation update dirty managed path; validation update modified templates; validation update modified skills; validation update hash metadata invalid; validation update too-new target; validation update handoff failed; validation update unsupported RID; validation update network latest unavailable; integrity update asset hash mismatch; integrity update executable hash mismatch; integrity update cache tampered; integrity managed asset hash unsupported.
+- **`describe` entry:** add `update` with all options and diagnostics in `Hx.Scaffold.Cli describe --json`.
+- **Envelope:** every result emits `CliResult` with target repo, running/delegated version, latest version, cache action, worktree/no-worktree decision, file plan or changed paths, preserved live paths, possible-orphan legacy files, diagnostics, and follow-up validation commands.
+
+New operation: repo-aware version report.
+
+- **Options:** `--repo <path>`, `--json`, shared help-mode controls.
+- **Exit classes:** Success for running-only or repo-aware report; Validation for invalid path, no version stamp, missing/corrupt hash metadata, missing managed files, unsupported hash schema.
+- **Planned error-code registry additions:** validation version target invalid; validation version stamp missing; validation version hash metadata invalid.
+- **`describe` entry:** add repo-aware version report command. Keep scalar `hx --version` terse.
+- **Envelope:** reports running `hx` identity, target repo identity when resolved, and managed-asset modification categories with repo-relative paths and hash metadata.
+
+Changed operation: `doti cycle status/check/stamp/commit`.
+
+- **Exit classes:** existing Success/Validation behavior remains; ambiguous recovery is Validation; malformed/tampered proof identity is Integrity when detected before Git mutation.
+- **Planned error-code registry additions:** validation cycle completed; validation cycle ambiguous recovery; validation cycle external bypass commit; integrity gate proof digest mismatch; integrity affected test artifact mismatch; validation hook missing or modified.
+- **`describe` entry:** update command summaries/diagnostics to distinguish diagnostic-only commands from proof-minting commands.
+- **Envelope:** completed-cycle, recoverable-completion, ambiguous-recovery, hook-health, and external/bypass verdicts appear in JSON output.
+
+## Command Availability
+
+| Area | Command | Status |
+| --- | --- | --- |
+| Restore | `dotnet restore .\scaffold-dotnet.slnx` | implemented |
+| Build | `dotnet build .\scaffold-dotnet.slnx -c Release --no-restore /m:1` | implemented; local sandbox required escalation once to write build `obj`, then `--no-build` runner commands worked |
+| Test | `dotnet test .\scaffold-dotnet.slnx -c Release --no-build /m:1` | implemented |
+| Runner describe | `dotnet run --project tools/Hx.Runner.Cli -c Debug --no-build -- describe --json` | implemented and verified during planning |
+| Cycle stamp/status/check/commit | `dotnet run --project tools/Hx.Runner.Cli -- doti cycle ... --json` | implemented; completed-cycle persistence/recovery and post-commit write-failure reporting implemented in current working tree, pending final full-gate proof |
+| Gate run | `dotnet run --project tools/Hx.Runner.Cli -- gate run --repo . --profile normal --json` | implemented; broader persisted proof provenance/digest/artifact identity remains advisory beyond the current commit-intent/trailer digest binding |
+| Impact plan | `dotnet run --project tools/Hx.Impact.Cli -- plan --repo . --base <ref> --head <ref> --json` | implemented; proof identity changes planned if needed |
+| Doti render/install | `dotnet run --project tools/Hx.Runner.Cli -- doti render-skills/install ... --json` | implemented; managed manifest/hash metadata implemented in current working tree |
+| Version calculate/bump | `dotnet run --project tools/Hx.Runner.Cli -- version calculate/bump ... --json` | implemented; canonical scaffold product identity implemented in current working tree |
+| Scaffold new | `dotnet run --project tools/Hx.Scaffold.Cli -- new ... --json` | implemented; version/hash metadata recording implemented in current working tree |
+| Scaffold update | `dotnet run --project tools/Hx.Scaffold.Cli -- update ... --json` / standalone `hx update` | implemented in current working tree with dry-run, force, noworktree, cache, handoff, worktree, live-preservation, and report metadata; GitHub latest behavior depends on published release assets/checksums |
+| Repo-aware version report | `dotnet run --project tools/Hx.Scaffold.Cli -- version ... --repo <path> --json` or equivalent | implemented in current working tree |
+| GitHub latest-release client | update-only network path | implemented in current working tree; network-enabled and not part of offline gate |
+| Release | `/doti-release`, tag, publish assets | intentionally not run in this cycle; user review comes first |
+
+## Constitution Check (after design)
+
+PASS after design:
+
+- The design keeps update/recovery/hash behavior in .NET core libraries and CLI projects thin.
+- It encodes deterministic ownership through manifests, metadata, hashes, and proof records.
+- It preserves the template boundary by rendering skills from source and treating generated files as generated.
+- It keeps network and release-cache effects outside offline gates and outside the repo.
+- It does not add shell runners or trust local hooks as security boundaries.
+- It stops before release and keeps the eventual minor release as release-lane work.
+
+## Complexity Tracking
+
+No justified constitution violations.
+
+## Risks
+
+- **Scope risk:** The feature is broad. Implement in testable vertical slices and keep planned-but-absent surfaces advisory until their slice is command-backed.
+- **Compatibility risk:** Existing target repos may have partial/legacy Doti assets. The manifest classifier must be conservative and report unknowns without deleting them.
+- **Hash false-positive risk:** YAML/JSON canonicalization must use parser-backed semantics and explicit fail-closed cases; byte-exact must remain for binary/integrity assets.
+- **Recovery false-positive risk:** Completed-cycle recovery must prove the current `HEAD` is the sanctioned commit before writing completed state; otherwise it must report ambiguous recovery.
+- **Handoff recursion risk:** Temporary updater delegation must carry recursion metadata and only re-delegate to a strictly newer compatible verified release.
+- **Worktree recovery risk:** Reports must not imply dirty edits are preserved by the backup worktree.
+- **Gate runtime risk:** Full normal/release gates may be slow or sensitive to local build servers. Use command-backed proof, isolate build output if needed, and report any gate that cannot be completed.
+- **Release boundary risk:** Do not run `version bump`, create tags, publish assets, or invoke `/doti-release` until the operator has reviewed the final deliverable.

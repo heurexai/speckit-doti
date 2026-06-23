@@ -49,7 +49,9 @@ public sealed class TemplateGoldenTests
     [Fact]
     public void Architecture_tests_define_the_structural_and_security_families()
     {
-        string src = File.ReadAllText(TemplateRepo.ArchTests);
+        string src = File.ReadAllText(TemplateRepo.ArchTests)
+            + "\n"
+            + File.ReadAllText(TemplateRepo.ArchCapabilityTests);
         foreach (string family in new[]
         {
             "Namespace dependency", "Class dependency", "Inheritance naming",

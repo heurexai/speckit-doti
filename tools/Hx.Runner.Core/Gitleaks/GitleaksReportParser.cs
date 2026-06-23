@@ -30,23 +30,25 @@ public static class GitleaksReportParser
         List<HygieneFinding> findings = [];
         foreach (JsonElement element in document.RootElement.EnumerateArray())
         {
-            string ruleId = GetString(element, "RuleID") ?? "gitleaks";
-            string description = GetString(element, "Description") ?? "Potential secret detected by Gitleaks.";
-            string file = GetString(element, "File") ?? string.Empty;
-            string? fingerprint = GetString(element, "Fingerprint");
-            int? line = GetInt(element, "StartLine");
-
-            findings.Add(new HygieneFinding(
-                HygieneFindingCategory.Secret,
-                HygieneSeverity.Error,
-                ruleId,
-                pathRemap(file.Replace('\\', '/')),
-                line,
-                $"{description} (secret value redacted)",
-                fingerprint));
+            findings.Add(ParseFinding(element, pathRemap));
         }
 
         return findings;
+    }
+
+    private static HygieneFinding ParseFinding(JsonElement element, Func<string, string> pathRemap)
+    {
+        string ruleId = GetString(element, "RuleID") ?? "gitleaks";
+        string description = GetString(element, "Description") ?? "Potential secret detected by Gitleaks.";
+        string file = GetString(element, "File") ?? string.Empty;
+        return new HygieneFinding(
+            HygieneFindingCategory.Secret,
+            HygieneSeverity.Error,
+            ruleId,
+            pathRemap(file.Replace('\\', '/')),
+            GetInt(element, "StartLine"),
+            $"{description} (secret value redacted)",
+            GetString(element, "Fingerprint"));
     }
 
     private static string? GetString(JsonElement element, string name)

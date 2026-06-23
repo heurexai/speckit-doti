@@ -50,11 +50,18 @@ public sealed class EnvelopeSchemaConformanceTests
 
     private static IEnumerable<string> Validate(JsonElement value, JsonElement schema, JsonElement root, string path)
     {
-        if (schema.TryGetProperty("$ref", out JsonElement refEl))
-        {
-            schema = Resolve(root, refEl.GetString()!);
-        }
+        JsonElement resolvedSchema = ResolveRef(schema, root);
+        foreach (string violation in ValidateType(value, resolvedSchema, path)) { yield return violation; }
+        foreach (string violation in ValidateEnum(value, resolvedSchema, path)) { yield return violation; }
+        foreach (string violation in ValidateObject(value, resolvedSchema, root, path)) { yield return violation; }
+        foreach (string violation in ValidateArray(value, resolvedSchema, root, path)) { yield return violation; }
+    }
 
+    private static JsonElement ResolveRef(JsonElement schema, JsonElement root) =>
+        schema.TryGetProperty("$ref", out JsonElement refEl) ? Resolve(root, refEl.GetString()!) : schema;
+
+    private static IEnumerable<string> ValidateType(JsonElement value, JsonElement schema, string path)
+    {
         if (schema.TryGetProperty("type", out JsonElement typeEl))
         {
             string[] allowed = typeEl.ValueKind == JsonValueKind.Array
@@ -65,24 +72,24 @@ public sealed class EnvelopeSchemaConformanceTests
                 yield return $"{path}: expected type [{string.Join("|", allowed)}] but got {value.ValueKind}";
             }
         }
+    }
 
+    private static IEnumerable<string> ValidateEnum(JsonElement value, JsonElement schema, string path)
+    {
         if (schema.TryGetProperty("enum", out JsonElement enumEl)
             && !enumEl.EnumerateArray().Any(e => JsonEquals(e, value)))
         {
             yield return $"{path}: value '{value}' not permitted by enum";
         }
+    }
 
+    private static IEnumerable<string> ValidateObject(JsonElement value, JsonElement schema, JsonElement root, string path)
+    {
         if (value.ValueKind == JsonValueKind.Object && schema.TryGetProperty("properties", out JsonElement props))
         {
-            if (schema.TryGetProperty("required", out JsonElement required))
+            foreach (string violation in ValidateRequired(value, schema, path))
             {
-                foreach (JsonElement r in required.EnumerateArray())
-                {
-                    if (!value.TryGetProperty(r.GetString()!, out _))
-                    {
-                        yield return $"{path}: missing required property '{r.GetString()}'";
-                    }
-                }
+                yield return violation;
             }
 
             bool closed = schema.TryGetProperty("additionalProperties", out JsonElement ap) && ap.ValueKind == JsonValueKind.False;
@@ -101,7 +108,26 @@ public sealed class EnvelopeSchemaConformanceTests
                 }
             }
         }
+    }
 
+    private static IEnumerable<string> ValidateRequired(JsonElement value, JsonElement schema, string path)
+    {
+        if (!schema.TryGetProperty("required", out JsonElement required))
+        {
+            yield break;
+        }
+
+        foreach (JsonElement r in required.EnumerateArray())
+        {
+            if (!value.TryGetProperty(r.GetString()!, out _))
+            {
+                yield return $"{path}: missing required property '{r.GetString()}'";
+            }
+        }
+    }
+
+    private static IEnumerable<string> ValidateArray(JsonElement value, JsonElement schema, JsonElement root, string path)
+    {
         if (value.ValueKind == JsonValueKind.Array && schema.TryGetProperty("items", out JsonElement items))
         {
             int i = 0;

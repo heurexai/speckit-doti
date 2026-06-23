@@ -275,9 +275,23 @@ Each [**Release**](https://github.com/heurexai/speckit-doti/releases) ships a st
 .\hx.exe new --name Acme.Widget --output .\Acme.Widget --company Acme --agents codex,claude
 ```
 
+Use the same standalone `hx` to inspect or update an existing doti-enabled repository:
+
+```powershell
+# report the running hx version, the target repo's installed scaffold version,
+# and exact managed workflow/skill modifications
+.\hx.exe version --repo . --json
+
+# preview the update first, then update the current repo in place
+.\hx.exe update --repo . --dry-run --json
+.\hx.exe update --repo . --json
+```
+
+`hx update` resolves the latest non-prerelease `heurexai/speckit-doti` release for the host platform, verifies the release checksum, reuses a verified temporary cache entry when possible, and creates a backup Git worktree before mutating the original checkout. Pass `--noworktree` to skip that backup or `--force` to replace modified managed Doti assets after they are reported. Live repo configuration and baselines, including Sentrux state, remain target-owned and are not replaced.
+
 Package-manager installs (after first publish): `winget install Heurex.SpeckitDoti` (Windows) and `brew install heurexai/tap/speckit-doti` (macOS/Linux) — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
 
-Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (`%LOCALAPPDATA%\Heurex\speckit-doti\tools`, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution.
+Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution.
 
 ### Build from source
 
@@ -313,6 +327,8 @@ Every command is `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `H
 | Command | What it does |
 | --- | --- |
 | `new` _(Hx.Scaffold.Cli)_ | Generate a new agent-first .NET solution and install doti |
+| `version --repo <path>` _(Hx.Scaffold.Cli)_ | Report running hx identity, target repo scaffold version, and managed Doti modification state |
+| `update [--repo <path>] [--dry-run] [--force] [--noworktree]` _(Hx.Scaffold.Cli)_ | Update an existing doti-enabled Git repo from the latest verified release while preserving live repo configuration |
 | `gate run --profile <auto\|advisory\|normal\|release>` | Run the full deterministic gate ladder → one fail-closed `GateProof` |
 | `security scan` | Package-vulnerability SCA (`dotnet list package --vulnerable`) + analyzer SAST status |
 | `architecture test` | ArchUnitNET per-family proof |

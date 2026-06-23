@@ -1,0 +1,97 @@
+using System.CommandLine;
+using Hx.Cli.Kernel;
+
+namespace Hx.Runner.Cli;
+
+internal static partial class RunnerCommandFactory
+{
+    private static void AddArchitecture(RootCommand rootCommand, CliMeta meta)
+    {
+        Command architectureCommand = new("architecture", "Architecture gate: run the rule families.");
+        Command command = new("test", "Run the repo's ArchUnitNET architecture families and emit a per-test proof.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "architecture test",
+            () => RunnerCommands.ArchitectureTest(meta, parseResult.GetValue(repo)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        architectureCommand.Subcommands.Add(command);
+        rootCommand.Subcommands.Add(architectureCommand);
+    }
+
+    private static void AddGate(RootCommand rootCommand, CliMeta meta)
+    {
+        Command gateCommand = new("gate", "Run the deterministic gate ladder and emit one aggregated proof.");
+        Command runCommand = new("run", "Run the gate ladder for a lane and emit a fail-closed GateProof.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<string> profile = new("--profile") { Description = "Lane profile: auto|advisory|normal|release.", DefaultValueFactory = _ => "auto" };
+        Option<bool> stream = new("--stream") { Description = "Stream NDJSON phase events as the ladder runs (JSON sink only).", DefaultValueFactory = _ => false };
+        Option<bool> json = CliApp.JsonOption();
+        runCommand.Options.Add(repo);
+        runCommand.Options.Add(profile);
+        runCommand.Options.Add(stream);
+        runCommand.Options.Add(json);
+        runCommand.SetAction(parseResult => CliHost.RunStreaming(meta, "gate run",
+            emit => RunnerCommands.GateRun(meta, parseResult.GetValue(repo)!,
+                parseResult.GetValue(profile)!, emit),
+            forceJson: CliApp.ForceJson(parseResult, json),
+            streamEvents: parseResult.GetValue(stream)));
+        gateCommand.Subcommands.Add(runCommand);
+        rootCommand.Subcommands.Add(gateCommand);
+    }
+
+    private static void AddVersion(RootCommand rootCommand, CliMeta meta)
+    {
+        Command versionCommand = new("version", "GitVersion-backed version calculation and operator-instructed bumps.");
+        AddVersionCalculate(versionCommand, meta);
+        AddVersionBump(versionCommand, meta);
+        rootCommand.Subcommands.Add(versionCommand);
+    }
+
+    private static void AddVersionCalculate(Command versionCommand, CliMeta meta)
+    {
+        Command command = new("calculate", "Compute the version via the vendored GitVersion CLI (fail closed if unvendored).");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "version calculate",
+            () => RunnerCommands.VersionCalculate(meta, parseResult.GetValue(repo)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        versionCommand.Subcommands.Add(command);
+    }
+
+    private static void AddVersionBump(Command versionCommand, CliMeta meta)
+    {
+        Command command = new("bump", "Record an operator-instructed major/minor bump as an annotated git tag (the sole bump surface).");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> major = new("--major") { Description = "Major bump.", DefaultValueFactory = _ => false };
+        Option<bool> minor = new("--minor") { Description = "Minor bump.", DefaultValueFactory = _ => false };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(major);
+        command.Options.Add(minor);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "version bump",
+            () => RunnerCommands.VersionBump(meta, parseResult.GetValue(repo)!,
+                parseResult.GetValue(major), parseResult.GetValue(minor)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        versionCommand.Subcommands.Add(command);
+    }
+
+    private static void AddSecurity(RootCommand rootCommand, CliMeta meta)
+    {
+        Command securityCommand = new("security", "Security gate: package-vulnerability scan + analyzer-enforced SAST status.");
+        Command command = new("scan", "Run the package-vulnerability SCA + report SAST enforcement; fail closed on findings >= the policy floor.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "security scan",
+            () => RunnerCommands.SecurityScan(meta, parseResult.GetValue(repo)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        securityCommand.Subcommands.Add(command);
+        rootCommand.Subcommands.Add(securityCommand);
+    }
+}

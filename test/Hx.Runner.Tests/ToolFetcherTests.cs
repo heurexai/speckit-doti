@@ -12,7 +12,7 @@ namespace Hx.Runner.Tests;
 /// run with NO network: the fixture builds the archive/exe bytes in-memory, computes their SHA-256, and writes
 /// a manifest whose hashes match — then asserts the fail-closed behavior on a deliberate mismatch.
 /// </summary>
-public sealed class ToolFetcherTests : IDisposable
+public sealed partial class ToolFetcherTests : IDisposable
 {
     private const string Rid = "win-x64";
     private readonly string _root = Path.Combine(Path.GetTempPath(), "hx-toolfetch-" + Guid.NewGuid().ToString("n"));
@@ -33,7 +33,7 @@ public sealed class ToolFetcherTests : IDisposable
         byte[] exeBytes = Encoding.UTF8.GetBytes("fake-gitversion-binary");
         byte[] zipBytes = ZipContaining("gitversion.exe", exeBytes);
         string manifest = WriteManifest("gitversion", "tools/gitversion/gitversion.version.json",
-            downloadUrl: "https://example.test/gitversion.zip",
+            downloadUrl: "https://github.com/heurexai/speckit-doti/releases/download/v1.0.0/gitversion.zip",
             archiveSha256: Sha256(zipBytes),
             executablePath: "tools/gitversion/bin/win-x64/gitversion.exe",
             executableSha256: Sha256(exeBytes),
@@ -54,7 +54,7 @@ public sealed class ToolFetcherTests : IDisposable
         // Sentrux-style: archiveSha256 null → the downloaded bytes ARE the executable.
         byte[] exeBytes = Encoding.UTF8.GetBytes("fake-sentrux-binary");
         string manifest = WriteManifest("sentrux", "tools/sentrux/sentrux.version.json",
-            downloadUrl: "https://example.test/sentrux.exe",
+            downloadUrl: "https://github.com/heurexai/speckit-doti/releases/download/v1.0.0/sentrux.exe",
             archiveSha256: null,
             executablePath: "tools/sentrux/bin/win-x64/sentrux.exe",
             executableSha256: Sha256(exeBytes),
@@ -73,7 +73,7 @@ public sealed class ToolFetcherTests : IDisposable
         byte[] exeBytes = Encoding.UTF8.GetBytes("fake-binary");
         byte[] zipBytes = ZipContaining("gitversion.exe", exeBytes);
         string manifest = WriteManifest("gitversion", "tools/gitversion/gitversion.version.json",
-            downloadUrl: "https://example.test/gitversion.zip",
+            downloadUrl: "https://github.com/heurexai/speckit-doti/releases/download/v1.0.0/gitversion.zip",
             archiveSha256: Sha256(Encoding.UTF8.GetBytes("a-different-archive")), // deliberately wrong
             executablePath: "tools/gitversion/bin/win-x64/gitversion.exe",
             executableSha256: Sha256(exeBytes),
@@ -92,7 +92,7 @@ public sealed class ToolFetcherTests : IDisposable
         byte[] exeBytes = Encoding.UTF8.GetBytes("fake-binary");
         byte[] zipBytes = ZipContaining("gitversion.exe", exeBytes);
         string manifest = WriteManifest("gitversion", "tools/gitversion/gitversion.version.json",
-            downloadUrl: "https://example.test/gitversion.zip",
+            downloadUrl: "https://github.com/heurexai/speckit-doti/releases/download/v1.0.0/gitversion.zip",
             archiveSha256: Sha256(zipBytes),
             executablePath: "tools/gitversion/bin/win-x64/gitversion.exe",
             executableSha256: Sha256(Encoding.UTF8.GetBytes("a-different-exe")), // deliberately wrong
@@ -103,62 +103,6 @@ public sealed class ToolFetcherTests : IDisposable
         Assert.Equal(ToolFetchStatus.Failed, outcome.Status);
         Assert.Equal(ToolFetchFailureKind.ExecutableHashMismatch, outcome.FailureKind);
         Assert.False(File.Exists(Path.Combine(_root, "tools", "gitversion", "bin", "win-x64", "gitversion.exe")));
-    }
-
-    [Fact]
-    public void UnknownRidIsSkippedNotThrown()
-    {
-        byte[] exeBytes = Encoding.UTF8.GetBytes("fake-binary");
-        byte[] zipBytes = ZipContaining("gitversion.exe", exeBytes);
-        string manifest = WriteManifest("gitversion", "tools/gitversion/gitversion.version.json",
-            downloadUrl: "https://example.test/gitversion.zip",
-            archiveSha256: Sha256(zipBytes),
-            executablePath: "tools/gitversion/bin/win-x64/gitversion.exe",
-            executableSha256: Sha256(exeBytes),
-            executableName: "gitversion.exe");
-
-        ToolFetchOutcome outcome = ToolFetcher.Fetch(manifest, "linux-arm64", _ => throw new InvalidOperationException("must not download"), _root);
-
-        Assert.Equal(ToolFetchStatus.Skipped, outcome.Status);
-        Assert.Equal(ToolFetchFailureKind.AssetUnavailable, outcome.FailureKind);
-    }
-
-    [Fact]
-    public void AlreadyPresentVerifiedExecutableIsNotReDownloaded()
-    {
-        byte[] exeBytes = Encoding.UTF8.GetBytes("fake-binary");
-        string exePath = Path.Combine(_root, "tools", "gitversion", "bin", "win-x64", "gitversion.exe");
-        Directory.CreateDirectory(Path.GetDirectoryName(exePath)!);
-        File.WriteAllBytes(exePath, exeBytes);
-
-        string manifest = WriteManifest("gitversion", "tools/gitversion/gitversion.version.json",
-            downloadUrl: "https://example.test/gitversion.zip",
-            archiveSha256: Sha256(Encoding.UTF8.GetBytes("ignored")),
-            executablePath: "tools/gitversion/bin/win-x64/gitversion.exe",
-            executableSha256: Sha256(exeBytes),
-            executableName: "gitversion.exe");
-
-        // The byte source throws: a present + verified exe must short-circuit the download.
-        ToolFetchOutcome outcome = ToolFetcher.Fetch(manifest, Rid, _ => throw new InvalidOperationException("must not download"), _root);
-
-        Assert.Equal(ToolFetchStatus.Fetched, outcome.Status);
-    }
-
-    [Fact]
-    public void DownloadFailureFailsClosedWithoutThrowing()
-    {
-        byte[] exeBytes = Encoding.UTF8.GetBytes("fake-binary");
-        string manifest = WriteManifest("sentrux", "tools/sentrux/sentrux.version.json",
-            downloadUrl: "https://example.test/sentrux.exe",
-            archiveSha256: null,
-            executablePath: "tools/sentrux/bin/win-x64/sentrux.exe",
-            executableSha256: Sha256(exeBytes),
-            executableName: "sentrux.exe");
-
-        ToolFetchOutcome outcome = ToolFetcher.Fetch(manifest, Rid, _ => throw new HttpRequestException("offline"), _root);
-
-        Assert.Equal(ToolFetchStatus.Failed, outcome.Status);
-        Assert.Equal(ToolFetchFailureKind.DownloadFailed, outcome.FailureKind);
     }
 
     private string WriteManifest(
@@ -198,42 +142,6 @@ public sealed class ToolFetcherTests : IDisposable
             ZipArchiveEntry entry = zip.CreateEntry(entryName);
             using Stream stream = entry.Open();
             stream.Write(content);
-        }
-
-        return buffer.ToArray();
-    }
-
-    [Fact]
-    public void MatchingTarGzAssetInstallsExecutable()
-    {
-        // linux/macOS assets ship as .tar.gz (not .zip); the extractor is chosen by the download URL.
-        byte[] exeBytes = Encoding.UTF8.GetBytes("fake-gitleaks-linux-binary");
-        byte[] tgzBytes = TarGzContaining("gitleaks", exeBytes);
-        string manifest = WriteManifest("gitleaks", "tools/gitleaks/gitleaks.version.json",
-            downloadUrl: "https://example.test/gitleaks_8.30.1_linux_x64.tar.gz",
-            archiveSha256: Sha256(tgzBytes),
-            executablePath: "tools/gitleaks/bin/linux-x64/gitleaks",
-            executableSha256: Sha256(exeBytes),
-            executableName: "gitleaks");
-
-        ToolFetchOutcome outcome = ToolFetcher.Fetch(manifest, Rid, _ => tgzBytes, _root);
-
-        Assert.Equal(ToolFetchStatus.Fetched, outcome.Status);
-        string installed = Path.Combine(_root, "tools", "gitleaks", "bin", "linux-x64", "gitleaks");
-        Assert.True(File.Exists(installed));
-        Assert.Equal(exeBytes, File.ReadAllBytes(installed));
-    }
-
-    private static byte[] TarGzContaining(string entryName, byte[] content)
-    {
-        using var buffer = new MemoryStream();
-        using (var gzip = new System.IO.Compression.GZipStream(buffer, System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true))
-        using (var tar = new System.Formats.Tar.TarWriter(gzip, leaveOpen: true))
-        {
-            tar.WriteEntry(new System.Formats.Tar.PaxTarEntry(System.Formats.Tar.TarEntryType.RegularFile, entryName)
-            {
-                DataStream = new MemoryStream(content),
-            });
         }
 
         return buffer.ToArray();
