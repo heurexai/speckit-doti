@@ -12,7 +12,7 @@ namespace Hx.Scaffold.Cli;
 /// repo as an Effect; a missing <c>--name</c>/<c>--output</c> is a Usage error; a generation/smoke failure is a
 /// Validation failure with the <see cref="ScaffoldProof"/> preserved in <c>data</c>.
 /// </summary>
-public static class ScaffoldCommands
+public static partial class ScaffoldCommands
 {
     public static CliResult Profile(CliMeta meta) =>
         CliResults.Ok(meta, "profile", $"Default scaffold profile: {ScaffoldBootstrap.DefaultProfile.Name}.",
@@ -38,7 +38,7 @@ public static class ScaffoldCommands
             ? CliResults.Ok(meta, "new", summary, proof,
                 effects: [new CliEffect("create", Path.GetFullPath(output), "generated + finished + smoked repo")])
             : CliResults.Fail(meta, "new", ExitClass.Validation,
-                [Diag.Of(ErrorCodes.Validation_Failed, summary)], summary, proof);
+                [Diag.Of(ErrorCodes.Validation_Failed, $"{summary} {FailureDetail(proof)}")], summary, proof);
     }
 
     public static CliResult Version(CliMeta meta, string repo)
@@ -85,4 +85,5 @@ public static class ScaffoldCommands
             summary,
             report);
     }
+
 }

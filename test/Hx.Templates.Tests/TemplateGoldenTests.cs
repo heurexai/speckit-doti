@@ -105,6 +105,11 @@ public sealed class TemplateGoldenTests
         Assert.Contains("<EnableDefaultItems>false</EnableDefaultItems>", proj);
         Assert.Contains("Include=\"templates\\**\\*\"", proj);
         Assert.Contains("<Compile Remove=\"**\\*\" />", proj);
+        Assert.Contains("<DisableGitVersionTask>true</DisableGitVersionTask>", proj);
+
+        string props = File.ReadAllText(TemplateRepo.DirectoryBuildProps);
+        Assert.Contains("Condition=\"'$(MSBuildProjectName)' != 'Hx.Scaffold.Templates'\"", props);
+        Assert.Contains("<PackageReference Include=\"GitVersion.MsBuild\"", props);
     }
 
     [Fact]

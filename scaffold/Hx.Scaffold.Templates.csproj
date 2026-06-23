@@ -20,6 +20,8 @@
     <NoDefaultExcludes>true</NoDefaultExcludes>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- Runtime scaffold generation packs this content-only project from extracted release archives that do not include .git. -->
+    <DisableGitVersionTask>true</DisableGitVersionTask>
   </PropertyGroup>
 
   <ItemGroup>

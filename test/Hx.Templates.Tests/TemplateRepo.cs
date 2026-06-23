@@ -8,6 +8,7 @@ internal static class TemplateRepo
     public static string Root { get; } = FindRoot();
 
     public static string TemplateDir => Path.Combine(Root, "scaffold", "templates", "dotnet-cli");
+    public static string DirectoryBuildProps => Path.Combine(Root, "Directory.Build.props");
     public static string TemplateConfig => Path.Combine(TemplateDir, ".template.config", "template.json");
     public static string Slnx => Path.Combine(TemplateDir, "HxScaffoldSample.slnx");
     public static string PackProject => Path.Combine(Root, "scaffold", "Hx.Scaffold.Templates.csproj");

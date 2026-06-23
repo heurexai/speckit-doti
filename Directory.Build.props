@@ -19,7 +19,8 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Hx.Scaffold.Templates'">
+    <!-- Hx.Scaffold.Templates is packed at runtime from release archives that do not include .git. -->
     <PackageReference Include="GitVersion.MsBuild" PrivateAssets="all" />
   </ItemGroup>
 </Project>

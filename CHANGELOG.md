@@ -6,6 +6,9 @@ All notable changes to speckit-doti are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Standalone release archives can now run `hx new` from the extracted payload without a `.git` checkout; the runtime template pack no longer imports GitVersion, and scaffold failures include the failing stage evidence instead of only the generic validation summary.
+
 ## [0.3.1] - 2026-06-23
 
 ### Added
