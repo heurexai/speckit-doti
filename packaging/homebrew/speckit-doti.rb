@@ -5,20 +5,20 @@
 class SpeckitDoti < Formula
   desc "Agentic .NET spec-driven development starter kit (doti workflow)"
   homepage "https://github.com/heurexai/speckit-doti"
-  version "0.2.0"
+  version "0.3.1"
   license "MIT"
 
   on_macos do
     on_arm do
-      url "https://github.com/heurexai/speckit-doti/releases/download/v0.2.0/speckit-doti-v0.2.0-osx-arm64.tar.gz"
-      sha256 "REPLACE_WITH_OSX_ARM64_ARCHIVE_SHA256"
+      url "https://github.com/heurexai/speckit-doti/releases/download/v0.3.1/speckit-doti-v0.3.1-osx-arm64.tar.gz"
+      sha256 "0864d48753855e6120d5333fae6cd18a4fae7eebff3e661943a8440915866215"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/heurexai/speckit-doti/releases/download/v0.2.0/speckit-doti-v0.2.0-linux-x64.tar.gz"
-      sha256 "REPLACE_WITH_LINUX_X64_ARCHIVE_SHA256"
+      url "https://github.com/heurexai/speckit-doti/releases/download/v0.3.1/speckit-doti-v0.3.1-linux-x64.tar.gz"
+      sha256 "71ab1c7911d3d302e544ce0a426a73d3544089dfe0b4cb1722bf08dfb00d8e99"
     end
   end
 

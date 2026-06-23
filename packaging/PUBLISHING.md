@@ -21,13 +21,21 @@ repos**. The templates here are the source of truth; publishing is a manual post
 ### Get the published archive hashes
 
 ```bash
-v=v0.2.0
+v=v0.3.1
 for a in win-x64.zip linux-x64.tar.gz osx-arm64.tar.gz; do
   f="speckit-doti-$v-$a"
   gh release download "$v" --repo heurexai/speckit-doti --pattern "$f"
   echo "$f  $(sha256sum "$f" | cut -d' ' -f1)"
 done
 ```
+
+Published v0.3.1 archive SHA-256 values:
+
+| Archive | SHA-256 |
+| --- | --- |
+| `speckit-doti-v0.3.1-win-x64.zip` | `c5edae1594453215d8b8a2f5e3bdb796b3cc9e114defdad97f7c22d11b8ce768` |
+| `speckit-doti-v0.3.1-linux-x64.tar.gz` | `71ab1c7911d3d302e544ce0a426a73d3544089dfe0b4cb1722bf08dfb00d8e99` |
+| `speckit-doti-v0.3.1-osx-arm64.tar.gz` | `0864d48753855e6120d5333fae6cd18a4fae7eebff3e661943a8440915866215` |
 
 ### winget (`microsoft/winget-pkgs`)
 

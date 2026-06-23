@@ -45,7 +45,7 @@ foreach ($t in 'gitleaks','sentrux','gitversion') { copy -Recurse -Force "tools/
 copy publish/Hx.Scaffold.Cli.exe "$layout/hx.exe"
 copy packaging/msix/AppxManifest.xml "$layout/AppxManifest.xml"
 ni -ItemType Directory -Force "$layout/Assets" | Out-Null; copy packaging/msix/Assets/* "$layout/Assets/"
-& "${env:ProgramFiles(x86)}\Windows Kits\10\bin\<sdk-version>\x64\makeappx.exe" pack /d $layout /p speckit-doti-0.2.0.msix /o
+& "${env:ProgramFiles(x86)}\Windows Kits\10\bin\<sdk-version>\x64\makeappx.exe" pack /d $layout /p speckit-doti-0.3.1.msix /o
 ```
 The MSIX bundles `hx` + its payload (template, doti, source, manifests, vendored grammars) + the win-x64
 tool binaries; `hx` resolves its payload from the package install dir (read-only — generated projects and

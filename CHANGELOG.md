@@ -6,6 +6,21 @@ All notable changes to speckit-doti are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-23
+
+### Added
+- **Existing-repo update path** — `hx version` and `hx update` now report the running toolkit, target repo scaffold stamp, and exact managed template/skill modification state; update resolves the latest GitHub Release asset, verifies checksums, uses a temporary cache, creates a backup worktree by default, and preserves live repo configuration such as Sentrux baselines.
+- **Cycle recovery hardening** — completed doti cycles now recover cleanly from post-commit completion-state failures, repeated completion is idempotent, and `doti cycle commit` re-verifies the gate proof, affected-test hashes, staged tree, and Doti trailers before accepting a commit.
+
+### Changed
+- **Version stamping is GitVersion-backed and release-clean** — all scaffold CLIs now report the public product version only (`0.3.1` for this release), without branch names, commit SHA, prerelease height, or build metadata.
+- **Release and Store packaging are version-guarded** — GitHub Release and Store workflows fetch full tag history and fail if the packaged `hx` version does not exactly match the release/MSIX version.
+- **Human help is fully shared** — root commands, command groups, and leaf-command help use the same rich/plain renderer and support ANSI-free output through `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR`.
+
+### Fixed
+- Release hygiene now scans the working tree instead of sticky git history for full-scope checks and excludes generated release/package artifacts.
+- Public docs and packaging notes avoid local-machine path markers that can trip hygiene or secret-scan heuristics.
+
 ## [0.3.0] - 2026-06-23
 
 ### Added
@@ -36,7 +51,8 @@ First tagged release — the toolkit is published as a downloadable, standalone 
 - `tools fetch` — deterministic, hash-verified provisioning of the vendored tool binaries from their pinned manifests (fail-closed on mismatch).
 - Agent-first CLI self-description (structured `<PREFIX><NNNN>` error codes, `describe`, the `CliResult` envelope) encoded into the doti workflow.
 
-[Unreleased]: https://github.com/heurexai/speckit-doti/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/heurexai/speckit-doti/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/heurexai/speckit-doti/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/heurexai/speckit-doti/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/heurexai/speckit-doti/releases/tag/v0.2.0
 [0.1.0]: https://github.com/heurexai/speckit-doti/releases/tag/v0.1.0

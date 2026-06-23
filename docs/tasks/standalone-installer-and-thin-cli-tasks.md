@@ -34,9 +34,9 @@
 
 **P4 — CI release + version tracking + README**
 
-- [ ] `T020` (FR-017) — `.github/workflows/release.yml`: on `v*` tag → `tools fetch` (acquire verified binaries) → `dotnet publish -r win-x64 --self-contained -p:PublishSingleFile=true` → assemble `speckit-doti-<ver>-win-x64.zip` → `gh release create <tag> --generate-notes` + attach archive (`permissions: contents: write`).
-- [ ] `T021` (FR-018) — `CHANGELOG.md` (Keep a Changelog) seeded with v0.1.0; baseline annotated tag `v0.1.0` (operator/release step); optional `GitVersion.yml`.
-- [ ] `T022` (FR-019) — `README.md`: install/get-started via the downloadable installer, linked to the Releases page; refresh Status.
+- [x] `T020` (FR-017) — `.github/workflows/release.yml`: on `v*` tag → `tools fetch` (acquire verified binaries) → `dotnet publish -r win-x64 --self-contained -p:PublishSingleFile=true` → assemble `speckit-doti-<ver>-win-x64.zip` → `gh release create <tag> --generate-notes` + attach archive (`permissions: contents: write`).
+- [x] `T021` (FR-018) — `CHANGELOG.md` (Keep a Changelog) seeded with v0.1.0; baseline annotated tag `v0.1.0` (operator/release step); optional `GitVersion.yml`.
+- [x] `T022` (FR-019) — `README.md`: install/get-started via the downloadable installer, linked to the Releases page; refresh Status.
 
 **Verification**
 
