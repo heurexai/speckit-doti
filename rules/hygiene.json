@@ -8,6 +8,9 @@
   "scanPaths": ["."],
   "excludePaths": [
     ".git",
+    "artifacts",
+    "publish",
+    "msix-layout",
     "bin",
     "obj",
     "tools/gitleaks/bin",
@@ -23,12 +26,19 @@
   "allowedUrlPrefixes": [
     "https://github.com/",
     "https://api.github.com/",
+    "https://keepachangelog.com/",
+    "https://semver.org/",
     "https://img.shields.io/",
+    "https://json-schema.org/",
+    "https://heurex.dev/",
     "https://learn.microsoft.com/",
+    "https://aka.ms/",
+    "https://developercertificate.org/",
     "https://www.nuget.org/",
     "https://dotnet.microsoft.com/",
     "https://archunitnet.readthedocs.io/",
     "http://json.schemastore.org/",
+    "http://schemas.microsoft.com/",
     "http://microsoft.com/schemas/"
   ],
   "localPathMarkers": [

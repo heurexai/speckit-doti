@@ -33,6 +33,10 @@ the first submission isn't made within ~3 months of reserving.
 
 ## Build the MSIX locally (for the first submission / testing)
 
+Build from the matching release tag/ref. The packaged `hx.exe --version` must exactly match the
+MSIX version prefix (for example, `0.3.1` in an MSIX identity version of `0.3.1.0`); the Store
+workflow enforces this before packing.
+
 ```powershell
 dotnet publish tools/Hx.Scaffold.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 $layout = "msix-layout"; ni -ItemType Directory -Force $layout | Out-Null

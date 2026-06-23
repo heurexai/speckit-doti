@@ -225,7 +225,7 @@ public static class HygieneScanner
             Func<string, string> remap;
             if (request.Scope == HygieneScope.All)
             {
-                command = GitleaksProcessAdapter.BuildGitScan(executable, config, root, reportPath);
+                command = GitleaksProcessAdapter.BuildDirScan(executable, config, root, reportPath);
                 remap = path => path.Replace('\\', '/');
             }
             else

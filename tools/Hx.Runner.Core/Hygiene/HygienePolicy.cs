@@ -32,18 +32,27 @@ public sealed record HygienePolicy(
             ScanPaths: ["."],
             ExcludePaths:
             [
-                ".git", "bin", "obj", "tools/gitleaks/bin", "rules/hygiene.json",
+                ".git", "artifacts", "publish", "msix-layout", "bin", "obj",
+                "tools/gitleaks/bin", "tools/sentrux/bin", "tools/sentrux/grammars",
+                "tools/gitversion/bin", "rules/hygiene.json",
                 "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs", "test/Hx.Runner.Tests/Fixtures"
             ],
             AllowedUrlPrefixes:
             [
                 "https://github.com/",
                 "https://api.github.com/",
+                "https://keepachangelog.com/",
+                "https://semver.org/",
                 "https://learn.microsoft.com/",
+                "https://aka.ms/",
+                "https://developercertificate.org/",
                 "https://www.nuget.org/",
                 "https://dotnet.microsoft.com/",
                 "https://archunitnet.readthedocs.io/",
-                "http://json.schemastore.org/"
+                "https://json-schema.org/",
+                "https://heurex.dev/",
+                "http://json.schemastore.org/",
+                "http://schemas.microsoft.com/"
             ],
             LocalPathMarkers:
             [

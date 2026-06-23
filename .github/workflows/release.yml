@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Create the GitHub Release (idempotent)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -36,6 +38,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
@@ -48,6 +52,28 @@ jobs:
 
       - name: Publish hx (self-contained, single file)
         run: dotnet publish tools/Hx.Scaffold.Cli -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+      - name: Verify hx version matches release tag (Windows)
+        if: matrix.ext == 'zip'
+        shell: pwsh
+        run: |
+          $expected = "${{ github.ref_name }}".TrimStart("v")
+          $actual = (& "publish/Hx.Scaffold.Cli.exe" --version).Trim()
+          if ($actual -ne $expected) {
+            throw "hx version '$actual' does not match release tag version '$expected'."
+          }
+
+      - name: Verify hx version matches release tag (Unix)
+        if: matrix.ext == 'tar.gz'
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${GITHUB_REF_NAME#v}"
+          actual="$(publish/Hx.Scaffold.Cli --version | tr -d '\r\n')"
+          if [ "$actual" != "$expected" ]; then
+            echo "hx version '$actual' does not match release tag version '$expected'." >&2
+            exit 1
+          fi
 
       - name: Assemble installer (Windows zip)
         if: matrix.ext == 'zip'

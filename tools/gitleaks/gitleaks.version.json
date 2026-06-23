@@ -9,7 +9,7 @@
   "checksumUrl": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt",
   "checksumSha256": null,
   "configPath": "tools/gitleaks/config/gitleaks.toml",
-  "configSha256": "7095646a6896c27b4a43db308281e3277955acf588e78228ececd7aafc895b2a",
+  "configSha256": "68ccdbec96a34fec751e798bda1eae5a1c22485401892ad8414b8c150fc30ab2",
   "vendoredAt": "2026-06-17",
   "updateChannel": "stable",
   "assets": [

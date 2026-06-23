@@ -19,6 +19,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
@@ -31,6 +33,15 @@ jobs:
 
       - name: Publish hx (self-contained, single file)
         run: dotnet publish tools/Hx.Scaffold.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+      - name: Verify hx version matches MSIX version
+        shell: pwsh
+        run: |
+          $expected = "${{ inputs.version }}"
+          $actual = (& "publish/Hx.Scaffold.Cli.exe" --version).Trim()
+          if ($actual -ne $expected) {
+            throw "hx version '$actual' does not match MSIX version '$expected'. Run this workflow from the matching release tag/ref."
+          }
 
       - name: Assemble MSIX layout
         shell: pwsh

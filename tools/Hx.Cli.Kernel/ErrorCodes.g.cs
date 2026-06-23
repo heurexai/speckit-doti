@@ -48,6 +48,6 @@ public static class ErrorCodes
         new("ITG0004", "integrity", "ITG", 4, Severity.Error, ExitClass.Integrity, "integrity.tool-store-hash-mismatch",
             "A shared-store tool binary's SHA-256 does not match the manifest.", "Do not use the binary; run `doti tools update` to re-populate the store from a verified source."),
         new("INT0003", "internal", "INT", 3, Severity.Error, ExitClass.Internal, "internal.tool-store-populate-failed",
-            "Populating the shared tool store failed.", "Check disk space and permissions for the store location (HX_TOOL_STORE or %LOCALAPPDATA%), then retry."),
+            "Populating the shared tool store failed.", "Check disk space and permissions for the configured tool-store location, then retry."),
     ];
 }

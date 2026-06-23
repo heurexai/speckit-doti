@@ -8,7 +8,7 @@ namespace Hx.Runner.Core.Tools;
 /// The shared, versioned, RID-keyed tool store. Vendored tool binaries live here ONCE per machine/user
 /// instead of being copied into every generated solution. Layout:
 /// <c>&lt;root&gt;/&lt;tool&gt;/&lt;version&gt;/&lt;rid&gt;/&lt;executableName&gt;</c>. The root is per-user
-/// (<c>%LOCALAPPDATA%/Heurex/speckit-doti/tools</c> on Windows; the XDG data dir elsewhere) and can be
+/// (Windows per-user data folder or the XDG data dir elsewhere) and can be
 /// overridden with the <c>HX_TOOL_STORE</c> environment variable (machine-global / CI). Installs are
 /// additive and recorded in a <c>.store-manifest.json</c> index. Writes are serialized in-process and
 /// published atomically (temp file + move), so a concurrent reader never sees a partial index.

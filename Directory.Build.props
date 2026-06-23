@@ -12,9 +12,14 @@
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CI)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GitVersion.MsBuild" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

@@ -113,8 +113,7 @@ public static partial class GitVersionTool
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
         string majorMinorPatch = ReadString(root, "MajorMinorPatch") ?? "0.0.0";
-        string semVer = ReadString(root, "SemVer") ?? majorMinorPatch;
-        return new VersionResult(semVer, "patch", $"gitversion {toolVersion}");
+        return new VersionResult(majorMinorPatch, "patch", $"gitversion {toolVersion}");
     }
 
     private static string? ReadString(JsonElement root, string name)

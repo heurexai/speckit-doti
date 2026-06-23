@@ -99,7 +99,7 @@ A user can download **one versioned installer**, run it, and start a new agentic
 
 (Reasonable defaults chosen where the brief was silent — override any.)
 
-- **Store location**: per-user (`%LOCALAPPDATA%\Heurex\speckit-doti\tools` on Windows; XDG data dir elsewhere) with an `HX_TOOL_STORE` env override for a machine-global/CI store. Per-user avoids elevation; the gate and installer MUST honor the same override.
+- **Store location**: per-user data directory on Windows and the XDG data directory elsewhere, with an `HX_TOOL_STORE` env override for a machine-global/CI store. Per-user avoids elevation; the gate and installer MUST honor the same override.
 - **Code-signing**: the v0.1.0 installer ships **unsigned** with a documented SmartScreen/AV note; Authenticode signing is deferred to a later release once a certificate is provisioned.
 - **PATH/system**: the installer is **download-and-run** (extract + invoke); it does **not** modify the user's PATH or system settings. A PATH shim is a later opt-in.
 - **Template carriage**: the installer embeds a **prebuilt `Hx.Scaffold.Templates` nupkg** (no runtime `dotnet pack`); generation still requires the .NET SDK + git on PATH for `dotnet new` / build / `git init` (the installer self-contains acquisition, not the dev toolchain).

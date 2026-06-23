@@ -17,8 +17,8 @@ not "phone home."
 The software runs entirely on your local machine. It:
 
 - creates and modifies files in the project directory you specify;
-- stores downloaded developer-tool binaries in a local cache (for example,
-  `%LOCALAPPDATA%\Heurex\speckit-doti` on Windows, or the platform's user data directory);
+- stores downloaded developer-tool binaries in the platform's per-user data directory
+  (or another directory you explicitly configure);
 - invokes tools you already have (the .NET SDK, Git) to build and check your code.
 
 None of this information is sent anywhere by the software.
