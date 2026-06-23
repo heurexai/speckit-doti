@@ -1,5 +1,3 @@
-using Hx.Doti.Core;
-using Hx.Scaffold.Core.Versioning;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Scaffold.Core;
@@ -41,14 +39,7 @@ public static class ScaffoldNewRunner
         Emit("vendor-tooling", "pass");
 
         Emit("doti-install", "running");
-        DotiAgentTarget[] agents = request.Agents
-            .Select(DotiAgentTarget.FromKey)
-            .Where(a => a is not null)
-            .Cast<DotiAgentTarget>()
-            .ToArray();
-        DotiInstaller.Install(sourceRepoRoot, targetRoot, agents, request.Name);
-        ScaffoldVersionReporter.WriteStamp(targetRoot,
-            ScaffoldVersionReporter.IdentityFromVersion(scaffoldVersion ?? "0.0.0", "hx-scaffold new"));
+        ScaffoldDotiInstaller.Install(sourceRepoRoot, targetRoot, request, scaffoldVersion);
         Emit("doti-install", "pass");
 
         // 2b. Populate the shared tool store from the vendored binaries so the generated solution resolves

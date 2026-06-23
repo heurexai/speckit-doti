@@ -264,7 +264,7 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 
 ### Install the released toolkit
 
-Current release: [**v0.4.0**](https://github.com/heurexai/speckit-doti/releases/tag/v0.4.0).
+Current release: [**v0.5.0**](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0).
 
 Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) ships a standalone installer per platform — **win-x64** (`.zip`), **linux-x64**, and **osx-arm64** (`.tar.gz`). Download the archive for your platform, extract it, and run the bundled `hx` from any directory:
 
@@ -364,7 +364,7 @@ The gate never creates a Sentrux baseline, and persists its proof so `doti cycle
 
 ## Status
 
-Current release: [v0.4.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.4.0). GitHub CI is green on Windows, Linux, and macOS, and the release workflow publishes win-x64, linux-x64, and osx-arm64 archives with matching `.sha256` files. The deterministic release gate remains command-backed and fail-closed; the local release proof for v0.4.0 passed on win-x64 with full tests, hygiene, version calculation, Sentrux, and security scan.
+Current release: [v0.5.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0). The release workflow publishes win-x64, linux-x64, and osx-arm64 archives with matching `.sha256` files. The deterministic release gate remains command-backed and fail-closed; the local release proof for v0.5.0 passed on win-x64 with full tests, hygiene, version calculation, Sentrux, and security scan.
 
 The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary (including GitVersion and Sentrux `v0.5.11`) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with a working GitVersion plus Gitleaks and Sentrux without a manual step.
 

@@ -21,7 +21,7 @@ repos**. The templates here are the source of truth; publishing is a manual post
 ### Get the published archive hashes
 
 ```bash
-v=v0.4.0
+v=v0.5.0
 for a in win-x64.zip linux-x64.tar.gz osx-arm64.tar.gz; do
   f="speckit-doti-$v-$a"
   gh release download "$v" --repo heurexai/speckit-doti --pattern "$f"
