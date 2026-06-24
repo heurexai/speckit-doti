@@ -9,7 +9,7 @@ public sealed partial class CycleService
         RecoveryEvaluation recovery = RecoverStateIfNeeded();
         CycleState state = recovery.State
             ?? throw new InvalidOperationException(
-                $"No cycle state at {CycleStateStore.RelativePath}; run `doti cycle stamp --stage <id> --feature <slug>` first.");
+                $"No cycle state at {CycleStateStore.RelativePath}; run `doti cycle stamp --stage <id> --feature <NNN-slug>` first.");
 
         if (TryCompletedClean(state, out CycleCompletionRecord? completion))
         {

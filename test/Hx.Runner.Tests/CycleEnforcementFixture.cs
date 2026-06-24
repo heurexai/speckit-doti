@@ -117,9 +117,9 @@ public sealed partial class CycleEnforcementTests
     private static void PrepareDocsOnlyCycle(string dir, CycleService service)
     {
         Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
-        File.WriteAllText(Path.Combine(dir, "docs", "specs", "f.md"), "spec body");
-        Git(dir, "add", "docs/specs/f.md");
-        service.Stamp("specify", "f", null);
+        File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-f.md"), "spec body");
+        Git(dir, "add", "docs/specs/001-f.md");
+        service.Stamp("specify", "001-f", null);
         service.Stamp("drift-review", null, null);
         WritePassingGateProofForCurrentDiff(dir);
     }

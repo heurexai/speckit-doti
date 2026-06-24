@@ -113,10 +113,24 @@ public static partial class ScaffoldUpdateService
     private static string LegacyFollowUpInstruction() =>
         "Legacy pre-versioned Doti assets were updated conservatively. Ask an LLM agent to review untouched possible-orphan paths and make repo-specific cleanup through the normal doti workflow before committing.";
 
-    private static IReadOnlyList<string> FollowUps(string? legacyFollowUp) =>
-        legacyFollowUp is null
-            ? ["hx version --repo <target> --json", "hx update --repo <target> --dry-run --json"]
-            : ["hx version --repo <target> --json", "hx update --repo <target> --dry-run --json", legacyFollowUp];
+    private static string NumberedSpecUpgradeFollowUpInstruction() =>
+        "After update, review project-owned feature docs: leave implemented/completed legacy specs unchanged; migrate any open, unimplemented unnumbered spec to the new NNN-short-name slug (rename matching spec/plan/tasks artifacts and re-stamp specify) before continuing; create all subsequent specs with numbered slugs.";
+
+    private static IReadOnlyList<string> FollowUps(string? legacyFollowUp)
+    {
+        var followUps = new List<string>
+        {
+            "hx version --repo <target> --json",
+            "hx update --repo <target> --dry-run --json",
+            NumberedSpecUpgradeFollowUpInstruction(),
+        };
+        if (legacyFollowUp is not null)
+        {
+            followUps.Add(legacyFollowUp);
+        }
+
+        return followUps;
+    }
 
     private static ScaffoldHookReport ToHookReport(DotiHookInspection inspection, string? action = null) =>
         new(

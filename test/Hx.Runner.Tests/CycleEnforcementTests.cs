@@ -142,10 +142,33 @@ public sealed partial class CycleEnforcementTests
             var service = new CycleService(dir);
 
             InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-                () => service.Stamp("drift-review", "f", null));
+                () => service.Stamp("drift-review", "001-f", null));
 
             Assert.Contains("prerequisites are not all fresh", ex.Message);
             Assert.Contains("specify: missing", ex.Message);
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
+    public void Stamp_FailsClosed_WhenInitialFeatureSlugIsNotNumbered()
+    {
+        string dir = InitRepo();
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "not-numbered.md"), "spec body");
+
+            var service = new CycleService(dir);
+
+            CycleInputException ex = Assert.Throws<CycleInputException>(
+                () => service.Stamp("specify", "not-numbered", null));
+
+            Assert.Contains("Feature slug 'not-numbered' is not numbered", ex.Message);
+            Assert.Contains("NNN-short-name", ex.Message);
         }
         finally
         {
@@ -160,10 +183,10 @@ public sealed partial class CycleEnforcementTests
         try
         {
             Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
-            File.WriteAllText(Path.Combine(dir, "docs", "specs", "f.md"), "spec body");
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-f.md"), "spec body");
 
             var service = new CycleService(dir);
-            service.Stamp("specify", "f", null); // cycle-state now exists; only specify is stamped
+            service.Stamp("specify", "001-f", null); // cycle-state now exists; only specify is stamped
 
             CycleCommitResult result = service.Commit("a message");
             Assert.False(result.Committed);

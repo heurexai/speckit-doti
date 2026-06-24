@@ -26,6 +26,8 @@ public sealed partial class ScaffoldCommandsTests
             Assert.NotNull(report.Hook);
             Assert.Equal(HookInstaller.VerdictMissing, report.Hook.Verdict);
             Assert.Contains(report.PlannedActions, a => a.Contains("install the Doti insurance", StringComparison.Ordinal));
+            Assert.Contains(report.FollowUpCommands, f => f.Contains("open, unimplemented unnumbered spec", StringComparison.Ordinal));
+            Assert.Contains(report.FollowUpCommands, f => f.Contains("implemented/completed legacy specs unchanged", StringComparison.Ordinal));
             Assert.Empty(report.Blockers);
         }
         finally

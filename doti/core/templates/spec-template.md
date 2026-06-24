@@ -1,6 +1,6 @@
 # Specification Template
 
-> WHAT and WHY only — defer mechanism (projects, APIs, code) to the plan. Requirements use stable `FR-###` / `SC-###` IDs so `/doti-analyze` can map them to tasks. Omit an inapplicable section entirely (no "N/A"). Flag genuine unknowns inline with a `[NEEDS CLARIFICATION]` marker (state the specific question after the colon) — at most 3, prioritised scope > security/privacy > UX > technical.
+> WHAT and WHY only — defer mechanism (projects, APIs, code) to the plan. Name new and open/unimplemented legacy specs with a Spec Kit-style numbered feature slug (`docs/specs/NNN-short-name.md`, e.g. `docs/specs/001-numbered-specs.md`) so specs sort in workflow order; use that same full slug for the cycle `--feature`. Leave implemented/completed legacy specs on their existing historical filenames. Requirements use stable `FR-###` / `SC-###` IDs so `/doti-analyze` can map them to tasks. Omit an inapplicable section entirely (no "N/A"). Flag genuine unknowns inline with a `[NEEDS CLARIFICATION]` marker (state the specific question after the colon) — at most 3, prioritised scope > security/privacy > UX > technical.
 
 ## Goal
 

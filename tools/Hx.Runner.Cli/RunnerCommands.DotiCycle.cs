@@ -13,11 +13,27 @@ public static partial class RunnerCommands
             return Usage(meta, "doti cycle stamp", "--stage is required.");
         }
 
-        CycleState state = new CycleService(repo).Stamp(
-            stage,
-            string.IsNullOrWhiteSpace(feature) ? null : feature,
-            string.IsNullOrWhiteSpace(baseRef) ? null : baseRef);
-        return CliResults.Ok(meta, "doti cycle stamp", $"Stamped stage '{stage}'.", state);
+        try
+        {
+            CycleState state = new CycleService(repo).Stamp(
+                stage,
+                string.IsNullOrWhiteSpace(feature) ? null : feature,
+                string.IsNullOrWhiteSpace(baseRef) ? null : baseRef);
+            return CliResults.Ok(meta, "doti cycle stamp", $"Stamped stage '{stage}'.", state);
+        }
+        catch (CycleInputException ex)
+        {
+            return CliResults.Fail(meta, "doti cycle stamp", ExitClass.Usage,
+                [Diag.Of(ErrorCodes.Usage_InvalidArguments, ex.Message, target: "--feature")],
+                "Invalid cycle feature slug.",
+                nextActions:
+                [
+                    new CliNextAction(
+                        "Use a numbered feature slug",
+                        "Doti specs sort chronologically by the Spec Kit-style numeric prefix.",
+                        "doti cycle stamp --stage specify --feature 001-my-feature"),
+                ]);
+        }
     }
 
     public static CliResult CycleStatus(CliMeta meta, string repo) =>

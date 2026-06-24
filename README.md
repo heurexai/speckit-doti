@@ -199,7 +199,7 @@ We kept what makes Spec Kit good — the spec-first sequence, clarification befo
 
 > **Constitution (not a command).** doti keeps project principles in `doti/core/memory/constitution.md`, referenced by the plan and analyze stages. _Spec Kit equivalent:_ `/speckit.constitution` — doti's is a static, version-controlled document instead of a generative command, so the principles are a stable input rather than something regenerated each run.
 
-1. **`/doti-specify`** — Author the feature spec → `docs/specs/{feature}.md`.
+1. **`/doti-specify`** — Author the numbered feature spec → `docs/specs/{NNN-feature}.md` (for example `docs/specs/001-numbered-specs.md`; use the same full `NNN-feature` slug for cycle state, plan, and tasks).
    _Spec Kit:_ `/speckit.specify`. Same role; doti hash-stamps the stage so later stages can detect if the spec shifted underneath them.
 
 2. **`/doti-clarify`** — Resolve ambiguities by asking blocking questions one at a time, folding each answer into `## Clarifications`.
@@ -290,6 +290,8 @@ Use the same standalone `hx` to inspect or update an existing doti-enabled repos
 ```
 
 `hx update` resolves the latest non-prerelease `heurexai/speckit-doti` release for the host platform, verifies the release checksum, reuses a verified temporary cache entry when possible, and creates a backup Git worktree before mutating the original checkout. Pass `--noworktree` to skip that backup or `--force` to replace modified managed Doti assets after they are reported. Live repo configuration and baselines, including Sentrux state, remain target-owned and are not replaced. Git targets also report hook health and automatically install or refresh the Doti insurance pre-commit hook after a successful update; an existing non-Doti `pre-commit` hook is a hard blocker and is never overwritten by `--force`.
+
+When updating a repo that already has doti v0.5 installed, `hx update` replaces managed Doti/scaffold assets only; project-owned feature docs are not silently renamed. Leave implemented or completed historical specs on their existing filenames. If an open, unimplemented legacy spec is still unnumbered, migrate it before continuing: choose the next `NNN-` prefix, rename the matching `docs/specs`, `docs/plans`, and `docs/tasks` artifacts to the same numbered slug, then re-stamp `specify` with that `NNN-short-name`. All subsequent new specs use the numbered format.
 
 Package-manager manifest templates are prepared under `packaging/`; publishing them still requires the released archive hashes and external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
 

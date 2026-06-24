@@ -76,13 +76,13 @@ public sealed class CycleTests
             var store = new CycleStateStore(dir);
             Assert.Null(store.Read());
 
-            var state = new CycleState(1, "phase-14-doti-cycle-state", "dev", "specify",
+            var state = new CycleState(1, "001-doti-cycle-state", "dev", "specify",
                 [new CycleStageProof("specify", CycleStageOutcome.Stamped, "identity-1", ["hash-a"], "abc123")]);
             store.Write(state);
 
             CycleState? read = store.Read();
             Assert.NotNull(read);
-            Assert.Equal("phase-14-doti-cycle-state", read!.Feature);
+            Assert.Equal("001-doti-cycle-state", read!.Feature);
             Assert.Equal("specify", read.CurrentStage);
             Assert.Single(read.Stages);
             Assert.Equal("identity-1", read.Stages[0].ChangeSetId);
@@ -104,18 +104,18 @@ public sealed class CycleTests
             StageModel model = StageModel.Load(wf);
 
             Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
-            string artifact = Path.Combine(dir, "docs", "specs", "phase-14.md");
+            string artifact = Path.Combine(dir, "docs", "specs", "001-phase-14.md");
             File.WriteAllText(artifact, "spec body");
             string artifactHash = FileHashing.Sha256OfFile(artifact);
 
             var proof = new CycleStageProof("specify", CycleStageOutcome.Stamped, "ID", [artifactHash], null);
             var evaluator = new FreshnessEvaluator(dir, model);
 
-            Assert.Equal(StageFreshness.Fresh, evaluator.Evaluate(proof, "phase-14", "ID").Freshness);
-            Assert.Equal(StageFreshness.Stale, evaluator.Evaluate(proof, "phase-14", "DIFFERENT").Freshness); // diff moved
+            Assert.Equal(StageFreshness.Fresh, evaluator.Evaluate(proof, "001-phase-14", "ID").Freshness);
+            Assert.Equal(StageFreshness.Stale, evaluator.Evaluate(proof, "001-phase-14", "DIFFERENT").Freshness); // diff moved
 
             File.WriteAllText(artifact, "spec body CHANGED");
-            Assert.Equal(StageFreshness.Stale, evaluator.Evaluate(proof, "phase-14", "ID").Freshness); // artifact changed
+            Assert.Equal(StageFreshness.Stale, evaluator.Evaluate(proof, "001-phase-14", "ID").Freshness); // artifact changed
         }
         finally
         {

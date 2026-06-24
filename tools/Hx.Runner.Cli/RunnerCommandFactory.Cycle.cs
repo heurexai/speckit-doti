@@ -20,7 +20,7 @@ internal static partial class RunnerCommandFactory
     {
         Command command = new("stamp", "Record a stage's diff-bound proof and advance the cycle state.");
         Option<string> stage = new("--stage") { Description = "Stage id (specify, clarify, plan, tasks, analyze, arch-review, implement, drift-review, commit, release).", DefaultValueFactory = _ => "" };
-        Option<string> feature = new("--feature") { Description = "Feature slug (required on the first stamp; e.g. phase-14-doti-cycle-state).", DefaultValueFactory = _ => "" };
+        Option<string> feature = new("--feature") { Description = "Numbered feature slug (required on the first stamp; e.g. 001-doti-cycle-state).", DefaultValueFactory = _ => "" };
         Option<string> baseRef = new("--base") { Description = "Base ref for the change-set identity (default: dev if it resolves, else HEAD).", DefaultValueFactory = _ => "" };
         Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
         Option<bool> json = CliApp.JsonOption();

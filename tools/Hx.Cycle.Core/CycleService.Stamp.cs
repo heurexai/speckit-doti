@@ -13,6 +13,7 @@ public sealed partial class CycleService
         string resolvedFeature = ResolveStampFeature(feature, existing);
         string resolvedBaseRef = baseRef ?? existing?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
 
+        EnsureNumberedFeatureSlugOnInitialStamp(stage, feature);
         EnsurePrerequisitesFresh(stage);
         string? prerequisiteProofHash = CycleStageProofHasher.HashPrerequisites(existing, stage.Prereqs);
         string identity = ChangeSetIdentity.Of(_repositoryRoot, resolvedBaseRef, "HEAD");
@@ -43,13 +44,13 @@ public sealed partial class CycleService
         if (stage.Prereqs.Count > 0)
         {
             throw new InvalidOperationException(
-                $"The previous cycle completed at {existing.Completion.CommitSha}; start the next cycle with `doti cycle stamp --stage specify --feature <slug>`.");
+                $"The previous cycle completed at {existing.Completion.CommitSha}; start the next cycle with `doti cycle stamp --stage specify --feature <NNN-slug>`.");
         }
 
         if (string.IsNullOrWhiteSpace(feature))
         {
             throw new InvalidOperationException(
-                $"The previous cycle completed at {existing.Completion.CommitSha}; pass --feature <slug> to start a new cycle.");
+                $"The previous cycle completed at {existing.Completion.CommitSha}; pass --feature <NNN-slug> to start a new cycle.");
         }
 
         return null;
@@ -59,7 +60,20 @@ public sealed partial class CycleService
         feature
             ?? existing?.Feature
             ?? throw new InvalidOperationException(
-                "No feature set for the cycle; pass --feature <slug> on the first stamp (e.g. phase-14-doti-cycle-state).");
+                "No feature set for the cycle; pass --feature <NNN-slug> on the first stamp (e.g. 001-doti-cycle-state).");
+
+    private static void EnsureNumberedFeatureSlugOnInitialStamp(CycleStage stage, string? suppliedFeature)
+    {
+        if (stage.Prereqs.Count > 0 || string.IsNullOrWhiteSpace(suppliedFeature))
+        {
+            return;
+        }
+
+        if (!CycleFeatureSlug.IsNumbered(suppliedFeature))
+        {
+            throw new CycleInputException(CycleFeatureSlug.NumberedSlugRequiredMessage(suppliedFeature));
+        }
+    }
 
     private void EnsurePrerequisitesFresh(CycleStage stage)
     {
