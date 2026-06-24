@@ -1,6 +1,6 @@
 ---
 name: doti-release
-description: Guide scaffold-dotnet release thinking until the command-backed release lane exists.
+description: Run scaffold-dotnet release proof and command-backed local release output.
 compatibility:
   - codex
 metadata:

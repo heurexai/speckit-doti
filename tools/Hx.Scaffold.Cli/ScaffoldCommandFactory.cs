@@ -12,6 +12,7 @@ internal static class ScaffoldCommandFactory
         AddNew(rootCommand, meta);
         AddVersion(rootCommand, meta);
         AddUpdate(rootCommand, meta);
+        AddRelease(rootCommand, meta);
         AddPrereq(rootCommand, meta);
         CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
         return rootCommand;
@@ -90,6 +91,34 @@ internal static class ScaffoldCommandFactory
                 parseResult.GetValue(force),
                 parseResult.GetValue(noWorktree),
                 CliApp.ForceJson(parseResult, json) == true),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        rootCommand.Subcommands.Add(command);
+    }
+
+    private static void AddRelease(RootCommand rootCommand, CliMeta meta)
+    {
+        Command command = new("release",
+            "Build a local speckit-doti release archive and, when configured, copy it to <project>/<version> and <project>/latest.");
+        Option<string> repo = new("--repo") { Description = "Repository root to release.", DefaultValueFactory = _ => "." };
+        Option<string> rid = new("--rid") { Description = "Runtime identifier to publish (defaults to the current host RID).", DefaultValueFactory = _ => "" };
+        Option<string> releaseRoot = new("--release-root") { Description = "Explicit local release root. Overrides environment lookup.", DefaultValueFactory = _ => "" };
+        Option<string> releaseRootEnv = new("--release-root-env") { Description = "Environment variable name for the local release root (default: DOTI_RELEASE_ROOT).", DefaultValueFactory = _ => "" };
+        Option<bool> saveReleaseRoot = new("--save-release-root") { Description = "Persist --release-root into DOTI_RELEASE_ROOT or --release-root-env for future runs.", DefaultValueFactory = _ => false };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(rid);
+        command.Options.Add(releaseRoot);
+        command.Options.Add(releaseRootEnv);
+        command.Options.Add(saveReleaseRoot);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "release",
+            () => ScaffoldCommands.Release(
+                meta,
+                parseResult.GetValue(repo)!,
+                parseResult.GetValue(rid)!,
+                parseResult.GetValue(releaseRoot)!,
+                parseResult.GetValue(releaseRootEnv)!,
+                parseResult.GetValue(saveReleaseRoot)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         rootCommand.Subcommands.Add(command);
     }
