@@ -177,6 +177,42 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
+    public void Stamp_CanAdvanceWhenCycleStateIsIgnored()
+    {
+        string dir = NewTempDir();
+        try
+        {
+            Git(dir, "init", "-q");
+            Git(dir, "config", "user.email", "t@example.com");
+            Git(dir, "config", "user.name", "Test");
+            Git(dir, "config", "commit.gpgsign", "false");
+
+            string wfDir = Path.Combine(dir, ".doti", "workflows", "doti");
+            Directory.CreateDirectory(wfDir);
+            Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
+            File.WriteAllText(Path.Combine(wfDir, "workflow.yml"),
+                "schemaVersion: 2\nstages:\n  - id: specify\n    kind: doc\n    produces: docs/specs/{feature}.md\n    prereqs: []\n  - id: clarify\n    kind: doc\n    prereqs: [specify]\n");
+            File.WriteAllText(Path.Combine(dir, ".gitignore"),
+                ".nomos/cycle-state.json\n.doti/cycle-state.json\n.doti/gate-proof.json\n");
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-example.md"), "spec body\n");
+            Git(dir, "add", "-A");
+            Git(dir, "commit", "-q", "-m", "seed");
+
+            var service = new CycleService(dir);
+            service.Stamp("specify", "001-example", null);
+            CycleState state = service.Stamp("clarify", "001-example", null);
+
+            Assert.Equal("clarify", state.CurrentStage);
+            Assert.Contains(state.Stages, s => s.Stage == "specify");
+            Assert.Contains(state.Stages, s => s.Stage == "clarify");
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
     public void Commit_Refuses_WhenPrerequisitesOrGateProofMissing()
     {
         string dir = InitRepo();

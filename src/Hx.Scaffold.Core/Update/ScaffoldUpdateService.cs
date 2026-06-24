@@ -1,4 +1,5 @@
 using Hx.Cycle.Core;
+using Hx.Doti.Core;
 using Hx.Runner.Core.Platform;
 using Hx.Scaffold.Core.Release;
 using Hx.Scaffold.Core.Versioning;
@@ -29,9 +30,11 @@ public static partial class ScaffoldUpdateService
         ManagedFilePlan filePlan = desired.Count > 0 ? BuildFilePlan(gitRoot, desired) : new ManagedFilePlan([], []);
         ReleaseManifestUpdatePlan releaseManifestPlan = PlanReleaseManifest(gitRoot);
         filePlan = IncludeReleaseManifestPlan(filePlan, releaseManifestPlan);
+        DotiGitIgnorePlan gitIgnorePlan = DotiGitIgnore.Plan(gitRoot);
+        filePlan = IncludeGitIgnorePlan(filePlan, gitIgnorePlan);
         AddDirtyPathBlockers(gitRoot, filePlan, blockers, diagnostics);
         MutationResult mutation = ExecuteMutation(request, services, gitRoot, version, release.Cache, desired,
-            releaseManifestPlan, hookPlan, blockers, diagnostics);
+            releaseManifestPlan, gitIgnorePlan, hookPlan, blockers, diagnostics);
         var possibleOrphans = legacyPreVersioned && desired.Count > 0
             ? PossibleLegacyOrphans(gitRoot, desired.Select(d => d.Path).ToHashSet(StringComparer.OrdinalIgnoreCase))
             : [];
@@ -75,5 +78,24 @@ public static partial class ScaffoldUpdateService
                 .OrderBy(p => p, StringComparer.Ordinal)
                 .ToArray(),
             filePlan.ReplacePaths);
+    }
+
+    private static ManagedFilePlan IncludeGitIgnorePlan(ManagedFilePlan filePlan, DotiGitIgnorePlan gitIgnorePlan)
+    {
+        if (!gitIgnorePlan.ShouldWrite)
+        {
+            return filePlan;
+        }
+
+        IEnumerable<string> create = gitIgnorePlan.FileExists
+            ? filePlan.CreatePaths
+            : filePlan.CreatePaths.Append(DotiGitIgnore.RelativePath);
+        IEnumerable<string> replace = gitIgnorePlan.FileExists
+            ? filePlan.ReplacePaths.Append(DotiGitIgnore.RelativePath)
+            : filePlan.ReplacePaths;
+
+        return new ManagedFilePlan(
+            create.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.Ordinal).ToArray(),
+            replace.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.Ordinal).ToArray());
     }
 }

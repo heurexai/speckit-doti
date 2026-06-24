@@ -48,7 +48,9 @@ public static class DotiInstaller
         // 4. Repo-specific metadata.
         WriteMetadata(targetRepoRoot, repoName, agents);
         CopyPrerequisitePolicy(sourceRepoRoot, targetRepoRoot);
+        IReadOnlyList<string> gitIgnoreWrites = DotiGitIgnore.Ensure(targetRepoRoot);
         ManagedAssetScanner.WriteBaseline(targetRepoRoot, DotiRenderer.BuildTargets(targetRepoRoot, agents));
+        copied.AddRange(gitIgnoreWrites);
 
         return new DotiInstallResult(JsonContractDefaults.SchemaVersion, render.Outcome, render.Written, copied);
     }

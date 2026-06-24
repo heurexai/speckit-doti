@@ -17,6 +17,7 @@ public static partial class ScaffoldUpdateService
         UpdateCacheResult? cache,
         IReadOnlyList<DesiredManagedFile> desired,
         ReleaseManifestUpdatePlan releaseManifestPlan,
+        DotiGitIgnorePlan gitIgnorePlan,
         DotiHookInspection hookPlan,
         List<string> blockers,
         List<ScaffoldUpdateDiagnostic> diagnostics)
@@ -42,6 +43,7 @@ public static partial class ScaffoldUpdateService
         backup ??= CreateBackupWorktree(gitRoot, services.WorktreeRoot());
         IReadOnlyList<string> changed = ApplyManagedFiles(gitRoot, desired)
             .Concat(ApplyReleaseManifest(gitRoot, releaseManifestPlan))
+            .Concat(ApplyGitIgnore(gitRoot, gitIgnorePlan))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(p => p, StringComparer.Ordinal)
             .ToArray();
@@ -104,6 +106,9 @@ public static partial class ScaffoldUpdateService
             "GitHub release " + cache.Release.TagName,
             cache.Release.Archive.Name,
             FileHashing.Sha256OfFile(cache.ArchivePath)));
+
+    private static IReadOnlyList<string> ApplyGitIgnore(string gitRoot, DotiGitIgnorePlan gitIgnorePlan) =>
+        gitIgnorePlan.ShouldWrite ? DotiGitIgnore.Ensure(gitRoot) : [];
 
     private static IReadOnlyList<string> ForceReplacedPaths(ScaffoldUpdateRequest request, ScaffoldVersionReport version) =>
         request.Force && version.ManagedAssets is not null

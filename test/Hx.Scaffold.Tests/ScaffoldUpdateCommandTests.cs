@@ -108,6 +108,9 @@ public sealed partial class ScaffoldCommandsTests
             File.WriteAllText(Path.Combine(repo, ".sentrux", "baseline.json"), "live baseline");
             Git(repo, "add", ".sentrux/baseline.json");
             Git(repo, "commit", "-q", "-m", "live baseline");
+            File.WriteAllText(Path.Combine(repo, ".gitignore"), ".nomos/cycle-state.json\n");
+            Git(repo, "add", ".gitignore");
+            Git(repo, "commit", "-q", "-m", "nomos cycle ignore");
 
             ScaffoldUpdateServices services = FakeReleaseServices(cache, release, checksum, () => downloads++, worktrees);
             ScaffoldUpdateReport first = ScaffoldUpdateService.Plan(
@@ -118,12 +121,18 @@ public sealed partial class ScaffoldCommandsTests
             Assert.NotNull(first.BackupWorktreePath);
             Assert.True(Directory.Exists(first.BackupWorktreePath));
             Assert.Contains(".doti/workflows/doti/workflow.yml", first.ChangedPaths);
+            Assert.Contains(".gitignore", first.ChangedPaths);
+            Assert.Contains(".gitignore", first.PlannedReplacePaths);
             Assert.NotNull(first.Hook);
             Assert.True(first.Hook.Changed);
             Assert.Equal(HookInstaller.VerdictExpected, first.Hook.Verdict);
             Assert.Equal(HookInstaller.HookScript, File.ReadAllText(Path.Combine(repo, ".git", "hooks", "pre-commit")));
             Assert.Contains(".sentrux", first.PreservedLivePaths);
             Assert.Equal("live baseline", File.ReadAllText(Path.Combine(repo, ".sentrux", "baseline.json")));
+            string gitignore = File.ReadAllText(Path.Combine(repo, ".gitignore"));
+            Assert.Contains(".nomos/cycle-state.json", gitignore);
+            Assert.Contains(".doti/cycle-state.json", gitignore);
+            Assert.Contains(".doti/gate-proof.json", gitignore);
             Assert.Contains("clarify", File.ReadAllText(Path.Combine(repo, ".doti", "workflows", "doti", "workflow.yml")));
             Assert.Contains("New Spec", File.ReadAllText(Path.Combine(repo, ".agents", "skills", "doti-specify", "SKILL.md")));
             Assert.Equal(2, downloads);
@@ -150,6 +159,35 @@ public sealed partial class ScaffoldCommandsTests
             ForceDelete(repo);
             ForceDelete(cache);
             ForceDelete(worktrees);
+            ForceDelete(Path.GetDirectoryName(release)!);
+        }
+    }
+
+    [Fact]
+    public void Update_refuses_dirty_gitignore_when_runtime_state_entries_are_missing()
+    {
+        string repo = NewVersionedGitRepo();
+        string cache = NewTempDir("hx-update-cache-");
+        string release = NewReleaseArchive("1.0.0", out string checksum);
+        try
+        {
+            File.WriteAllText(Path.Combine(repo, ".gitignore"), ".nomos/cycle-state.json\n");
+            Git(repo, "add", ".gitignore");
+            Git(repo, "commit", "-q", "-m", "nomos cycle ignore");
+            File.AppendAllText(Path.Combine(repo, ".gitignore"), "# local edit\n");
+
+            ScaffoldUpdateReport report = ScaffoldUpdateService.Plan(
+                new ScaffoldUpdateRequest(repo, DryRun: true, Force: true, NoWorktree: true, RunningVersion: "1.0.0"),
+                FakeReleaseServices(cache, release, checksum));
+
+            Assert.Contains(report.Blockers, b => b.Contains("dirty managed path", StringComparison.Ordinal)
+                && b.Contains(".gitignore", StringComparison.Ordinal));
+            Assert.Contains(".gitignore", report.PlannedReplacePaths);
+        }
+        finally
+        {
+            ForceDelete(repo);
+            ForceDelete(cache);
             ForceDelete(Path.GetDirectoryName(release)!);
         }
     }
