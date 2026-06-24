@@ -155,6 +155,50 @@ public sealed partial class ScaffoldCommandsTests
     }
 
     [Fact]
+    public void Update_creates_release_manifest_when_single_executable_project_is_unambiguous()
+    {
+        string repo = NewVersionedGitRepo();
+        string cache = NewTempDir("hx-update-cache-");
+        string release = NewReleaseArchive("1.0.0", out string checksum);
+        try
+        {
+            string project = Path.Combine(repo, "src", "Ergon.Cli", "Ergon.Cli.csproj");
+            Directory.CreateDirectory(Path.GetDirectoryName(project)!);
+            File.WriteAllText(project, """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <OutputType>Exe</OutputType>
+                    <TargetFramework>net10.0</TargetFramework>
+                    <AssemblyName>ergon</AssemblyName>
+                  </PropertyGroup>
+                </Project>
+                """);
+            Git(repo, "add", "src/Ergon.Cli/Ergon.Cli.csproj");
+            Git(repo, "commit", "-q", "-m", "add cli project");
+
+            ScaffoldUpdateReport report = ScaffoldUpdateService.Plan(
+                new ScaffoldUpdateRequest(repo, DryRun: false, Force: false, NoWorktree: true, RunningVersion: "1.0.0"),
+                FakeReleaseServices(cache, release, checksum));
+
+            Assert.Empty(report.Blockers);
+            Assert.Contains(".doti/release.json", report.ChangedPaths);
+            Assert.Contains(".doti/release.json", report.PlannedCreatePaths);
+            string manifest = File.ReadAllText(Path.Combine(repo, ".doti", "release.json"));
+            Assert.Contains("\"packageName\":\"ergon\"", manifest);
+            Assert.Contains("\"publishProject\":\"src/Ergon.Cli/Ergon.Cli.csproj\"", manifest);
+            Assert.Contains("\"publishedExecutableName\":\"ergon\"", manifest);
+            Assert.Contains("\"executableName\":\"ergon\"", manifest);
+            Assert.Contains(".doti/release.json", report.PreservedLivePaths);
+        }
+        finally
+        {
+            ForceDelete(repo);
+            ForceDelete(cache);
+            ForceDelete(Path.GetDirectoryName(release)!);
+        }
+    }
+
+    [Fact]
     public void Update_refuses_to_overwrite_external_precommit_hook()
     {
         string repo = NewVersionedGitRepo();

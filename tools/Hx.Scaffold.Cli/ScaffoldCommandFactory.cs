@@ -98,12 +98,12 @@ internal static class ScaffoldCommandFactory
     private static void AddRelease(RootCommand rootCommand, CliMeta meta)
     {
         Command command = new("release",
-            "Build a local speckit-doti release archive and, when configured, copy it to <project>/<version> and <project>/latest.");
+            "Build the manifest-declared target release archive and, when configured, copy it to <package>/<version> and <package>/latest.");
         Option<string> repo = new("--repo") { Description = "Repository root to release.", DefaultValueFactory = _ => "." };
         Option<string> rid = new("--rid") { Description = "Runtime identifier to publish (defaults to the current host RID).", DefaultValueFactory = _ => "" };
         Option<string> releaseRoot = new("--release-root") { Description = "Explicit local release root. Overrides environment lookup.", DefaultValueFactory = _ => "" };
-        Option<string> releaseRootEnv = new("--release-root-env") { Description = "Environment variable name for the local release root (default: DOTI_RELEASE_ROOT).", DefaultValueFactory = _ => "" };
-        Option<bool> saveReleaseRoot = new("--save-release-root") { Description = "Persist --release-root into DOTI_RELEASE_ROOT or --release-root-env for future runs.", DefaultValueFactory = _ => false };
+        Option<string> releaseRootEnv = new("--release-root-env") { Description = "Environment variable name for the local release root (overrides the target manifest default).", DefaultValueFactory = _ => "" };
+        Option<bool> saveReleaseRoot = new("--save-release-root") { Description = "Persist --release-root into the manifest default release-root variable or --release-root-env for future runs.", DefaultValueFactory = _ => false };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
         command.Options.Add(rid);

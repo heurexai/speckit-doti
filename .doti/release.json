@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "productName": "speckit-doti",
+  "packageName": "speckit-doti",
+  "publishProject": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
+  "publishedExecutableName": "Hx.Scaffold.Cli",
+  "executableName": "hx",
+  "defaultReleaseRootEnvironmentVariable": "DOTI_RELEASE_ROOT"
+}

@@ -16,6 +16,7 @@ public static partial class ScaffoldUpdateService
         ScaffoldVersionReport version,
         UpdateCacheResult? cache,
         IReadOnlyList<DesiredManagedFile> desired,
+        ReleaseManifestUpdatePlan releaseManifestPlan,
         DotiHookInspection hookPlan,
         List<string> blockers,
         List<ScaffoldUpdateDiagnostic> diagnostics)
@@ -39,7 +40,11 @@ public static partial class ScaffoldUpdateService
         }
 
         backup ??= CreateBackupWorktree(gitRoot, services.WorktreeRoot());
-        IReadOnlyList<string> changed = ApplyManagedFiles(gitRoot, desired).ToArray();
+        IReadOnlyList<string> changed = ApplyManagedFiles(gitRoot, desired)
+            .Concat(ApplyReleaseManifest(gitRoot, releaseManifestPlan))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .ToArray();
         IReadOnlyList<DotiRenderTarget> generatedTargets = DotiRenderer.BuildTargets(gitRoot, DotiAgentTarget.All);
         ManagedAssetScanner.WriteBaseline(gitRoot, generatedTargets);
         WriteUpdatedVersionStamp(gitRoot, cache);
@@ -66,7 +71,8 @@ public static partial class ScaffoldUpdateService
         IReadOnlyList<ScaffoldUpdateDiagnostic> diagnostics,
         IReadOnlyList<string> actions,
         IReadOnlyList<string> possibleOrphans,
-        bool legacyPreVersioned)
+        bool legacyPreVersioned,
+        ReleaseManifestUpdatePlan releaseManifestPlan)
     {
         string? legacyFollowUp = legacyPreVersioned ? LegacyFollowUpInstruction() : null;
         return new ScaffoldUpdateReport(
@@ -77,7 +83,7 @@ public static partial class ScaffoldUpdateService
             TargetToLatestRelation(version.Target, release.Cache?.Release.Version), blockers, diagnostics, actions,
             filePlan.CreatePaths, filePlan.ReplacePaths, ForceReplacedPaths(request, version), mutation.ChangedPaths,
             mutation.Hook,
-            PreservedLivePaths(gitRoot), possibleOrphans, legacyFollowUp, FollowUps(legacyFollowUp));
+            PreservedLivePaths(gitRoot), possibleOrphans, legacyFollowUp, FollowUps(legacyFollowUp, releaseManifestPlan));
     }
 
     private static ScaffoldUpdateWorktreeBackup? DisabledBackupIfNeeded(ScaffoldUpdateRequest request, string gitRoot) =>
@@ -116,7 +122,7 @@ public static partial class ScaffoldUpdateService
     private static string NumberedSpecUpgradeFollowUpInstruction() =>
         "After update, review project-owned feature docs: leave implemented/completed legacy specs unchanged; migrate any open, unimplemented unnumbered spec to the new NNN-short-name slug (rename matching spec/plan/tasks artifacts and re-stamp specify) before continuing; create all subsequent specs with numbered slugs.";
 
-    private static IReadOnlyList<string> FollowUps(string? legacyFollowUp)
+    private static IReadOnlyList<string> FollowUps(string? legacyFollowUp, ReleaseManifestUpdatePlan releaseManifestPlan)
     {
         var followUps = new List<string>
         {
@@ -124,6 +130,11 @@ public static partial class ScaffoldUpdateService
             "hx update --repo <target> --dry-run --json",
             NumberedSpecUpgradeFollowUpInstruction(),
         };
+        if (releaseManifestPlan.FollowUp is not null)
+        {
+            followUps.Add(releaseManifestPlan.FollowUp);
+        }
+
         if (legacyFollowUp is not null)
         {
             followUps.Add(legacyFollowUp);

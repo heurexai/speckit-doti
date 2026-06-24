@@ -16,12 +16,19 @@ public static class LocalReleaseRootResolver
     public static LocalReleaseRootDecision Resolve(
         string? explicitReleaseRoot,
         string? requestedEnvironmentVariableName,
-        Func<string, string?> readEnvironmentVariable)
+        Func<string, string?> readEnvironmentVariable,
+        string defaultEnvironmentVariableName = DefaultEnvironmentVariableName)
     {
+        if (!IsValidEnvironmentVariableName(defaultEnvironmentVariableName))
+        {
+            throw new InvalidOperationException(
+                $"Invalid default release-root environment variable name '{defaultEnvironmentVariableName}'.");
+        }
+
         string? requested = string.IsNullOrWhiteSpace(requestedEnvironmentVariableName)
             ? null
             : requestedEnvironmentVariableName.Trim();
-        string effective = requested ?? DefaultEnvironmentVariableName;
+        string effective = requested ?? defaultEnvironmentVariableName;
 
         if (!string.IsNullOrWhiteSpace(explicitReleaseRoot))
         {

@@ -1,4 +1,5 @@
 using Hx.Doti.Core;
+using Hx.Scaffold.Core.Release;
 using Hx.Scaffold.Core.Versioning;
 using Hx.Tooling.Contracts;
 
@@ -18,6 +19,7 @@ internal static class ScaffoldDotiInstaller
             .Cast<DotiAgentTarget>()
             .ToArray();
         DotiInstaller.Install(sourceRepoRoot, targetRoot, agents, request.Name);
+        ScaffoldReleaseTargetWriter.WriteDefault(targetRoot, request.Name);
         ScaffoldVersionReporter.WriteStamp(targetRoot,
             ScaffoldVersionReporter.IdentityFromVersion(scaffoldVersion ?? "0.0.0", "hx-scaffold new"));
     }

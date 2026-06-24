@@ -109,11 +109,10 @@ public static partial class ScaffoldUpdateService
     private static void AddDirtyPathBlockers(
         string gitRoot,
         ManagedFilePlan filePlan,
-        int desiredCount,
         List<string> blockers,
         List<ScaffoldUpdateDiagnostic> diagnostics)
     {
-        if (desiredCount == 0)
+        if (filePlan.PlannedWritePaths.Count == 0)
         {
             return;
         }

@@ -293,16 +293,20 @@ Use the same standalone `hx` to inspect or update an existing doti-enabled repos
 
 When updating a repo that already has doti v0.5 installed, `hx update` replaces managed Doti/scaffold assets only; project-owned feature docs are not silently renamed. Leave implemented or completed historical specs on their existing filenames. If an open, unimplemented legacy spec is still unnumbered, migrate it before continuing: choose the next `NNN-` prefix, rename the matching `docs/specs`, `docs/plans`, and `docs/tasks` artifacts to the same numbered slug, then re-stamp `specify` with that `NNN-short-name`. All subsequent new specs use the numbered format.
 
+`hx update` treats `.doti/release.json` as live repo configuration. Existing release manifests are preserved. Older repos that do not have one get a default manifest only when update can identify a single non-tool, non-test executable project; otherwise the update report tells the agent/operator to add `.doti/release.json` before running `hx release`.
+
 ### Local release output
 
-`hx release` builds a local release archive, checksum, and `release.identity.json` proof from the committed repository state. When a release root is configured, the verified artifact set is copied to:
+`hx release` builds a local release archive, checksum, and `release.identity.json` proof from the committed repository state. The target repository declares the product to publish in `.doti/release.json`: product/package name, publish `.csproj`, published executable name, output executable name, and default release-root environment variable. This lets a vendored `hx.exe` release the target repo's own executable without requiring `tools/Hx.Scaffold.Cli` to exist in that repo.
+
+When a release root is configured, the verified artifact set is copied to:
 
 ```text
 <releaseRoot>/<projectName>/<version number>
 <releaseRoot>/<projectName>/latest
 ```
 
-By default, `hx release` reads `DOTI_RELEASE_ROOT`. Use `--release-root <path>` to supply an explicit root for the current run; an explicit root overrides environment lookup. Use `--release-root-env <name>` to read a different variable. Use `--save-release-root` only with `--release-root <path>` to persist that explicit value into `DOTI_RELEASE_ROOT`, or into the variable named by `--release-root-env`.
+By default, `hx release` reads the manifest's default release-root variable, which is `DOTI_RELEASE_ROOT` for speckit-doti and newly scaffolded repos unless the repo declares another value. Use `--release-root <path>` to supply an explicit root for the current run; an explicit root overrides environment lookup. Use `--release-root-env <name>` to read a different variable. Use `--save-release-root` only with `--release-root <path>` to persist that explicit value into the manifest default, or into the variable named by `--release-root-env`.
 
 ```powershell
 .\hx.exe release --repo . --json
@@ -354,7 +358,7 @@ Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- 
 | `new` _(Hx.Scaffold.Cli)_ | Generate a new agent-first .NET solution and install doti |
 | `version --repo <path>` _(Hx.Scaffold.Cli)_ | Report running hx identity, target repo scaffold version, and managed Doti modification state |
 | `update [--repo <path>] [--dry-run] [--force] [--noworktree]` _(Hx.Scaffold.Cli)_ | Update an existing doti-enabled Git repo from the latest verified release while preserving live repo configuration |
-| `release [--repo <path>] [--release-root <path>] [--release-root-env <name>] [--save-release-root]` _(Hx.Scaffold.Cli)_ | Build the local release archive/checksum/identity set and copy it to `<project>/<version>` plus `<project>/latest` when a root is configured |
+| `release [--repo <path>] [--release-root <path>] [--release-root-env <name>] [--save-release-root]` _(Hx.Scaffold.Cli)_ | Build the manifest-declared target release archive/checksum/identity set and copy it to `<package>/<version>` plus `<package>/latest` when a root is configured |
 | `prereq check --for <new\|update\|version\|generated-validation>` _(Hx.Scaffold.Cli)_ | Check trusted .NET SDK/Git/directory prerequisites without installing anything |
 | `prereq install --for <new\|update> --confirm-plan <digest>` _(Hx.Scaffold.Cli)_ | Run an explicitly approved Windows winget install plan from trusted manifest metadata, then re-check prerequisites |
 | `gate run --profile <auto\|advisory\|normal\|release>` | Run the full deterministic gate ladder → one fail-closed `GateProof` |

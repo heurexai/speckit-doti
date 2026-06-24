@@ -6,6 +6,7 @@ public sealed record LocalReleaseResult(
     string Version,
     string RuntimeIdentifier,
     string SourceCommit,
+    LocalReleaseTarget Target,
     LocalReleaseRootDecision RootDecision,
     LocalReleaseEnvironmentPersistence EnvironmentPersistence,
     bool LocalCopyProduced,
@@ -33,3 +34,11 @@ public sealed record LocalReleaseEnvironmentPersistence(
     string? Limitation);
 
 public sealed record LocalReleaseArtifact(string Name, string Sha256, long SizeBytes);
+
+public sealed record LocalReleaseTarget(
+    string ProductName,
+    string PackageName,
+    string PublishProject,
+    string PublishedExecutableName,
+    string ExecutableName,
+    string DefaultReleaseRootEnvironmentVariable);

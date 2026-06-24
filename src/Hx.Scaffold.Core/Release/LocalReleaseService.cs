@@ -24,14 +24,16 @@ public static class LocalReleaseService
         string rid = string.IsNullOrWhiteSpace(request.RuntimeIdentifier)
             ? HostPlatformDetector.DetectCurrent().RuntimeIdentifier
             : request.RuntimeIdentifier.Trim();
-        string projectName = SafeSegment(new DirectoryInfo(repo).Name);
+        LocalReleaseTarget target = ReleaseTargetManifest.Load(repo);
+        string projectName = SafeSegment(target.PackageName);
         VersionResult version = GitVersionTool.Calculate(repo);
         string sourceCommit = Git(repo, "rev-parse HEAD").Trim();
 
         LocalReleaseRootDecision rootDecision = LocalReleaseRootResolver.Resolve(
             request.ReleaseRoot,
             request.ReleaseRootEnvironmentVariable,
-            Environment.GetEnvironmentVariable);
+            Environment.GetEnvironmentVariable,
+            target.DefaultReleaseRootEnvironmentVariable);
 
         var persistence = new LocalReleaseEnvironmentPersistence(
             request.SaveReleaseRoot,
@@ -49,6 +51,7 @@ public static class LocalReleaseService
                 version.Version,
                 rid,
                 sourceCommit,
+                target,
                 rootDecision,
                 persistence,
                 LocalCopyProduced: false,
@@ -69,7 +72,7 @@ public static class LocalReleaseService
             IReadOnlyList<LocalReleaseArtifact> artifacts = BuildArtifacts(
                 repo,
                 tempRoot,
-                projectName,
+                target,
                 version.Version,
                 rid,
                 sourceCommit,
@@ -91,6 +94,7 @@ public static class LocalReleaseService
                 version.Version,
                 rid,
                 sourceCommit,
+                target,
                 rootDecision with { ReleaseRoot = releaseRoot },
                 persistence,
                 LocalCopyProduced: true,
@@ -109,15 +113,17 @@ public static class LocalReleaseService
     private static IReadOnlyList<LocalReleaseArtifact> BuildArtifacts(
         string repo,
         string tempRoot,
-        string projectName,
+        LocalReleaseTarget target,
         string version,
         string rid,
         string sourceCommit,
         string commandVersion)
     {
+        string projectName = SafeSegment(target.PackageName);
+        string publishProject = target.PublishProject.Replace('/', Path.DirectorySeparatorChar);
         string publish = Path.Combine(tempRoot, "publish");
         Dotnet(repo,
-            $"publish tools/Hx.Scaffold.Cli -c Release -r {Quote(rid)} --self-contained " +
+            $"publish {Quote(publishProject)} -c Release -r {Quote(rid)} --self-contained " +
             "-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true " +
             $"-o {Quote(publish)}");
 
@@ -137,12 +143,12 @@ public static class LocalReleaseService
             }
         }
 
-        string executableName = rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase) ? "hx.exe" : "hx";
-        string publishedExe = Path.Combine(publish,
-            rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase) ? "Hx.Scaffold.Cli.exe" : "Hx.Scaffold.Cli");
+        string executableName = ExecutableFileName(target.ExecutableName, rid);
+        string publishedExe = Path.Combine(publish, ExecutableFileName(target.PublishedExecutableName, rid));
         if (!File.Exists(publishedExe))
         {
-            throw new InvalidOperationException("Published hx executable was not found: " + publishedExe);
+            throw new InvalidOperationException(
+                $"Published release executable '{target.PublishedExecutableName}' was not found: {publishedExe}");
         }
 
         File.Copy(publishedExe, Path.Combine(payload, executableName), overwrite: true);
@@ -169,6 +175,7 @@ public static class LocalReleaseService
             tag = "v" + version,
             runtimeIdentifier = rid,
             sourceCommit,
+            target,
             command = "hx release",
             commandVersion,
             artifacts
@@ -351,6 +358,17 @@ public static class LocalReleaseService
     }
 
     private static string Quote(string value) => '"' + value.Replace("\"", "\\\"", StringComparison.Ordinal) + '"';
+
+    private static string ExecutableFileName(string baseName, string rid)
+    {
+        if (!rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase)
+            || baseName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return baseName;
+        }
+
+        return baseName + ".exe";
+    }
 
     private static string EnsureTrailingSeparator(string path) =>
         path.EndsWith(Path.DirectorySeparatorChar) ? path : path + Path.DirectorySeparatorChar;

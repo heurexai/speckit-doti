@@ -68,6 +68,7 @@ public static partial class ScaffoldUpdateService
     private static bool IsLiveOrGeneratedMetadata(string relativePath) =>
         relativePath is ".doti/agent-context.md" or ".doti/managed-assets.json" or ".doti/scaffold-version.json"
             or ".doti/cycle-state.json" or ".doti/gate-proof.json" or ".doti/integration.json" or ".doti/init-options.json"
+            or ".doti/release.json"
         || relativePath.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
         || relativePath.Contains("\\bin\\", StringComparison.OrdinalIgnoreCase);
 
@@ -180,7 +181,7 @@ public static partial class ScaffoldUpdateService
 
     private static IReadOnlyList<string> PreservedLivePaths(string targetRoot)
     {
-        string[] candidates = [".sentrux", ".doti/cycle-state.json", ".doti/gate-proof.json"];
+        string[] candidates = [".sentrux", ".doti/cycle-state.json", ".doti/gate-proof.json", ".doti/release.json"];
         return candidates.Where(p => File.Exists(Path.Combine(targetRoot, p.Replace('/', Path.DirectorySeparatorChar)))
                 || Directory.Exists(Path.Combine(targetRoot, p.Replace('/', Path.DirectorySeparatorChar))))
             .ToArray();

@@ -1,5 +1,6 @@
 using Hx.Cycle.Core;
 using Hx.Runner.Core.Platform;
+using Hx.Scaffold.Core.Release;
 using Hx.Scaffold.Core.Versioning;
 
 namespace Hx.Scaffold.Core.Update;
@@ -26,14 +27,16 @@ public static partial class ScaffoldUpdateService
         expectedAsset = release.ExpectedAsset ?? expectedAsset;
         IReadOnlyList<DesiredManagedFile> desired = release.Desired;
         ManagedFilePlan filePlan = desired.Count > 0 ? BuildFilePlan(gitRoot, desired) : new ManagedFilePlan([], []);
-        AddDirtyPathBlockers(gitRoot, filePlan, desired.Count, blockers, diagnostics);
+        ReleaseManifestUpdatePlan releaseManifestPlan = PlanReleaseManifest(gitRoot);
+        filePlan = IncludeReleaseManifestPlan(filePlan, releaseManifestPlan);
+        AddDirtyPathBlockers(gitRoot, filePlan, blockers, diagnostics);
         MutationResult mutation = ExecuteMutation(request, services, gitRoot, version, release.Cache, desired,
-            hookPlan, blockers, diagnostics);
+            releaseManifestPlan, hookPlan, blockers, diagnostics);
         var possibleOrphans = legacyPreVersioned && desired.Count > 0
             ? PossibleLegacyOrphans(gitRoot, desired.Select(d => d.Path).ToHashSet(StringComparer.OrdinalIgnoreCase))
             : [];
         return BuildReport(request, gitRoot, rid, expectedAsset, version, release, mutation, filePlan,
-            blockers, diagnostics, actions, possibleOrphans, legacyPreVersioned);
+            blockers, diagnostics, actions, possibleOrphans, legacyPreVersioned, releaseManifestPlan);
     }
 
     private static string ResolveGitRoot(string target)
@@ -58,4 +61,19 @@ public static partial class ScaffoldUpdateService
 
     private static bool IsDotiShaped(string target) =>
         Directory.Exists(Path.Combine(target, ".doti")) || Directory.Exists(Path.Combine(target, "doti"));
+
+    private static ManagedFilePlan IncludeReleaseManifestPlan(ManagedFilePlan filePlan, ReleaseManifestUpdatePlan releaseManifestPlan)
+    {
+        if (!releaseManifestPlan.ShouldCreate)
+        {
+            return filePlan;
+        }
+
+        return new ManagedFilePlan(
+            filePlan.CreatePaths.Append(ReleaseTargetManifest.RelativePath)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(p => p, StringComparer.Ordinal)
+                .ToArray(),
+            filePlan.ReplacePaths);
+    }
 }
