@@ -22,13 +22,6 @@ public sealed class RunnerCommandsTests
     }
 
     [Fact]
-    public void VersionBump_requires_exactly_one_of_major_or_minor()
-    {
-        AssertUsage(RunnerCommands.VersionBump(Meta, ".", major: true, minor: true));
-        AssertUsage(RunnerCommands.VersionBump(Meta, ".", major: false, minor: false));
-    }
-
-    [Fact]
     public void DotiRenderSkills_rejects_an_unknown_agent() =>
         AssertUsage(RunnerCommands.DotiRenderSkills(Meta, ".", "codex,bogus", check: true));
 

@@ -81,6 +81,24 @@ public sealed class LocalReleaseRootTests
         Assert.Contains("--save-release-root requires", result.Errors.Single().Message);
     }
 
+    [Fact]
+    public void Release_intent_flags_are_mutually_exclusive()
+    {
+        CliResult result = ScaffoldCommands.Release(
+            new CliMeta("hx", "0.0.0-test"),
+            ".",
+            "",
+            "",
+            "",
+            saveReleaseRoot: false,
+            major: true,
+            minor: true);
+
+        Assert.False(result.Ok);
+        Assert.Equal((int)ExitClass.Usage, result.ExitCode);
+        Assert.Contains("Specify at most one release intent", result.Errors.Single().Message);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("DOTI_RELEASE_ROOT")]

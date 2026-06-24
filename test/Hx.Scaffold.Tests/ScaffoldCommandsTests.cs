@@ -6,7 +6,6 @@ using Hx.Cli.Kernel;
 using Hx.Doti.Core.ManagedAssets;
 using Hx.Runner.Core.Process;
 using Hx.Scaffold.Cli;
-using Hx.Scaffold.Core.Update;
 using Hx.Scaffold.Core.Versioning;
 using Hx.Tooling.Contracts;
 using Xunit;

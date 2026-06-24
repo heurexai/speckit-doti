@@ -55,18 +55,6 @@ public static partial class RunnerCommands
         return CliResults.Ok(meta, "version calculate", $"version={result.Version} ({result.Source}).", result);
     }
 
-    public static CliResult VersionBump(CliMeta meta, string repo, bool major, bool minor)
-    {
-        if (major == minor)
-        {
-            return Usage(meta, "version bump", "Specify exactly one of --major or --minor.");
-        }
-
-        VersionResult result = GitVersionTool.Bump(Path.GetFullPath(repo), major ? "major" : "minor");
-        return CliResults.Ok(meta, "version bump", $"version={result.Version} ({result.Source}).", result,
-            effects: [new CliEffect("tag", result.Version, "annotated bump tag")]);
-    }
-
     // ---- security ----
 
     public static CliResult SecurityScan(CliMeta meta, string repo)

@@ -17,7 +17,7 @@ public static partial class ScaffoldCommands
         string? normalizedCommand = NormalizePrerequisiteCommand(command, installCommand: false);
         if (normalizedCommand is null)
         {
-            return InvalidPrerequisiteCommand(meta, "prereq check", command, "new, update, version, or generated-validation");
+            return InvalidPrerequisiteCommand(meta, "prereq check", command, "new, version, or generated-validation");
         }
 
         string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
@@ -53,7 +53,7 @@ public static partial class ScaffoldCommands
         string? normalizedCommand = NormalizePrerequisiteCommand(command, installCommand: true);
         if (normalizedCommand is null)
         {
-            return InvalidPrerequisiteCommand(meta, "prereq install", command, "new or update");
+            return InvalidPrerequisiteCommand(meta, "prereq install", command, "new");
         }
 
         string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
@@ -148,7 +148,6 @@ public static partial class ScaffoldCommands
         command.Trim().ToLowerInvariant() switch
         {
             "new" => PrerequisiteCommands.New,
-            "update" => PrerequisiteCommands.Update,
             "version" when !installCommand => PrerequisiteCommands.Version,
             "generated-validation" when !installCommand => PrerequisiteCommands.GeneratedValidation,
             _ => null,

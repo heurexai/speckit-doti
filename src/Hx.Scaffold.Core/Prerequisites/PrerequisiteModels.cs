@@ -6,7 +6,6 @@ namespace Hx.Scaffold.Core.Prerequisites;
 public static class PrerequisiteCommands
 {
     public const string New = "new";
-    public const string Update = "update";
     public const string Version = "version";
     public const string GeneratedValidation = "generated-validation";
 }

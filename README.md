@@ -226,7 +226,7 @@ We kept what makes Spec Kit good — the spec-first sequence, clarification befo
 9. **`/doti-commit`** — _(doti-only)_ Make the scoped commit through the sanctioned path. `doti cycle commit` refuses unless a fresh drift-review, a fresh passing `gate run` proof with recomputable affected-test hashes, and a clean staged scope all line up. Direct `dotnet test` transcripts are diagnostic only, not commit proof.
    _Spec Kit:_ no equivalent.
 
-10. **`/doti-release`** — _(doti-only)_ Cut a version via the GitVersion-backed release lane (calculate → bump → annotated tag), running the gate at the `release` profile.
+10. **`/doti-release`** — _(doti-only)_ Run the release gate, produce the command-backed `hx release --major|--minor|--patch` proof, then push and verify the Doti-owned release tag through CI.
     _Spec Kit:_ no equivalent.
 
 > Spec Kit's `/speckit.checklist` has no dedicated doti command — doti folds completeness / clarity / consistency checking into `/doti-analyze` and the gate.
@@ -277,27 +277,28 @@ Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) shi
 .\hx.exe new --name Acme.Widget --output .\Acme.Widget --company Acme --agents codex,claude
 ```
 
-Use the same standalone `hx` to inspect or update an existing doti-enabled repository:
+Use the same standalone `hx` to inspect a doti-enabled repository. Product executable installs and updates are handled by Velopack installer/update artifacts; repo workflow assets are installed or repaired with `doti install`.
 
 ```powershell
 # report the running hx version, the target repo's installed scaffold version,
 # and exact managed workflow/skill modifications
 .\hx.exe version --repo . --json
 
-# preview the update first, then update the current repo in place
-.\hx.exe update --repo . --dry-run --json
-.\hx.exe update --repo . --json
+# repair/reinstall repo-owned Doti workflow assets when needed
+dotnet run --project tools/Hx.Runner.Cli -- doti install --repo . --agents codex,claude --json
 ```
 
-`hx update` resolves the latest non-prerelease `heurexai/speckit-doti` release for the host platform, verifies the release checksum, reuses a verified temporary cache entry when possible, and creates a backup Git worktree before mutating the original checkout. Pass `--noworktree` to skip that backup or `--force` to replace modified managed Doti assets after they are reported. Live repo configuration and baselines, including Sentrux state, remain target-owned and are not replaced. Git targets also report hook health and automatically install or refresh the Doti insurance pre-commit hook after a successful update; an existing non-Doti `pre-commit` hook is a hard blocker and is never overwritten by `--force`.
+The previous repository updater subcommand has been removed. Use the Velopack installer/update channel to update installed `hx`/product executables, and use `doti install --repo <path> --agents codex,claude --json` to install, repair, or migrate repo-owned Doti workflow assets. Live repo configuration and baselines, including `.doti/release.json`, cycle/gate state, prerequisite overrides, and Sentrux state, remain target-owned.
 
-When updating a repo that already has doti v0.5 installed, `hx update` replaces managed Doti/scaffold assets only; project-owned feature docs are not silently renamed. Leave implemented or completed historical specs on their existing filenames. If an open, unimplemented legacy spec is still unnumbered, migrate it before continuing: choose the next `NNN-` prefix, rename the matching `docs/specs`, `docs/plans`, and `docs/tasks` artifacts to the same numbered slug, then re-stamp `specify` with that `NNN-short-name`. All subsequent new specs use the numbered format.
+When repairing a repo that already has doti v0.5 installed, project-owned feature docs are not silently renamed. Leave implemented or completed historical specs on their existing filenames. If an open, unimplemented legacy spec is still unnumbered, migrate it before continuing: choose the next `NNN-` prefix, rename the matching `docs/specs`, `docs/plans`, and `docs/tasks` artifacts to the same numbered slug, then re-stamp `specify` with that `NNN-short-name`. All subsequent new specs use the numbered format.
 
-`hx update` treats `.doti/release.json` as live repo configuration. Existing release manifests are preserved. Older repos that do not have one get a default manifest only when update can identify a single non-tool, non-test executable project; otherwise the update report tells the agent/operator to add `.doti/release.json` before running `hx release`.
+`.doti/release.json` is live repo configuration. Existing release manifests are preserved by Doti install/repair work. Older repos that do not have one must add the manifest before running `hx release`.
 
 ### Local release output
 
-`hx release` builds a local release archive, checksum, and `release.identity.json` proof from the committed repository state. The target repository declares the product to publish in `.doti/release.json`: product/package name, publish `.csproj`, published executable name, output executable name, and default release-root environment variable. This lets a vendored `hx.exe` release the target repo's own executable without requiring `tools/Hx.Scaffold.Cli` to exist in that repo.
+`hx release` builds Velopack installer/update artifacts plus `release.identity.json` proof from the committed repository state. The target repository declares the product to publish in `.doti/release.json`: product/package name, publish `.csproj`, published executable name, output executable name, and default release-root environment variable. This lets a vendored `hx.exe` release the target repo's own executable without requiring `tools/Hx.Scaffold.Cli` to exist in that repo.
+
+Release tagging is command-backed. `hx release --major|--minor|--patch` validates the requested intent against the GitVersion-calculated version, creates or verifies the local annotated `v<version>` tag, stages vendored assets into the Velopack pack directory, runs `vpk pack`, and reports the tag push command needed for GitHub CI. `hx release` does not push tags.
 
 When a release root is configured, the verified artifact set is copied to:
 
@@ -310,15 +311,15 @@ By default, `hx release` reads the manifest's default release-root variable, whi
 
 ```powershell
 .\hx.exe release --repo . --json
-.\hx.exe release --repo . --release-root D:\heurex-releases --json
-.\hx.exe release --repo . --release-root D:\heurex-releases --release-root-env HEUREX_RELEASE_ROOT --save-release-root --json
+.\hx.exe release --repo . --minor --release-root D:\heurex-releases --json
+.\hx.exe release --repo . --patch --release-root D:\heurex-releases --release-root-env HEUREX_RELEASE_ROOT --save-release-root --json
 ```
 
 If no explicit root is provided and the selected environment variable is unset, the command reports that the local copy was skipped. Manual or agent-performed file copying is not release proof; use the command's `LocalReleaseResult` envelope.
 
 Package-manager manifest templates are prepared under `packaging/`; publishing them still requires the released archive hashes and external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
 
-Each archive bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution; `hx prereq check` reports those prerequisites and directory readiness before `new` or `update` mutates anything.
+Each release bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution; `hx prereq check` reports those prerequisites and directory readiness before `new` mutates anything.
 
 ### Build from source
 
@@ -351,22 +352,21 @@ Then drive development with the slash-commands, in order — each stage's proof 
 
 ## CLI reference
 
-Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, and `Hx.Scaffold.Cli` for `new`, `version`, `update`, and `prereq`). Add `--json` for the machine envelope. Human `--help` is rich by default on capable terminals and supports `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR` for ANSI-free output.
+Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, and `Hx.Scaffold.Cli` for `new`, `version`, `release`, and `prereq`). Add `--json` for the machine envelope. Human `--help` is rich by default on capable terminals and supports `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR` for ANSI-free output.
 
 | Command | What it does |
 | --- | --- |
 | `new` _(Hx.Scaffold.Cli)_ | Generate a new agent-first .NET solution and install doti |
 | `version --repo <path>` _(Hx.Scaffold.Cli)_ | Report running hx identity, target repo scaffold version, and managed Doti modification state |
-| `update [--repo <path>] [--dry-run] [--force] [--noworktree]` _(Hx.Scaffold.Cli)_ | Update an existing doti-enabled Git repo from the latest verified release while preserving live repo configuration |
-| `release [--repo <path>] [--release-root <path>] [--release-root-env <name>] [--save-release-root]` _(Hx.Scaffold.Cli)_ | Build the manifest-declared target release archive/checksum/identity set and copy it to `<package>/<version>` plus `<package>/latest` when a root is configured |
-| `prereq check --for <new\|update\|version\|generated-validation>` _(Hx.Scaffold.Cli)_ | Check trusted .NET SDK/Git/directory prerequisites without installing anything |
-| `prereq install --for <new\|update> --confirm-plan <digest>` _(Hx.Scaffold.Cli)_ | Run an explicitly approved Windows winget install plan from trusted manifest metadata, then re-check prerequisites |
+| `release [--repo <path>] [--major\|--minor\|--patch] [--release-root <path>] [--release-root-env <name>] [--save-release-root]` _(Hx.Scaffold.Cli)_ | Validate release intent, create/verify the local GitVersion tag, build Velopack artifacts, and copy them to `<package>/<version>` plus `<package>/latest` when a root is configured |
+| `prereq check --for <new\|version\|generated-validation>` _(Hx.Scaffold.Cli)_ | Check trusted .NET SDK/Git/directory prerequisites without installing anything |
+| `prereq install --for <new> --confirm-plan <digest>` _(Hx.Scaffold.Cli)_ | Run an explicitly approved Windows winget install plan from trusted manifest metadata, then re-check prerequisites |
 | `gate run --profile <auto\|advisory\|normal\|release>` | Run the full deterministic gate ladder → one fail-closed `GateProof` |
 | `security scan` | Package-vulnerability SCA (`dotnet list package --vulnerable`) + analyzer SAST status |
 | `architecture test` | ArchUnitNET per-family proof |
 | `sentrux verify` / `sentrux check` | Verify the vendored Sentrux binary / run the boundary analysis |
 | `hygiene scan` / `hygiene gitleaks verify` | Working-tree hygiene + secret scanning |
-| `version calculate` / `version bump` | GitVersion semantic version / bump + annotated tag |
+| `version calculate` | Read-only GitVersion semantic version calculation; release tags are created only by `hx release --major\|--minor\|--patch` |
 | `tools fetch [--rid] [--tool all\|gitleaks\|sentrux\|gitversion]` | Download + SHA-256-verify the vendored tool binaries from their pinned manifests (fail-closed on mismatch) |
 | `plan` _(Hx.Impact.Cli)_ | Affected-test planner (project-graph reverse closure → covering test projects) |
 | `doti cycle stamp \| status \| check \| commit` | Stamp a stage (prereq-checked) / show cycle state / fail-closed prereq check / sanctioned commit |

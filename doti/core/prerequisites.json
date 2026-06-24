@@ -5,7 +5,7 @@
       "id": "dotnet-sdk",
       "displayName": ".NET SDK",
       "hardFor": [ "new", "generated-validation" ],
-      "advisoryFor": [ "update", "version" ],
+      "advisoryFor": [ "version" ],
       "minimumVersion": "10.0.0",
       "probe": {
         "executable": "dotnet",
@@ -23,7 +23,7 @@
     {
       "id": "git",
       "displayName": "Git",
-      "hardFor": [ "new", "update", "generated-validation" ],
+      "hardFor": [ "new", "generated-validation" ],
       "advisoryFor": [ "version" ],
       "minimumVersion": "2.40.0",
       "probe": {

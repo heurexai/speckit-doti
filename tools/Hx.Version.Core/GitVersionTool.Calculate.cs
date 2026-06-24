@@ -30,46 +30,6 @@ public static partial class GitVersionTool
         return ParseVersion(run.StandardOutput, ManifestVersion(repositoryRoot));
     }
 
-    /// <summary>Record an operator-instructed major/minor bump as an annotated git tag (the sole bump surface).</summary>
-    public static VersionResult Bump(string repositoryRoot, string increment)
-    {
-        VersionResult current = Calculate(repositoryRoot);
-        string next = NextVersion(current.Version, increment);
-        ProcessRunResult tag = ProcessRunner.Run(new ToolCommand(
-            "git", ["tag", "-a", "v" + next, "-m", $"Release v{next} ({increment} bump via `version bump`)"], repositoryRoot));
-        if (tag.ExitCode != 0)
-        {
-            throw new InvalidOperationException("git tag failed: " +
-                (string.IsNullOrWhiteSpace(tag.StandardError) ? tag.StandardOutput : tag.StandardError));
-        }
-
-        return new VersionResult(next, increment, $"gitversion {ManifestVersion(repositoryRoot)} + tag v{next}");
-    }
-
-    /// <summary>Pure next-version computation (testable).</summary>
-    public static string NextVersion(string current, string increment)
-    {
-        string core = current.TrimStart('v', 'V');
-        int delimiter = core.IndexOfAny(['+', '-']);
-        if (delimiter >= 0)
-        {
-            core = core[..delimiter];
-        }
-
-        string[] parts = core.Split('.');
-        int major = parts.Length > 0 && int.TryParse(parts[0], out int m) ? m : 0;
-        int minor = parts.Length > 1 && int.TryParse(parts[1], out int n) ? n : 0;
-        int patch = parts.Length > 2 && int.TryParse(parts[2], out int p) ? p : 0;
-
-        return increment.ToLowerInvariant() switch
-        {
-            "major" => $"{major + 1}.0.0",
-            "minor" => $"{major}.{minor + 1}.0",
-            "patch" => $"{major}.{minor}.{patch + 1}",
-            _ => throw new ArgumentException($"Unknown increment '{increment}'. Use major|minor|patch.")
-        };
-    }
-
     public static int CompareVersions(string left, string right)
     {
         SemVer l = SemVer.Parse(left);

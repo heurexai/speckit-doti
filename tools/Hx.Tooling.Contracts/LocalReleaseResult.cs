@@ -4,6 +4,11 @@ public sealed record LocalReleaseResult(
     int SchemaVersion,
     string ProjectName,
     string Version,
+    string ReleaseIntent,
+    LocalReleaseTag Tag,
+    string GitVersionSource,
+    string VelopackPackageId,
+    string VelopackChannel,
     string RuntimeIdentifier,
     string SourceCommit,
     LocalReleaseTarget Target,
@@ -14,6 +19,8 @@ public sealed record LocalReleaseResult(
     string? VersionDirectory,
     string? LatestDirectory,
     IReadOnlyList<LocalReleaseArtifact> Artifacts,
+    IReadOnlyList<LocalReleaseArtifact> VelopackArtifacts,
+    IReadOnlyList<LocalReleasePayloadCheck> PayloadChecks,
     IReadOnlyList<string> Blockers);
 
 public sealed record LocalReleaseRootDecision(
@@ -34,6 +41,20 @@ public sealed record LocalReleaseEnvironmentPersistence(
     string? Limitation);
 
 public sealed record LocalReleaseArtifact(string Name, string Sha256, long SizeBytes);
+
+public sealed record LocalReleasePayloadCheck(
+    string Path,
+    string Sha256,
+    long SizeBytes);
+
+public sealed record LocalReleaseTag(
+    string Name,
+    string Commit,
+    string? Object,
+    bool Created,
+    bool Existing,
+    string Message,
+    string PushCommand);
 
 public sealed record LocalReleaseTarget(
     string ProductName,

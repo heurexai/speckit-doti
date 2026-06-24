@@ -7,17 +7,6 @@ namespace Hx.Runner.Tests;
 
 public sealed class VersionTests
 {
-    [Theory]
-    [InlineData("1.2.3", "major", "2.0.0")]
-    [InlineData("1.2.3", "minor", "1.3.0")]
-    [InlineData("1.2.3", "patch", "1.2.4")]
-    [InlineData("v0.1.0+5.Branch.dev", "minor", "0.2.0")]
-    [InlineData("0.0.0", "major", "1.0.0")]
-    public void NextVersion_increments_correctly(string current, string increment, string expected)
-    {
-        Assert.Equal(expected, GitVersionTool.NextVersion(current, increment));
-    }
-
     [Fact]
     public void Verify_is_blocked_when_the_manifest_is_missing()
     {

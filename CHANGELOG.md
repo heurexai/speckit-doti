@@ -6,6 +6,9 @@ All notable changes to speckit-doti are documented here. The format follows
 
 ## [Unreleased]
 
+- **Changed** `hx release` now owns release intent and local tag creation (`--major|--minor|--patch`) and records tag/GitVersion/Velopack payload identity in the local release result.
+- **Removed** the bespoke repository updater command and the runner-side standalone tag command; Velopack owns installed executable updates, while `doti install` remains the repo workflow asset install/repair path.
+
 ## [0.4.0] - 2026-06-23
 
 - **Added** trusted prerequisite preflight: `hx prereq check` reports .NET SDK, Git, directory readiness, and manifest identity; `hx prereq install` runs only a release-defined, digest-approved Windows winget plan.

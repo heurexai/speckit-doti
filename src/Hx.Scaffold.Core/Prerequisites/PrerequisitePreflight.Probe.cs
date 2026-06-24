@@ -115,7 +115,7 @@ public static partial class PrerequisitePreflight
                 File.Exists(output) ? "output path is an existing file" : null));
         }
 
-        if ((request.Command == PrerequisiteCommands.Update || request.Command == PrerequisiteCommands.Version)
+        if (request.Command == PrerequisiteCommands.Version
             && !string.IsNullOrWhiteSpace(request.RepositoryRoot))
         {
             string repo = Path.GetFullPath(request.RepositoryRoot);

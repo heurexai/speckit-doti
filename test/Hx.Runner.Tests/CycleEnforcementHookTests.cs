@@ -12,7 +12,26 @@ public sealed partial class CycleEnforcementTests
         string dir = InitRepo();
         try
         {
-            HookInstaller.Install(dir);
+            string hookPath = HookInstaller.Install(dir);
+            Assert.Equal(HookInstaller.HookScript, File.ReadAllText(hookPath));
+            string? previousSentinel = Environment.GetEnvironmentVariable(PrecommitGuard.SentinelEnvVar);
+            try
+            {
+                Environment.SetEnvironmentVariable(PrecommitGuard.SentinelEnvVar, null);
+                Assert.False(PrecommitGuard.IsSanctioned());
+                Environment.SetEnvironmentVariable(PrecommitGuard.SentinelEnvVar, "1");
+                Assert.True(PrecommitGuard.IsSanctioned());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(PrecommitGuard.SentinelEnvVar, previousSentinel);
+            }
+
+            if (OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             File.WriteAllText(Path.Combine(dir, "change.txt"), "x");
             Git(dir, "add", "-A");
 

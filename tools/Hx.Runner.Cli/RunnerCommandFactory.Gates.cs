@@ -43,9 +43,8 @@ internal static partial class RunnerCommandFactory
 
     private static void AddVersion(RootCommand rootCommand, CliMeta meta)
     {
-        Command versionCommand = new("version", "GitVersion-backed version calculation and operator-instructed bumps.");
+        Command versionCommand = new("version", "GitVersion-backed version calculation.");
         AddVersionCalculate(versionCommand, meta);
-        AddVersionBump(versionCommand, meta);
         rootCommand.Subcommands.Add(versionCommand);
     }
 
@@ -58,24 +57,6 @@ internal static partial class RunnerCommandFactory
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "version calculate",
             () => RunnerCommands.VersionCalculate(meta, parseResult.GetValue(repo)!),
-            forceJson: CliApp.ForceJson(parseResult, json)));
-        versionCommand.Subcommands.Add(command);
-    }
-
-    private static void AddVersionBump(Command versionCommand, CliMeta meta)
-    {
-        Command command = new("bump", "Record an operator-instructed major/minor bump as an annotated git tag (the sole bump surface).");
-        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
-        Option<bool> major = new("--major") { Description = "Major bump.", DefaultValueFactory = _ => false };
-        Option<bool> minor = new("--minor") { Description = "Minor bump.", DefaultValueFactory = _ => false };
-        Option<bool> json = CliApp.JsonOption();
-        command.Options.Add(repo);
-        command.Options.Add(major);
-        command.Options.Add(minor);
-        command.Options.Add(json);
-        command.SetAction(parseResult => CliHost.Run(meta, "version bump",
-            () => RunnerCommands.VersionBump(meta, parseResult.GetValue(repo)!,
-                parseResult.GetValue(major), parseResult.GetValue(minor)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         versionCommand.Subcommands.Add(command);
     }

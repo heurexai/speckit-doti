@@ -14,7 +14,8 @@ public sealed record LocalReleaseRequest(
     string? ReleaseRootEnvironmentVariable,
     bool SaveReleaseRoot,
     string? RuntimeIdentifier,
-    string CommandVersion);
+    string CommandVersion,
+    string ReleaseIntent);
 
 public static class LocalReleaseService
 {
@@ -26,8 +27,13 @@ public static class LocalReleaseService
             : request.RuntimeIdentifier.Trim();
         LocalReleaseTarget target = ReleaseTargetManifest.Load(repo);
         string projectName = SafeSegment(target.PackageName);
+        string releaseIntent = NormalizeReleaseIntent(request.ReleaseIntent);
         VersionResult version = GitVersionTool.Calculate(repo);
         string sourceCommit = Git(repo, "rev-parse HEAD").Trim();
+        ValidateReleaseIntent(repo, version.Version, releaseIntent);
+        LocalReleaseTag tag = EnsureReleaseTag(repo, version.Version, releaseIntent, sourceCommit);
+        string velopackPackageId = projectName;
+        string velopackChannel = ChannelFromRid(rid);
 
         LocalReleaseRootDecision rootDecision = LocalReleaseRootResolver.Resolve(
             request.ReleaseRoot,
@@ -49,6 +55,11 @@ public static class LocalReleaseService
                 JsonContractDefaults.SchemaVersion,
                 projectName,
                 version.Version,
+                releaseIntent,
+                tag,
+                version.Source,
+                velopackPackageId,
+                velopackChannel,
                 rid,
                 sourceCommit,
                 target,
@@ -59,6 +70,8 @@ public static class LocalReleaseService
                 VersionDirectory: null,
                 LatestDirectory: null,
                 Artifacts: [],
+                VelopackArtifacts: [],
+                PayloadChecks: [],
                 Blockers: []);
         }
 
@@ -69,19 +82,23 @@ public static class LocalReleaseService
         Directory.CreateDirectory(tempRoot);
         try
         {
-            IReadOnlyList<LocalReleaseArtifact> artifacts = BuildArtifacts(
+            ReleaseArtifactBuild artifacts = BuildArtifacts(
                 repo,
                 tempRoot,
                 target,
                 version.Version,
+                releaseIntent,
+                tag,
                 rid,
                 sourceCommit,
-                request.CommandVersion);
+                request.CommandVersion,
+                velopackPackageId,
+                velopackChannel);
 
             string projectRoot = EnsureInside(releaseRoot, Path.Combine(releaseRoot, projectName));
             string versionDir = EnsureInside(releaseRoot, Path.Combine(projectRoot, version.Version));
             string latestDir = EnsureInside(releaseRoot, Path.Combine(projectRoot, "latest"));
-            PublishLocalCopy(tempRoot, versionDir, latestDir, artifacts, projectName, version.Version, sourceCommit);
+            PublishLocalCopy(tempRoot, versionDir, latestDir, artifacts.Artifacts, projectName, version.Version, sourceCommit);
 
             if (request.SaveReleaseRoot)
             {
@@ -92,6 +109,11 @@ public static class LocalReleaseService
                 JsonContractDefaults.SchemaVersion,
                 projectName,
                 version.Version,
+                releaseIntent,
+                tag,
+                version.Source,
+                velopackPackageId,
+                velopackChannel,
                 rid,
                 sourceCommit,
                 target,
@@ -101,7 +123,9 @@ public static class LocalReleaseService
                 SkippedReason: null,
                 VersionDirectory: versionDir,
                 LatestDirectory: latestDir,
-                Artifacts: artifacts,
+                Artifacts: artifacts.Artifacts,
+                VelopackArtifacts: artifacts.VelopackArtifacts,
+                PayloadChecks: artifacts.PayloadChecks,
                 Blockers: []);
         }
         finally
@@ -110,14 +134,23 @@ public static class LocalReleaseService
         }
     }
 
-    private static IReadOnlyList<LocalReleaseArtifact> BuildArtifacts(
+    private sealed record ReleaseArtifactBuild(
+        IReadOnlyList<LocalReleaseArtifact> Artifacts,
+        IReadOnlyList<LocalReleaseArtifact> VelopackArtifacts,
+        IReadOnlyList<LocalReleasePayloadCheck> PayloadChecks);
+
+    private static ReleaseArtifactBuild BuildArtifacts(
         string repo,
         string tempRoot,
         LocalReleaseTarget target,
         string version,
+        string releaseIntent,
+        LocalReleaseTag tag,
         string rid,
         string sourceCommit,
-        string commandVersion)
+        string commandVersion,
+        string velopackPackageId,
+        string velopackChannel)
     {
         string projectName = SafeSegment(target.PackageName);
         string publishProject = target.PublishProject.Replace('/', Path.DirectorySeparatorChar);
@@ -127,21 +160,7 @@ public static class LocalReleaseService
             "-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true " +
             $"-o {Quote(publish)}");
 
-        string payloadName = $"{projectName}-v{version}-{rid}";
-        string payload = Path.Combine(tempRoot, payloadName);
-        Directory.CreateDirectory(payload);
-        string sourceZip = Path.Combine(tempRoot, "source.zip");
-        Git(repo, $"archive --format=zip -o {Quote(sourceZip)} HEAD");
-        ZipFile.ExtractToDirectory(sourceZip, payload);
-
-        foreach (string tool in new[] { "gitleaks", "sentrux", "gitversion" })
-        {
-            string source = Path.Combine(repo, "tools", tool, "bin");
-            if (Directory.Exists(source))
-            {
-                DirectoryCopy.Copy(source, Path.Combine(payload, "tools", tool, "bin"), _ => true);
-            }
-        }
+        StagePackagedAssets(repo, publish);
 
         string executableName = ExecutableFileName(target.ExecutableName, rid);
         string publishedExe = Path.Combine(publish, ExecutableFileName(target.PublishedExecutableName, rid));
@@ -151,7 +170,19 @@ public static class LocalReleaseService
                 $"Published release executable '{target.PublishedExecutableName}' was not found: {publishedExe}");
         }
 
-        File.Copy(publishedExe, Path.Combine(payload, executableName), overwrite: true);
+        string expectedExe = Path.Combine(publish, executableName);
+        if (!string.Equals(Path.GetFullPath(publishedExe), Path.GetFullPath(expectedExe), StringComparison.OrdinalIgnoreCase))
+        {
+            File.Copy(publishedExe, expectedExe, overwrite: true);
+        }
+
+        IReadOnlyList<LocalReleasePayloadCheck> payloadChecks = InspectPayload(publish);
+        PackVelopack(repo, publish, tempRoot, velopackPackageId, version, executableName, target.ProductName, velopackChannel, rid);
+
+        string payloadName = $"{projectName}-v{version}-{rid}";
+        string payload = Path.Combine(tempRoot, payloadName);
+        Directory.CreateDirectory(payload);
+        DirectoryCopy.Copy(publish, payload, _ => true);
 
         string archiveName = payloadName + ".zip";
         string archive = Path.Combine(tempRoot, archiveName);
@@ -166,22 +197,31 @@ public static class LocalReleaseService
             new(Path.GetFileName(checksum), Sha256(checksum), new FileInfo(checksum).Length)
         };
 
+        IReadOnlyList<LocalReleaseArtifact> velopackArtifacts = DiscoverVelopackArtifacts(tempRoot);
+        artifacts.AddRange(velopackArtifacts);
+
         string identity = Path.Combine(tempRoot, "release.identity.json");
         File.WriteAllText(identity, JsonSerializer.Serialize(new
         {
             schemaVersion = JsonContractDefaults.SchemaVersion,
             projectName,
             version,
-            tag = "v" + version,
+            releaseIntent,
+            tag,
+            gitVersionSource = $"gitversion + {tag.Name}",
+            velopackPackageId,
+            velopackChannel,
             runtimeIdentifier = rid,
             sourceCommit,
             target,
             command = "hx release",
             commandVersion,
-            artifacts
+            artifacts,
+            velopackArtifacts,
+            payloadChecks
         }, JsonContractSerializerOptions.Create()));
         artifacts.Add(new("release.identity.json", Sha256(identity), new FileInfo(identity).Length));
-        return artifacts;
+        return new ReleaseArtifactBuild(artifacts, velopackArtifacts, payloadChecks);
     }
 
     private static void PublishLocalCopy(
@@ -221,6 +261,235 @@ public static class LocalReleaseService
             TryDelete(staging);
             TryDelete(latestStaging);
         }
+    }
+
+    private static string NormalizeReleaseIntent(string? intent)
+    {
+        string normalized = string.IsNullOrWhiteSpace(intent) ? "patch" : intent.Trim().ToLowerInvariant();
+        return normalized is "major" or "minor" or "patch"
+            ? normalized
+            : throw new InvalidOperationException($"Unknown release intent '{intent}'. Use major, minor, or patch.");
+    }
+
+    private static void ValidateReleaseIntent(string repo, string version, string releaseIntent)
+    {
+        string? previous = LatestVersionTag(repo, version);
+        if (previous is null)
+        {
+            return;
+        }
+
+        string actual = ClassifyVersionChange(previous, version);
+        if (!string.Equals(actual, releaseIntent, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Release intent mismatch: requested {releaseIntent}, but GitVersion calculated {version} from previous tag {previous} as a {actual} release. " +
+                "Add the appropriate GitVersion +semver commit-message signal before running hx release.");
+        }
+    }
+
+    private static LocalReleaseTag EnsureReleaseTag(string repo, string version, string releaseIntent, string sourceCommit)
+    {
+        string tagName = "v" + version;
+        string existingCommit = GitOptional(repo, $"rev-list -n 1 {Quote(tagName)}").Trim();
+        string message =
+            $"Release {tagName}\n\n" +
+            $"Release-Intent: {releaseIntent}\n" +
+            $"GitVersion-Version: {version}\n" +
+            $"Source-Commit: {sourceCommit}\n" +
+            "Created-By: hx release";
+
+        bool created = false;
+        if (string.IsNullOrWhiteSpace(existingCommit))
+        {
+            string messageFile = Path.Combine(Path.GetTempPath(), "doti-release-tag-" + Guid.NewGuid().ToString("N") + ".txt");
+            try
+            {
+                File.WriteAllText(messageFile, message);
+                Git(repo, $"tag -a {Quote(tagName)} -F {Quote(messageFile)} {Quote(sourceCommit)}");
+            }
+            finally
+            {
+                try { File.Delete(messageFile); }
+                catch { /* best-effort temp cleanup */ }
+            }
+
+            created = true;
+            existingCommit = Git(repo, $"rev-list -n 1 {Quote(tagName)}").Trim();
+        }
+
+        if (!string.Equals(existingCommit, sourceCommit, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Release tag {tagName} points at {existingCommit}, not the release commit {sourceCommit}.");
+        }
+
+        string? objectId = GitOptional(repo, $"rev-parse {Quote(tagName)}").Trim();
+        string tagMessage = GitOptional(repo, $"tag -l {Quote(tagName)} --format=%(contents)").Trim();
+        if (!tagMessage.Contains($"Release-Intent: {releaseIntent}", StringComparison.Ordinal)
+            || !tagMessage.Contains($"GitVersion-Version: {version}", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Release tag {tagName} exists but does not carry the expected Doti release identity trailers.");
+        }
+
+        return new LocalReleaseTag(
+            tagName,
+            existingCommit,
+            string.IsNullOrWhiteSpace(objectId) ? null : objectId,
+            Created: created,
+            Existing: !created,
+            Message: tagMessage,
+            PushCommand: $"git push origin {tagName}");
+    }
+
+    private static string? LatestVersionTag(string repo, string currentVersion)
+    {
+        string output = GitOptional(repo, "tag --list v[0-9]* --sort=-v:refname");
+        foreach (string tag in output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            string candidate = tag.Trim();
+            if (candidate.Length > 1 && !string.Equals(candidate[1..], currentVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate[1..];
+            }
+        }
+
+        return null;
+    }
+
+    private static string ClassifyVersionChange(string previous, string current)
+    {
+        Semver p = ParseSemver(previous);
+        Semver c = ParseSemver(current);
+        if (c.Major > p.Major)
+        {
+            return "major";
+        }
+
+        if (c.Major == p.Major && c.Minor > p.Minor)
+        {
+            return "minor";
+        }
+
+        if (c.Major == p.Major && c.Minor == p.Minor && c.Patch >= p.Patch)
+        {
+            return "patch";
+        }
+
+        throw new InvalidOperationException(
+            $"GitVersion calculated {current}, which is older than previous release tag {previous}.");
+    }
+
+    private static Semver ParseSemver(string value)
+    {
+        string core = value.Trim().TrimStart('v', 'V');
+        int delimiter = core.IndexOfAny(['+', '-']);
+        if (delimiter >= 0)
+        {
+            core = core[..delimiter];
+        }
+
+        string[] parts = core.Split('.');
+        if (parts.Length < 3
+            || !int.TryParse(parts[0], out int major)
+            || !int.TryParse(parts[1], out int minor)
+            || !int.TryParse(parts[2], out int patch))
+        {
+            throw new InvalidOperationException($"Release version '{value}' is not a three-part SemVer version.");
+        }
+
+        return new Semver(major, minor, patch);
+    }
+
+    private sealed record Semver(int Major, int Minor, int Patch);
+
+    private static void StagePackagedAssets(string repo, string publish)
+    {
+        foreach (string tool in new[] { "gitleaks", "sentrux", "gitversion" })
+        {
+            string source = Path.Combine(repo, "tools", tool, "bin");
+            if (Directory.Exists(source))
+            {
+                DirectoryCopy.Copy(source, Path.Combine(publish, "tools", tool, "bin"), _ => true);
+            }
+        }
+
+        string doti = Path.Combine(repo, ".doti");
+        if (Directory.Exists(doti))
+        {
+            DirectoryCopy.Copy(doti, Path.Combine(publish, ".doti"), _ => true);
+        }
+
+        string legacyDoti = Path.Combine(repo, "doti");
+        if (Directory.Exists(legacyDoti))
+        {
+            DirectoryCopy.Copy(legacyDoti, Path.Combine(publish, "doti"), _ => true);
+        }
+    }
+
+    private static IReadOnlyList<LocalReleasePayloadCheck> InspectPayload(string publish)
+    {
+        return Directory.EnumerateFiles(publish, "*", SearchOption.AllDirectories)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .Select(path => new LocalReleasePayloadCheck(
+                Path.GetRelativePath(publish, path).Replace('\\', '/'),
+                Sha256(path),
+                new FileInfo(path).Length))
+            .ToArray();
+    }
+
+    private static void PackVelopack(
+        string repo,
+        string publish,
+        string outputDir,
+        string packageId,
+        string version,
+        string mainExe,
+        string title,
+        string channel,
+        string rid)
+    {
+        string arguments =
+            "pack " +
+            $"--packId {Quote(packageId)} " +
+            $"--packVersion {Quote(version)} " +
+            $"--packDir {Quote(publish)} " +
+            $"--mainExe {Quote(mainExe)} " +
+            $"--packTitle {Quote(title)} " +
+            $"--channel {Quote(channel)} " +
+            $"--runtime {Quote(rid)} " +
+            $"--outputDir {Quote(outputDir)}";
+
+        (int exitCode, string output) = ProcessRunner.Run("vpk", arguments, repo, ProcessRunner.NestedDotnetEnv());
+        if (exitCode != 0)
+        {
+            throw new InvalidOperationException("vpk pack failed: " + ProcessRunner.Tail(output));
+        }
+    }
+
+    private static IReadOnlyList<LocalReleaseArtifact> DiscoverVelopackArtifacts(string tempRoot)
+    {
+        return Directory.EnumerateFiles(tempRoot, "*", SearchOption.TopDirectoryOnly)
+            .Where(path =>
+            {
+                string name = Path.GetFileName(path);
+                return !name.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase)
+                    && !name.Equals("release.identity.json", StringComparison.OrdinalIgnoreCase)
+                    && !name.Equals("source.zip", StringComparison.OrdinalIgnoreCase);
+            })
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .Select(path => new LocalReleaseArtifact(
+                Path.GetFileName(path),
+                Sha256(path),
+                new FileInfo(path).Length))
+            .ToArray();
+    }
+
+    private static string ChannelFromRid(string rid)
+    {
+        int dash = rid.IndexOf('-', StringComparison.Ordinal);
+        return dash > 0 ? rid[..dash] : rid;
     }
 
     private static void EnsureExistingVersionMatches(string versionDir, string projectName, string version, string sourceCommit)
@@ -349,6 +618,12 @@ public static class LocalReleaseService
         }
 
         return output;
+    }
+
+    private static string GitOptional(string workingDirectory, string arguments)
+    {
+        (int exitCode, string output) = ProcessRunner.Run("git", arguments, workingDirectory);
+        return exitCode == 0 ? output : "";
     }
 
     private static string Sha256(string path)

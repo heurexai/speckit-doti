@@ -24,7 +24,7 @@ public static partial class ScaffoldCommands
         catch (InvalidOperationException)
         {
             // Running-only version output must stay read-only and available even if a damaged install lacks payload
-            // metadata; `new`/`update` still fail closed through their mandatory preflight.
+            // metadata; `new` still fails closed through its mandatory preflight.
         }
 
         ScaffoldVersionReport report = ScaffoldVersionReporter.Report(meta.Version, target, prerequisites);
