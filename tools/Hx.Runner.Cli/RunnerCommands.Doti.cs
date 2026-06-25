@@ -6,25 +6,13 @@ public static partial class RunnerCommands
 {
     private static bool TryParseAgents(string csv, out List<DotiAgentTarget> agents, out string? error)
     {
-        agents = [];
-        foreach (string key in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        if (!DotiAgentTarget.TryParseCsv(csv, out IReadOnlyList<DotiAgentTarget> parsed, out error))
         {
-            DotiAgentTarget? agent = DotiAgentTarget.FromKey(key);
-            if (agent is null)
-            {
-                error = $"Unknown agent '{key}'. Known: codex, claude.";
-                return false;
-            }
-
-            agents.Add(agent);
+            agents = [];
+            return false;
         }
 
-        if (agents.Count == 0)
-        {
-            agents.AddRange(DotiAgentTarget.All);
-        }
-
-        error = null;
+        agents = parsed.ToList();
         return true;
     }
 

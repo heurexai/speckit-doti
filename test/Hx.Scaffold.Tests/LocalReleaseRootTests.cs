@@ -23,6 +23,7 @@ public sealed class LocalReleaseRootTests
         Assert.Equal((int)ExitClass.Validation, root.Parse(["release", "--repo", exe.Root, "--json"]).Invoke());
         Assert.Equal((int)ExitClass.Validation, root.Parse(["prereq", "check", "--json"]).Invoke());
         Assert.Equal((int)ExitClass.Validation, root.Parse(["prereq", "install", "--json"]).Invoke());
+        Assert.Equal((int)ExitClass.Validation, root.Parse(["doti", "install", "--repo", Path.Combine(exe.Root, "target"), "--json"]).Invoke());
     }
 
     [Fact]
@@ -47,6 +48,21 @@ public sealed class LocalReleaseRootTests
         }
 
         Assert.Equal((int)ExitClass.Success, root.Parse(["describe", "--json"]).Invoke());
+    }
+
+    [Fact]
+    public void Describe_exposes_released_hx_doti_install_surface()
+    {
+        using TempRepo exe = TempRepo.Create();
+        RootCommand root = ScaffoldCommandFactory.Create(new CliMeta("hx", "0.0.0-test"), exe.Root);
+
+        CliDescribe describe = DescribeWalker.Describe(new CliMeta("hx", "0.0.0-test"), root, ErrorCodes.All);
+        CliDescribeCommand doti = describe.Root.Subcommands.Single(command => command.Name == "doti");
+        CliDescribeCommand install = doti.Subcommands.Single(command => command.Name == "install");
+
+        Assert.Contains(install.Options, option => option.Name == "--repo");
+        Assert.Contains(install.Options, option => option.Name == "--agents");
+        Assert.Contains(install.Options, option => option.Name == "--force");
     }
 
     [Fact]

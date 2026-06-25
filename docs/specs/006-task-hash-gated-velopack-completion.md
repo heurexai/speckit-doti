@@ -50,7 +50,7 @@ Included behavior:
 - Allow `/doti-release` to aggregate multiple completed feature cycles into one release train.
 - Require the release stage to update README and repo documentation with release notes before release proof is accepted, so completed changes do not leave documentation debt.
 - Require the Velopack-backed Doti update path to migrate existing repos away from the old root `doti/` directory and remove obsolete/orphaned Doti workflow assets that are no longer part of the supported scaffold layout.
-- Make the released Doti product an installer/update package targeted at a repository directory, not a source archive. New or empty target directories receive a Doti install and next-step scaffold instructions; existing Doti-enabled repos receive an upgrade.
+- Make the released Doti product a Velopack installer/update package for the main `hx` executable and bundled Doti payload, not a source archive. The installer installs or updates `hx` into an operator-configured and operator-confirmed application directory. From that installed directory, `hx` is then used to install, repair, or update Doti workflow assets in any explicit target repo.
 - Move hx operational configuration to Microsoft.Extensions.Configuration backed by a local JSON file stored beside `hx.exe`; release-root behavior must come from that local config rather than release command flags or environment-variable overrides.
 - Apply every Doti workflow/runtime change in both places that matter: this speckit-doti repo's self-hosted Doti assets and the scaffold-installed Doti payload used by generated repos.
 - Document and expose the task-completion gate in command help, `describe --json`, agent context, and generated skills.
@@ -71,7 +71,10 @@ Excluded behavior:
 - Deleting custom/live repo configuration while cleaning obsolete Doti-owned assets.
 - Shipping source-code archives as the release product instead of installer/update artifacts.
 - Treating a non-empty repo target with no Doti installation as an upgrade rather than a normal first-time Doti install.
-- Installing globally, guessing the current directory, or mutating any directory when the installer was not given an explicit target repo directory.
+- Installing `hx` into an unspecified or hidden app directory without an operator-visible directory configuration/confirmation path.
+- Requiring released-package users to clone `speckit-doti`, compile source, or run `dotnet run --project tools/Hx.Runner.Cli` to update Doti assets in another repo.
+- Requiring an interactive Windows folder-picker installer or MSI package in this feature; the supported Windows install-directory UX is Velopack `Setup.exe --installto <DIR>` plus installed `hx` path reporting.
+- Letting repo asset install/update guess the current directory, or mutate any repo directory when installed `hx` was not given an explicit target repo directory.
 - Reading hx operational release-root configuration from the target repo, process current directory, or environment variables instead of the JSON config beside the running `hx.exe`.
 - Keeping release-root command options such as `--release-root`, `--release-root-env`, or `--save-release-root` as the normal hx release configuration mechanism.
 - Updating only this repo's `.doti`/workflow assets while leaving the scaffold-installed Doti payload stale, or updating only the scaffold payload while leaving this repo's self-hosted Doti workflow stale.
@@ -89,7 +92,8 @@ The next Velopack completion work MUST include the unfinished tasks from `005-ve
 - Microsoft.Extensions.Configuration-based hx configuration in the scaffold and in the released hx executable.
 - `.doti/`-only render/source authority and legacy root `doti/` migration.
 - Velopack-backed update/migration behavior that removes the old root `doti/` directory and obsolete Doti-owned files from existing repos while preserving custom/live configuration.
-- Installer behavior for missing, empty, non-empty without Doti, and existing Doti-enabled target directories.
+- Velopack installer behavior for a configurable/confirmed `hx` application install directory.
+- Installed-`hx` repo asset behavior for missing, empty, non-empty without Doti, and existing Doti-enabled target directories.
 - Managed-asset canonical baselines for `.doti/` source assets.
 - Release-gate proof for Velopack metadata, tag identity, staged vendored asset hashes, and failure when only raw archives are present.
 - GitHub release workflow changes so Velopack artifacts/update metadata are primary release outputs.
@@ -160,14 +164,14 @@ The next Velopack completion work MUST include the unfinished tasks from `005-ve
 - `FR-061`: If an obsolete Doti-owned file has local modifications relative to its canonical managed hash, the update MUST fail closed with exact path diagnostics unless the operator explicitly uses a supported force/replace option.
 - `FR-062`: The update proof MUST report every removed obsolete Doti-owned file/directory, every preserved custom/live file, and every skipped removal with its reason.
 - `FR-063`: The Doti release output MUST be installer/update artifacts only; source-code zip/tar archives MUST NOT be published as the primary release product.
-- `FR-064`: The installer MUST require an explicit target directory and treat that directory as the repo/scaffold target for Doti install or upgrade.
-- `FR-065`: If the target directory does not exist, the installer MUST create it, install Doti into it, and report that no scaffold has been generated yet.
-- `FR-066`: If the target directory exists and is empty, the installer MUST install Doti into it and report that no scaffold has been generated yet.
-- `FR-067`: After installing Doti into a missing or empty target directory, the installer MUST print the exact next-step command or instruction for creating/installing the new scaffold in that directory.
-- `FR-068`: If the target directory is an existing repo with code and an installed Doti workflow, the installer MUST upgrade Doti in place using the managed-asset update/migration rules.
-- `FR-069`: If the target directory is non-empty but does not contain an installed Doti workflow, the installer MUST install Doti as a first-time install while preserving existing files and refusing unsafe overwrites.
-- `FR-070`: Installer output MUST distinguish `installed-new-target`, `installed-empty-target`, `installed-non-empty-non-doti-target`, and `upgraded-existing-doti-repo` outcomes in human text and JSON/update proof.
-- `FR-071`: If the installer is run without an explicit target repo directory, it MUST fail hard before mutation with a usage/validation diagnostic and MUST NOT default to the current working directory.
+- `FR-064`: The Velopack installer/update experience MUST install or update the main `hx` executable and bundled Doti payload into an operator-configured and operator-confirmed application directory, not into an unspecified hidden directory that the operator cannot see before install.
+- `FR-065`: On Windows, the Doti release MUST document and support Velopack `Setup.exe --installto <DIR>` as the install-directory path that satisfies `FR-064`; producing a Velopack MSI/bootstrapper for interactive directory selection is not required for this feature.
+- `FR-066`: After Velopack installation or update, the installed `hx` executable from that application directory MUST be the supported operator-facing command for installing, repairing, or updating Doti workflow assets in target repos.
+- `FR-067`: Installed `hx` MUST expose a repo asset command equivalent to `hx doti install --repo <target-directory> --agents <agents> [--force] [--json]`; the command MUST NOT require a separate runner executable, source checkout, compilation, or `dotnet run`.
+- `FR-068`: If the installed-`hx` repo target directory does not exist, the repo asset command MUST create it, install Doti into it, and report that no scaffold has been generated yet.
+- `FR-069`: If the installed-`hx` repo target directory exists and is empty, the repo asset command MUST install Doti into it and report that no scaffold has been generated yet.
+- `FR-070`: After installing Doti into a missing or empty repo target directory, installed `hx` MUST print the exact next-step command or instruction for creating/installing the new scaffold in that directory.
+- `FR-071`: If the installed-`hx` repo target directory is an existing repo with code and an installed Doti workflow, installed `hx` MUST upgrade Doti in place using the managed-asset update/migration rules.
 - `FR-072`: hx and generated scaffold hx code MUST use Microsoft.Extensions.Configuration for operational configuration loading.
 - `FR-073`: hx MUST load its operational configuration from a JSON file stored in the same directory as the running `hx.exe`; this file is the local authority for hx operational settings.
 - `FR-074`: hx MUST NOT resolve operational configuration from the process current directory, target repo directory, user profile, machine-global location, or environment variable unless a future explicit requirement adds a named provider.
@@ -185,6 +189,11 @@ The next Velopack completion work MUST include the unfinished tasks from `005-ve
 - `FR-086`: Tests or deterministic drift checks MUST prove that generated repos receive the same numbered skills, workflow registry, next-step wording, transition-commit behavior, release-train behavior, installer/update migration rules, and hx configuration guidance as this repo.
 - `FR-087`: The Doti constitution and every rendered constitution-bearing guidance surface MUST be updated from the old "commits go only through `doti cycle commit`" model to the sanctioned automatic stage-transition commit model, while continuing to forbid raw Git commits and agent-authored commit sequencing.
 - `FR-088`: Architecture guidance, agent context, `rules/architecture.json`, architecture tests, and `architecture test` output MUST agree on the rule families actually enforced. This feature MUST remove the current overclaim where guidance describes nine ArchUnitNET families while the command-backed gate reports only `cliSurfaceConfinement` and `cliDelegation`; implementation MUST either restore the nine intended families as command-backed tests or change the generated guidance to describe only the implemented families, with tests preventing future drift.
+- `FR-089`: If the installed-`hx` repo target directory is non-empty but does not contain an installed Doti workflow, installed `hx` MUST install Doti as a first-time install while preserving existing files and refusing unsafe overwrites.
+- `FR-090`: Installed-`hx` repo asset output MUST distinguish `installed-new-target`, `installed-empty-target`, `installed-non-empty-non-doti-target`, and `upgraded-existing-doti-repo` outcomes in human text and JSON/update proof.
+- `FR-091`: If the installed-`hx` repo asset command is run without an explicit target repo directory, it MUST fail hard before mutation with a usage/validation diagnostic and MUST NOT default to the current working directory.
+- `FR-092`: `hx version --json` and `hx version --repo <path> --json` MUST report the installed `hx` executable path and Velopack install/update identity so an operator can confirm which app directory is driving repo updates.
+- `FR-093`: Released-package docs, CLI help, generated skills, and agent context MUST show the normal repo-update path as installed `hx` commands, not source-checkout `dotnet run`; `dotnet run` examples MAY remain only in developer/source sections.
 
 ## Success Criteria
 
@@ -222,11 +231,11 @@ The next Velopack completion work MUST include the unfinished tasks from `005-ve
 - `SC-032`: Updating a repo with locally modified obsolete Doti-owned files fails with exact path diagnostics and does not partially delete assets.
 - `SC-033`: Update proof lists obsolete Doti-owned removals and preserved custom/live configuration files.
 - `SC-034`: Release assets contain Velopack installer/update artifacts and metadata, and do not contain source-code zip/tar archives as primary release assets.
-- `SC-035`: Running the installer against a missing target directory creates the directory, installs Doti, and prints the scaffold-next-step instruction for that path.
-- `SC-036`: Running the installer against an empty existing directory installs Doti and prints the scaffold-next-step instruction for that path.
-- `SC-037`: Running the installer against an existing Doti-enabled repo upgrades Doti in place without replacing repo source code.
-- `SC-038`: Running the installer against a non-empty repo without Doti installs Doti as a first-time install, preserves existing files, and reports that the target was not an upgrade.
-- `SC-039`: Running the installer without a target repo directory exits non-zero, names the missing target argument, and leaves the filesystem unchanged.
+- `SC-035`: Running Velopack `Setup.exe --installto <DIR>` installs or updates `hx` under that operator-selected application directory, and `hx version --json` reports that executable path.
+- `SC-036`: Running installed `hx doti install --repo <missing-dir> --agents codex,claude --json` creates the repo target directory, installs Doti, and prints the scaffold-next-step instruction for that path.
+- `SC-037`: Running installed `hx doti install --repo <empty-dir> --agents codex,claude --json` installs Doti and prints the scaffold-next-step instruction for that path.
+- `SC-038`: Running installed `hx doti install --repo <existing-doti-repo> --agents codex,claude --json` upgrades Doti in place without replacing repo source code.
+- `SC-039`: Running installed `hx doti install --repo <non-empty-non-doti-repo> --agents codex,claude --json` installs Doti as a first-time install, preserves existing files, and reports that the target was not an upgrade.
 - `SC-040`: Running hx release with local release output enabled and no configured directory exits non-zero before creating tags, release artifacts, or filesystem output.
 - `SC-041`: Running hx release with local release output disabled succeeds without a configured local release directory and reports local copy as disabled.
 - `SC-042`: hx release help and `describe --json` no longer expose `--release-root`, `--release-root-env`, or `--save-release-root`.
@@ -238,6 +247,8 @@ The next Velopack completion work MUST include the unfinished tasks from `005-ve
 - `SC-048`: Drift validation fails when this repo's Doti assets and the scaffold-installed Doti payload diverge for any managed Doti file covered by this feature.
 - `SC-049`: After rendering, `.doti/memory/constitution.md`, generated agent context, and rendered skill guidance no longer state that `doti cycle commit` is the sole sanctioned commit path; they name automatic Doti stage-transition commits as the sanctioned path and still reject raw Git commits.
 - `SC-050`: `architecture test --repo . --json`, `rules/architecture.json`, `.doti/agent-context.md`, and the rendered arch-review skill agree on the same architecture family count and ids; if nine families are documented, the command-backed architecture proof reports those nine families rather than two.
+- `SC-051`: Running installed `hx doti install` without a `--repo` target exits non-zero, names the missing target argument, and leaves the filesystem unchanged.
+- `SC-052`: Released-package docs and help show installed `hx` as the normal repo-update command path; no non-developer update instructions require `dotnet run` or a `speckit-doti` source checkout.
 
 ## Key Entities
 
@@ -258,7 +269,8 @@ The next Velopack completion work MUST include the unfinished tasks from `005-ve
 - **Documentation Update Proof**: Release evidence listing documentation files inspected and updated, plus explicit no-change reasons for docs that remain unchanged.
 - **Managed Doti Asset Removal Manifest**: Release-owned metadata that names Doti-owned files/directories which must be removed during update because they are obsolete in the current scaffold layout.
 - **Obsolete Doti-Owned Asset**: A file or directory previously installed by Doti that is no longer part of the supported layout and can be removed only when the canonical managed hash or manifest identity proves it is safe to delete.
-- **Installer Target Directory**: The directory supplied to the installer as the intended repo/scaffold location. It may be missing, empty, non-empty without Doti, or an existing Doti-enabled repo.
+- **Hx Application Install Directory**: The operator-selected or operator-confirmed directory where Velopack installs the main `hx` executable, update metadata, executable-adjacent configuration, bundled Doti payload, release metadata, and vendored assets.
+- **Repo Asset Target Directory**: The directory supplied to installed `hx` as the intended repo/scaffold location for Doti asset install or upgrade. It may be missing, empty, non-empty without Doti, or an existing Doti-enabled repo.
 - **Scaffold Next-Step Instruction**: The exact post-install message that tells the operator how to create/install the scaffold into a newly created or empty target directory.
 - **Hx Local Configuration**: The JSON configuration file stored beside the running `hx.exe` and loaded through Microsoft.Extensions.Configuration as the local authority for hx operational settings.
 - **Local Release Output Setting**: The hx configuration section that controls whether local release directory output is produced and, when enabled, the absolute target directory to use.
@@ -275,8 +287,9 @@ Command-backed or planned deterministic surfaces:
 - Planned task-hash command: MUST stamp or refresh hashes for checked tasks from canonical parsed content and emit exact changed/evaluated task ids.
 - `Hx.Scaffold.Cli release --repo <path> --major|--minor|--patch --json`: MUST load hx local configuration from beside the running executable, report Velopack installer/update artifact metadata in `LocalReleaseResult`, and fail closed when local release output is enabled without a configured directory; empty `velopackArtifacts` or source-archive-only output is not release proof.
 - hx local configuration file beside `hx.exe`: MUST be loaded through Microsoft.Extensions.Configuration and must own local release directory behavior.
-- Doti installer/update entrypoint: MUST accept a target directory, classify it as missing/empty/non-empty-without-Doti/existing-Doti, install or upgrade accordingly, and emit outcome-specific human and JSON proof.
-- Velopack-backed Doti install/update migration: MUST install current `.doti/` assets, remove manifest-declared obsolete Doti-owned assets such as root `doti/`, preserve custom/live configuration, and emit an update proof.
+- Velopack Doti installer/update entrypoint: MUST install or update `hx` and its bundled Doti payload into an operator-configured and operator-confirmed application directory.
+- Installed `hx doti install --repo <target-directory> --agents <agents> [--force] [--json]`: MUST accept an explicit repo target directory, classify it as missing/empty/non-empty-without-Doti/existing-Doti, install or upgrade Doti assets accordingly, and emit outcome-specific human and JSON proof without source checkout or `dotnet run`.
+- Installed-`hx` Doti asset migration: MUST install current `.doti/` assets, remove manifest-declared obsolete Doti-owned assets such as root `doti/`, preserve custom/live configuration, and emit an update proof.
 - Workflow stage description/registry surface: MUST expose ordered skill names and next-stage directives for renderers, command help, and machine-readable agent discovery.
 - `doti render-skills --check`: MUST verify generated skill names and next-step endings match the workflow-stage registry.
 - Scaffold payload drift check: MUST verify this repo's Doti assets and the scaffold-installed Doti payload are generated from the same source or are otherwise byte/canonical-hash equivalent where managed.
@@ -292,7 +305,8 @@ Command-backed or planned deterministic surfaces:
 - The release lane must treat missing Velopack artifacts and unchecked tasks as hard failures, not warnings.
 - The release lane must include documentation update proof so README/docs drift is blocked before tag push and artifact publication.
 - The update/migration lane must support manifest-driven obsolete asset removal, including root `doti/`, without deleting custom/live repo configuration.
-- The installer lane must classify target directories before mutation and avoid packaging/releasing source archives as the end product.
+- The installed-`hx` repo asset lane must classify repo target directories before mutation, and the release lane must avoid packaging/releasing source archives as the end product.
+- The installer lane is split deliberately: Velopack owns the `hx` application install/update location, while installed `hx` owns repo target classification and Doti asset mutation.
 - The hx/scaffold configuration layer must use Microsoft.Extensions.Configuration and a local executable-adjacent JSON provider for operational settings.
 - The hx release command surface must remove release-root flags and rely on configuration for local release output behavior.
 - Doti asset changes must be propagated to both the self-hosted repo install and the scaffold-installed Doti payload, with drift checked in code.
@@ -314,9 +328,10 @@ Command-backed or planned deterministic surfaces:
 - A completed unreleased feature cycle can be accumulated for a later release train; release remains explicit and does not happen merely because drift review completed. Starting another spec cycle is offered after drift review, not directly after implement.
 - Documentation surfaces include README and repo-owned Markdown documentation by default; generated/vendor docs can be excluded only with an explicit no-change or out-of-scope reason in the documentation update proof.
 - The old root `doti/` directory is considered a Doti-owned obsolete layout artifact once the `.doti/` layout has been validated, but custom/live configuration must be preserved even when adjacent to Doti-managed assets.
-- A missing or empty target directory is an install/bootstrap case, not a full scaffold generation case; Doti should be installed and the operator should receive the next scaffold command/instruction.
+- A missing or empty repo asset target directory is an install/bootstrap case, not a full scaffold generation case; installed `hx` should install Doti assets and the operator should receive the next scaffold command/instruction.
 - Existing source code in an upgraded Doti repo is repo-owned and must not be replaced by installer payload.
-- The installer never infers a target from the process current directory; the target must be explicitly supplied.
+- The Velopack installer controls only the installed `hx` application directory. It does not infer or mutate a repo target from the process current directory.
+- Installed `hx doti install` never infers a repo target from the process current directory; the target repo must be explicitly supplied.
 - The hx local configuration file should be named consistently across platforms and live beside the running `hx.exe`/binary; this spec assumes `hx.config.json` unless implementation discovers a stronger established naming convention during planning.
 - Local release output is opt-out, not opt-in. A missing local release directory is a blocking configuration error only while local release output is enabled, and a missing hx local configuration file is always a blocking configuration error for hx operational commands. Only non-mutating help/describe discovery commands may run without the config file, and they must document the failure contract.
 
@@ -353,7 +368,7 @@ Command-backed or planned deterministic surfaces:
 - The operator required the explicit Doti commit step to be removed because commits are automatic stage-transition behavior.
 - The operator required the release stage to instruct the agent to update README and all repo documentation with release notes so releases do not create documentation debt.
 - The operator required the current root `doti/` directory to be removed from speckit-doti and from existing older repos during the Velopack-backed update/install migration, along with other obsolete/orphaned Doti-owned files and directories.
-- The operator expects the new installer to always run against an explicit target repo directory: create and install Doti for missing/empty directories with a scaffold next-step message, install Doti normally into non-empty directories without Doti while preserving existing files, upgrade existing Doti-enabled repos, fail hard when no target repo directory is supplied, and avoid shipping source code as the release product.
+- The operator originally expected a repo-targeted installer, then clarified the product shape: the Velopack installer installs/updates `hx` into an explicit app directory, and installed `hx` then runs against an explicit target repo directory to create/install Doti for missing/empty directories, install Doti normally into non-empty directories without Doti, upgrade existing Doti-enabled repos, fail hard when no repo target is supplied, and avoid shipping source code as the release product.
 - The operator required hx and scaffold code to use Microsoft.Extensions.Configuration, with a JSON config file beside `hx.exe`; local release directory output is enabled by default and requires a configured directory or hx fails hard, while disabled local release output does not require a directory.
 - The operator clarified that if the hx config file is not present, hx must fail hard, and that Microsoft Configuration must also be included in the scaffold starter project code following the same executable-local style as Doti.
 
@@ -364,3 +379,11 @@ Command-backed or planned deterministic surfaces:
 - Clarified that a new spec cycle is offered after `08-Drift-Review`, not directly after `07-Implement`.
 - Clarified that workflow numbering must use explicit two-digit ordered labels such as `01-Specify` and sortable skill identifiers such as `01-doti-specify`.
 - Clarified that all Doti changes must be made both in this speckit-doti repo and in the scaffold-installed Doti payload used by generated repos.
+
+### 2026-06-25 Installer Correction
+
+- The operator clarified that the released Velopack installer/update experience is for installing or updating the main `hx` executable and bundled Doti payload into an operator-configured and operator-confirmed application directory.
+- The operator clarified that repo Doti updates happen after that install by running `hx` from the installed directory against an explicit repo path.
+- The operator rejected any normal released-package workflow that still requires `dotnet run`, source compilation, or a local `speckit-doti` checkout to update another repository.
+- The previous wording that made the Velopack installer itself target arbitrary repo directories is superseded by the two-step model: Velopack installs/updates `hx`; installed `hx` installs/repairs/migrates Doti assets in target repos.
+- The operator selected Option A for Windows install-directory confirmation: support and document Velopack `Setup.exe --installto <DIR>` as the required configurable install path. Interactive MSI/folder-picker installation is out of scope for this feature.

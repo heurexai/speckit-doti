@@ -18,6 +18,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hx.Scaffold.Core\Hx.Scaffold.Core.csproj" />
     <ProjectReference Include="..\Hx.Cli.Kernel\Hx.Cli.Kernel.csproj" />
+    <ProjectReference Include="..\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
+    <ProjectReference Include="..\Hx.Doti.Core\Hx.Doti.Core.csproj" />
     <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
   </ItemGroup>
 </Project>

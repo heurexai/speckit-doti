@@ -11,6 +11,8 @@ Stack and constraints:
 - .NET 10, `System.CommandLine`, existing `CliResult` envelope, existing `Hx.Cycle.Core`, `Hx.Gate.Core`, `Hx.Doti.Core`, `Hx.Scaffold.Cli`, `Hx.Tooling.Contracts`, and scaffold template projects.
 - Microsoft.Extensions.Configuration becomes the configuration mechanism for hx and scaffold starter code.
 - Velopack installer/update artifacts become the release product; source archives are not primary release assets.
+- Velopack installs/updates the main `hx` executable and bundled Doti payload into an operator-selected app directory. On Windows this feature supports the deterministic `Setup.exe --installto <DIR>` path, not an interactive MSI/folder-picker requirement.
+- Installed `hx` must expose repo Doti install/repair/migration commands so released-package users can update any explicit target repo without source checkout, compilation, or `dotnet run`.
 - The self-hosted Doti assets in this repo and the scaffold-installed Doti payload must remain aligned by generation or drift checks.
 - The old root `doti/` layout is obsolete after `.doti/` validation; migration must preserve repo-owned configuration and user/source files.
 - The current cycle engine is still diff-bound and has an explicit `commit` stage; the new behavior is planned and must not be claimed as implemented until commands and tests exist.
@@ -22,6 +24,7 @@ Current implemented command surfaces:
 - `Hx.Runner.Cli doti cycle stamp/status/check/commit` exists, but the model is diff-bound and still contains the explicit commit stage.
 - `doti render-skills --check` exists and currently renders from `doti/core/skills.json`.
 - `DotiInstaller` currently copies root `doti/` into target repos before rendering.
+- `Hx.Runner.Cli doti install --repo <path> ... --json` exists for source/developer execution, but the released `hx` command surface does not yet expose repo asset install/repair/migration.
 
 Planned but absent command-backed behavior:
 
@@ -30,7 +33,8 @@ Planned but absent command-backed behavior:
 - Multi-feature release-train tracking.
 - Workflow-stage registry with two-digit ordered skill names and canonical next-step directives.
 - Velopack-only installer/update release proof.
-- Installer target classification and repo-directed Doti install/upgrade.
+- Velopack `Setup.exe --installto <DIR>` install-location proof for the `hx` app directory.
+- Installed-`hx` repo target classification and repo-directed Doti install/upgrade.
 - Executable-local `hx.config.json` loaded through Microsoft.Extensions.Configuration.
 - Documentation update proof during release.
 - Scaffold payload parity/drift proof.
@@ -82,9 +86,17 @@ PASS.
   **Rationale:** Configuration must be local to the hx executable, stable across current-directory/repo moves, and fail hard when absent.
   **Alternatives rejected:** `--release-root` flags, environment variables, repo-local config, user/global config, or implicit defaults when the config file is absent.
 
-- **Decision:** Keep installer target behavior repo-directed and explicit.
-  **Rationale:** The installer always receives a target directory. Missing/empty/non-empty-without-Doti targets get first-time Doti install; existing Doti-enabled targets get upgrade; no target fails before mutation.
-  **Alternatives rejected:** global install; guessing current directory; treating non-empty/no-Doti targets as upgrades.
+- **Decision:** Split installer ownership into Velopack app installation and installed-`hx` repo asset mutation.
+  **Rationale:** Velopack should install/update the released `hx` application and bundled Doti payload; installed `hx` should classify and mutate explicit repo targets. This avoids the broken released-product shape where installing `hx` still leaves normal repo updates dependent on `dotnet run` from a source checkout.
+  **Alternatives rejected:** making the Velopack installer mutate arbitrary repos directly; requiring a source checkout for repo updates; keeping `hx update`.
+
+- **Decision:** Use Velopack `Setup.exe --installto <DIR>` as the Windows install-directory confirmation path for this feature.
+  **Rationale:** The operator selected the command-backed path. It is deterministic and aligns with Velopack's documented install-location override while avoiding extra MSI/bootstrapper surface for this release.
+  **Alternatives rejected:** requiring interactive MSI/folder-picker UX; accepting an unspecified hidden app directory.
+
+- **Decision:** Keep repo asset target behavior explicit and installed-`hx` driven.
+  **Rationale:** Installed `hx doti install` always receives a target repo directory. Missing/empty/non-empty-without-Doti targets get first-time Doti install; existing Doti-enabled targets get upgrade; no repo target fails before mutation.
+  **Alternatives rejected:** global repo mutation; guessing current directory; treating non-empty/no-Doti targets as upgrades.
 
 - **Decision:** Remove root `doti/` through manifest/hash-backed migration only after `.doti/` is installed and validated.
   **Rationale:** Current `DotiInstaller` copies root `doti/`; removing broadly would risk deleting local/user assets. Managed asset identity and canonical hashes give a safe cleanup boundary.
@@ -200,14 +212,14 @@ Architecture delta:
 - This is a meaningful `Hx.Cycle.Core` model change. It may require replacing `kind: commit` with richer stage metadata.
 - Update ArchUnit/Sentrux only if new projects or cross-layer dependencies are introduced. Keep Git process interaction inside existing cycle core/process adapter patterns.
 
-### Phase 4: Velopack Installer/Update And Doti Asset Migration
+### Phase 4: Velopack Hx Install/Update And Installed-Hx Doti Asset Migration
 
 Files likely to change:
 
 - `tools/Hx.Doti.Core/DotiInstaller.cs`
 - `tools/Hx.Doti.Core/ManagedAssets/*`
 - new Doti installer/update target classifier types
-- `tools/Hx.Scaffold.Cli` installer/update entrypoint or Velopack bootstrap wiring
+- `tools/Hx.Scaffold.Cli` installed command host, Doti subcommand wiring, and Velopack bootstrap wiring
 - `src/Hx.Scaffold.Core/Release/*`
 - `tools/Hx.Tooling.Contracts/LocalReleaseResult.cs`
 - `.github/workflows/release.yml`
@@ -218,7 +230,10 @@ Approach:
 
 - Make release output Velopack installer/update artifacts and metadata only; source archives are not primary products.
 - Store Velopack release-owned tool metadata at `tools/velopack/velopack.version.json`, following the existing vendored-tool manifest shape used by Gitleaks, Sentrux, and GitVersion; downloaded binaries belong under `tools/velopack/bin/<rid>/` and must be hash verified.
-- Add an installer/update entrypoint that requires explicit target directory and classifies:
+- Stage the released `hx` executable, executable-adjacent `hx.config.json`, bundled `.doti/` payload, release metadata, and vendored assets into the Velopack pack directory.
+- On Windows, document and test `Setup.exe --installto <DIR>` as the supported install-location path. The test/proof must verify `hx` lands under `<DIR>` and `hx version --json` reports that executable path.
+- Expose the Doti repo-asset install/repair/migration path from installed `hx`, with `hx doti install --repo <target-directory> --agents <agents> [--force] [--json]` as the planned command surface.
+- Installed `hx doti install` requires an explicit repo target directory and classifies:
   - missing directory -> create directory, install Doti, print scaffold next-step instruction;
   - empty directory -> install Doti, print scaffold next-step instruction;
   - non-empty without Doti -> first-time Doti install preserving files and refusing unsafe overwrites;
@@ -229,10 +244,12 @@ Approach:
 - Preserve repo-owned specs, plans, tasks, docs, source, `.doti/release.json`, prerequisite policy state, Sentrux config/baselines, cycle/gate state, and live configuration.
 - Emit update proof with installed, upgraded, removed, preserved, skipped, and blocked paths.
 - Add scaffold payload parity check so generated repos receive the same Doti assets as this repo.
+- Keep `dotnet run --project tools/Hx.Runner.Cli -- doti install ...` as a source/developer path only; released-package docs/help must use installed `hx`.
 
 Architecture delta:
 
-- Keep installer/migration classification in `Hx.Doti.Core`; scaffold CLI and Velopack entrypoints delegate to that core.
+- Keep repo target classification and migration in `Hx.Doti.Core`; installed `hx` and scaffold finishing delegate to that core.
+- Keep Velopack app install/update packaging in release/scaffold core; it must not gain repo mutation logic beyond packaging the Doti payload.
 - If an installer host project is introduced for Velopack, add it to solution, Sentrux layer config, and architecture rules in the same change.
 
 ### Phase 5: hx Local Configuration And Scaffold Starter Configuration
@@ -327,8 +344,8 @@ Files likely to change:
 Approach:
 
 - Add gate steps for task completion, Velopack artifact proof, documentation update proof, and scaffold payload drift.
-- Extend release proof with release-train features, Velopack artifacts, update metadata, hx config status, docs proof, and installer target/update proof where applicable.
-- Add stable error codes for task hash failures, release train invalidity, transition commit failures, missing hx config, invalid local release directory, installer target missing, managed asset modification, obsolete removal blocked, docs proof stale, Velopack artifact missing, and scaffold payload drift.
+- Extend release proof with release-train features, Velopack artifacts, update metadata, hx config status, docs proof, Velopack hx app install proof, and installed-hx repo target/update proof where applicable.
+- Add stable error codes for task hash failures, release train invalidity, transition commit failures, missing hx config, invalid local release directory, installed-hx repo target missing, managed asset modification, obsolete removal blocked, docs proof stale, Velopack artifact missing, and scaffold payload drift.
 - Update `describe --json` for all changed/removed commands and options.
 - Update GitHub release workflow to publish installer/update artifacts only.
 
@@ -364,7 +381,7 @@ Exit classes:
 
 - `Success`: release train valid, docs proof valid, local hx config valid or local release disabled, tag/version/artifacts verified.
 - `Usage`: invalid CLI flags, mutually exclusive release intent flags, invalid repo/rid syntax.
-- `Validation`: missing hx config, invalid local release directory, missing/stale gate proof, release train invalid, task/docs proof failure, GitVersion intent mismatch, installer target validation failure.
+- `Validation`: missing hx config, invalid local release directory, missing/stale gate proof, release train invalid, task/docs proof failure, GitVersion intent mismatch, installed-hx repo target validation failure.
 - `Integrity`: tag identity conflict, managed asset hash mismatch, Velopack payload hash mismatch, scaffold payload drift.
 - `Internal`: unexpected process/serialization failure.
 
@@ -401,15 +418,13 @@ Core boundary:
 - Task parsing/hash logic lives in a core library.
 - CLI command code remains wiring-only.
 
-### Changed/New: Doti installer/update entrypoint
+### Changed/New: Installed `hx doti install`
 
 Surface:
 
 ```text
-doti install --repo <target-directory> --agents <agents> [--force] [--json]
+hx doti install --repo <target-directory> --agents <agents> [--force] [--json]
 ```
-
-or the equivalent Velopack installer target argument.
 
 Contract:
 
@@ -418,6 +433,8 @@ Contract:
 - Existing Doti-enabled targets are upgrades.
 - Root `doti/` and obsolete Doti assets are removed only through managed manifest/hash proof.
 - Output includes target classification and install/update proof.
+- Uses the Doti payload bundled with installed `hx`; does not require a `speckit-doti` source checkout, local compilation, or `dotnet run`.
+- Does not update installed `hx`; Velopack owns executable/product updates.
 
 Exit classes:
 
@@ -425,6 +442,26 @@ Exit classes:
 - `Validation`: unsafe overwrite, modified managed asset without force, invalid target path, missing required source payload.
 - `Integrity`: managed hash mismatch, scaffold payload drift, package payload identity mismatch.
 - `Success`: install/upgrade completed with proof.
+
+### Changed/New: Velopack `hx` installer path
+
+Surface:
+
+```text
+speckit-doti-Setup.exe --installto <hx-application-directory>
+```
+
+Contract:
+
+- Installs or updates the released `hx` executable and bundled Doti payload under `<hx-application-directory>`.
+- Does not mutate repository targets.
+- `hx version --json` reports release version, Velopack identity when available, and installed executable path.
+- Interactive MSI/folder-picker behavior is out of scope for this feature.
+
+Exit/proof expectations:
+
+- Installer smoke/proof verifies the app directory contains `hx`, update metadata, executable-adjacent config, and bundled Doti payload.
+- Release proof fails if install-location validation cannot confirm `hx` was installed under the selected directory.
 
 ## Command Availability
 
@@ -444,7 +481,8 @@ Exit classes:
 | Cycle stamp/status/check/commit | `dotnet run --project tools/Hx.Runner.Cli -- doti cycle ...` | implemented; must move from explicit commit stage to transition commits/release trains |
 | Task hash command | `dotnet run --project tools/Hx.Runner.Cli -- doti task-hash stamp --repo . --feature <NNN-slug> --json` | planned |
 | hx release | `dotnet run --project tools/Hx.Scaffold.Cli -- release --repo . --major|--minor|--patch --json` | implemented partially; remove release-root flags and add hx config/Velopack/docs proof |
-| Doti install/upgrade target | `doti install --repo <target> --agents ... --json` / Velopack installer target | implemented partially for repo assets; must gain target classification, `.doti`-only migration, obsolete removal |
+| Installed hx app directory | `speckit-doti-Setup.exe --installto <dir>` then `<dir>\hx.exe version --json` | release proof now records Windows install-location smoke; final package proof still validates the real Setup artifact |
+| Doti install/upgrade target | installed `hx doti install --repo <target> --agents ... --json` | implemented command surface; delegates to `Hx.Doti.Core` target classification, `.doti` migration, obsolete-removal, and hook arming |
 | Velopack pack | pinned `vpk pack` via release service | planned |
 | Scaffold payload drift | `dotnet run --project tools/Hx.Runner.Cli -- doti payload check --repo . --json` and gate-integrated parity proof | planned |
 
@@ -471,6 +509,7 @@ None.
 - **Scope size risk:** This feature spans cycle, gate, release, installer, renderer, templates, docs, and CI. Mitigate by implementing in phases and keeping task coverage explicit.
 - **Root `doti/` removal risk:** Broad deletion could destroy modified or repo-owned files. Mitigate with managed asset manifests, canonical hashes, exact diagnostics, and force-only replacement.
 - **Velopack proof risk:** Package shape can vary by RID. Mitigate with active RID hard proof and advisory/fail-closed behavior for undeclared RIDs.
+- **Installed-hx command surface risk:** Moving Doti repo commands into released `hx` can blur scaffold vs runner boundaries. Mitigate by keeping Doti install/migration in `Hx.Doti.Core` and making `hx` a thin command host that delegates and renders `CliResult`.
 - **hx config packaging risk:** Executable-adjacent config path differs between dev, published, and Velopack install layouts. Mitigate with unit tests over `AppContext.BaseDirectory`/injected base path and packaged smoke tests.
 - **Scaffold parity risk:** Updating this repo without scaffold payload drift checks would ship stale workflows to generated repos. Mitigate with scaffold payload drift gate and generated repo fixture assertions.
 - **Docs proof risk:** Detecting stale docs is partly semantic. Mitigate with a release notes inventory plus explicit inspected/updated/no-change docs proof; keep semantic review advisory where pure code cannot prove meaning.
@@ -491,7 +530,9 @@ None.
   - constitution source and rendered guidance no longer state that `doti cycle commit` is the sole sanctioned commit path;
   - hx local config missing for operational commands, help/describe discovery without config, disabled local release output, enabled-without-directory, enabled-with-directory;
   - removed release-root flags absent from help and `describe --json`;
-  - installer target classification for missing/empty/non-empty-no-Doti/existing-Doti/no-target;
+  - Velopack `Setup.exe --installto <DIR>` installs `hx` in the selected app directory and version output reports the path;
+  - installed `hx doti install` works without a source checkout or `dotnet run`;
+  - installed-`hx` repo target classification for missing/empty/non-empty-no-Doti/existing-Doti/no-target;
   - managed obsolete asset removal preserves custom/live config and blocks modified managed files;
   - scaffold starter Microsoft.Extensions.Configuration support and missing required config failure;
   - scaffold payload parity drift failure.
@@ -505,6 +546,8 @@ None.
   - `dotnet run --project tools/Hx.Runner.Cli -c Release --no-build -- gate run --repo . --profile release --json`;
   - `dotnet run --project tools/Hx.Scaffold.Cli -c Release --no-build -- describe --json`;
   - `dotnet run --project tools/Hx.Runner.Cli -c Release --no-build -- describe --json`;
+  - local Velopack `Setup.exe --installto <DIR>` smoke for active RID;
+  - installed `<DIR>\hx.exe doti install --repo <fixture> --agents codex,claude --json`;
   - local Velopack package inspection for active RID.
 - Search proof:
   - no live `doti-commit` skill or normal workflow stage;

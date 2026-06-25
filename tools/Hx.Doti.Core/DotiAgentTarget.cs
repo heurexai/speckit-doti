@@ -29,4 +29,25 @@ public sealed record DotiAgentTarget(
         "codex" => Codex,
         _ => null,
     };
+
+    public static bool TryParseCsv(string csv, out IReadOnlyList<DotiAgentTarget> agents, out string? error)
+    {
+        var parsed = new List<DotiAgentTarget>();
+        foreach (string key in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            DotiAgentTarget? agent = FromKey(key);
+            if (agent is null)
+            {
+                agents = [];
+                error = $"Unknown agent '{key}'. Known: codex, claude.";
+                return false;
+            }
+
+            parsed.Add(agent);
+        }
+
+        agents = parsed.Count == 0 ? All : parsed;
+        error = null;
+        return true;
+    }
 }

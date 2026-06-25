@@ -29,7 +29,8 @@ public sealed record LocalReleaseResult(
     string ConfigurationPath,
     string ReleaseProduct,
     bool SourceArchiveExcluded,
-    IReadOnlyList<string> Blockers);
+    IReadOnlyList<string> Blockers,
+    LocalReleaseInstallLocationProof? InstallLocationProof = null);
 
 public sealed record LocalReleaseRootDecision(
     string EffectiveEnvironmentVariableName,
@@ -62,6 +63,16 @@ public sealed record LocalReleasePayloadCheck(
     string Path,
     string Sha256,
     long SizeBytes);
+
+public sealed record LocalReleaseInstallLocationProof(
+    string Outcome,
+    string? InstallerArtifact,
+    string? RequestedInstallDirectory,
+    string? InstalledExecutablePath,
+    string? VersionCommand,
+    string? VersionOutputSha256,
+    IReadOnlyList<string> PayloadChecks,
+    IReadOnlyList<string> Blockers);
 
 public sealed record LocalReleaseTag(
     string Name,

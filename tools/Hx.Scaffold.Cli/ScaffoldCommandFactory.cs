@@ -18,6 +18,7 @@ public static class ScaffoldCommandFactory
         AddVersion(rootCommand, meta, configurationDirectory);
         AddRelease(rootCommand, meta, configurationDirectory);
         AddPrereq(rootCommand, meta, configurationDirectory);
+        AddDoti(rootCommand, meta, configurationDirectory);
         CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
         return rootCommand;
     }
@@ -113,6 +114,36 @@ public static class ScaffoldCommandFactory
         AddPrereqCheck(group, meta, configurationDirectory);
         AddPrereqInstall(group, meta, configurationDirectory);
         rootCommand.Subcommands.Add(group);
+    }
+
+    private static void AddDoti(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
+    {
+        Command group = new("doti", "Install or repair Doti repo workflow assets from this installed hx payload.");
+        AddDotiInstall(group, meta, configurationDirectory);
+        rootCommand.Subcommands.Add(group);
+    }
+
+    private static void AddDotiInstall(Command group, CliMeta meta, string configurationDirectory)
+    {
+        Command command = new("install", "Install or repair .doti workflow assets into an explicit target repo.");
+        Option<string?> repo = new("--repo") { Description = "Target repository root to install into. Required; the command never defaults to the current directory." };
+        Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
+        Option<bool> force = new("--force") { Description = "Replace modified/unknown legacy Doti-owned assets during migration." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(agents);
+        command.Options.Add(force);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti install",
+            () => WithRequiredConfiguration(meta, "doti install", configurationDirectory,
+                _ => ScaffoldCommands.DotiInstall(
+                    meta,
+                    parseResult.GetValue(repo),
+                    parseResult.GetValue(agents)!,
+                    parseResult.GetValue(force),
+                    configurationDirectory)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        group.Subcommands.Add(command);
     }
 
     private static void AddPrereqCheck(Command group, CliMeta meta, string configurationDirectory)

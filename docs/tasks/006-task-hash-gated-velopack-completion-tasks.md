@@ -50,6 +50,8 @@ Ordered so contracts and tests land before the production behavior they protect 
 
 ### Phase 5: Doti Asset Migration And Installer Target Classification
 
+> Analyze correction: `T025` through `T030` prove the source-runner/core Doti installer and managed-asset migration behavior that existed before the final installer correction. They do not satisfy the clarified released-package contract where Velopack installs `hx` into an application directory and installed `hx doti install` mutates explicit repo targets. `T053` through `T058` are the authoritative tasks for `FR-064` through `FR-071`, `FR-089` through `FR-093`, and `SC-035` through `SC-039`/`SC-051`/`SC-052` under the clarified model.
+
 - [x] `T025` (FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-064, FR-065, FR-066, FR-067, FR-068, FR-069, FR-070, FR-071, SC-031, SC-032, SC-033, SC-035, SC-036, SC-037, SC-038, SC-039) - Add Doti installer/update fixture tests in `test/Hx.Doti.Tests`, `test/Hx.Scaffold.Tests`, and `test/Hx.Templates.Tests` for missing target, empty target, non-empty no-Doti target, existing Doti repo, legacy root `doti/`, modified obsolete managed asset, preserved custom/live config, and no target argument. <!-- doti-task-hash: b9d16dbe02cc5b1acb3b91562c21e7d72e188bba08774d03eb831b3a1792d76b -->
 - [x] `T026` (FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, SC-031, SC-032, SC-033) - Move supported Doti source authority from root `doti/` into `.doti/` by updating source assets, `tools/Hx.Doti.Core/DotiRenderer.cs`, `tools/Hx.Doti.Core/DotiInstaller.cs`, `src/Hx.Scaffold.Core/ScaffoldDotiInstaller.cs` if present, rendered skill references, and root entrypoint rendering. <!-- doti-task-hash: f8a6497949ab62eccdf4109c482955b1bbb3b4206f7a346f227fac82b899de22 -->
 - [x] `T027` (FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, SC-031, SC-032, SC-033) - Implement managed asset baselines and obsolete-removal manifests in `tools/Hx.Doti.Core/ManagedAssets/*`, covering `.doti/core`, `.doti/profiles`, `.doti/templates`, `.doti/memory`, `.doti/integrations`, `.doti/workflows`, and obsolete root `doti/` paths while excluding live configuration. <!-- doti-task-hash: 576c2e3333c83358b7c5e1392c61ea77793ddb3409112f9df11f61f1b4932ec2 -->
@@ -95,6 +97,15 @@ Ordered so contracts and tests land before the production behavior they protect 
 - [x] `T051` (proof gate; FR-006, FR-013, FR-018, FR-019, FR-029, FR-063, FR-076, FR-079, SC-008, SC-014, SC-034, SC-042, SC-045) - Run command/model proof after implementation: `Hx.Scaffold.Cli describe --json`, `Hx.Runner.Cli describe --json`, `hx --help`, nested release/help surfaces, `doti task-hash stamp --repo . --feature 006-task-hash-gated-velopack-completion --json`, installer target fixture runs, local Velopack package inspection, GitHub workflow artifact proof, search proof for removed flags/stages, and generated scaffold package inspection. <!-- doti-task-hash: 17b0d491098bb770c4b096a7af3b7621604653ab29b863f100f5f578056f977c -->
 - [x] `T052` (release gate; FR-039, FR-047, FR-048, FR-049, FR-055, FR-063, SC-024, SC-025, SC-030, SC-034) - Complete the Doti workflow using the new coded transition behavior once implemented: run drift review, verify stage-transition commits and task hashes, aggregate any completed unreleased cycles into the release train, run the minor release proof, push the verified tag to GitHub CI, and verify the GitHub release exposes Velopack installer/update artifacts instead of source archives. <!-- doti-task-hash: 807bc26479cfb045edf4ead745ade1d4f07bb47e671d87c6bc76da1a5567ce0a -->
 
+### Phase 11: Released Hx Install Path Correction
+
+- [x] `T053` (FR-064, FR-065, FR-092, SC-035) - Add Windows Velopack install-location tests in `test/Hx.Scaffold.Tests` proving `speckit-doti-Setup.exe --installto <hx-application-directory>` installs or updates `hx` under the selected app directory, does not create Desktop/Start Menu shortcuts for the CLI proof install, and that `<hx-application-directory>\hx.exe version --json` reports the release version, Velopack identity when available, and installed executable path. <!-- doti-task-hash: 8822ddf49e46e80c75a116a44c6f29acf666b34389e062e71f5eb0f36582e3de -->
+- [x] `T054` (FR-064, FR-065, FR-092, SC-035) - Update `src/Hx.Scaffold.Core/Release/*`, `tools/Hx.Scaffold.Cli`, release package staging, and `tools/Hx.Tooling.Contracts/LocalReleaseResult.cs` so release proof records the selected `--installto` app directory smoke, verifies bundled `hx.config.json` and `.doti` payload are installed beside `hx`, and fails if install-location validation cannot prove the selected directory. <!-- doti-task-hash: 4229a833632d15253d32beb045962d7f77089466860ad925760a1cd37ff98ee1 -->
+- [x] `T055` (FR-066, FR-067, FR-068, FR-069, FR-070, FR-071, FR-089, FR-090, FR-091, SC-036, SC-037, SC-038, SC-039, SC-051) - Add released-`hx` repo asset command tests in `test/Hx.Scaffold.Tests`, `test/Hx.Runner.Tests`, and `test/Hx.Doti.Tests` proving installed `hx doti install --repo <target> --agents codex,claude --json` handles missing, empty, existing-Doti, non-empty-no-Doti, and missing-`--repo` targets without requiring a `speckit-doti` source checkout or `dotnet run`. <!-- doti-task-hash: 16fe82028fbe27d5ad1fae34beda8520a4ffe0a1f8c3bcf76fa49a49b071b1d1 -->
+- [x] `T056` (FR-066, FR-067, FR-068, FR-069, FR-070, FR-071, FR-089, FR-090, FR-091, SC-036, SC-037, SC-038, SC-039, SC-051) - Expose the Doti repo-asset install/repair/migration surface through released `hx` in `tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs`, `tools/Hx.Scaffold.Cli`, and shared Doti install services so `hx doti install` delegates to `Hx.Doti.Core`, emits the existing classified proof, preserves live repo config, and never updates installed `hx`. <!-- doti-task-hash: f3f96f034cd44c2bf06aaecf24e8ccbfec9cc195269fe243c20cdacdcccf3c77 -->
+- [x] `T057` (FR-093, SC-052) - Update released-package docs/help in `README.md`, `CHANGELOG.md`, `doti/core/templates/agent-context-template.md`, `doti/core/templates/commands/doti-release.md`, `.doti/agent-context.md`, rendered `.agents/skills/**`, and CLI `describe --json` notes so normal repo update instructions use installed `hx doti install`, while `dotnet run --project tools/Hx.Runner.Cli -- doti install` is labeled source/developer-only. <!-- doti-task-hash: e44a16eae8b202d32fb69216c2c9974d13f311c47bb070b151342e4db7cf245b -->
+- [x] `T058` (FR-064, FR-065, FR-066, FR-067, FR-089, FR-090, FR-091, FR-092, FR-093, SC-035, SC-036, SC-037, SC-038, SC-039, SC-051, SC-052) - Run correction proof after implementation: build the Velopack package, run `speckit-doti-Setup.exe --installto <temp-hx-dir>`, verify no Desktop/Start Menu shortcuts are created for the CLI proof install, run `<temp-hx-dir>\hx.exe version --json`, run `<temp-hx-dir>\hx.exe doti install --repo <fixture> --agents codex,claude --json`, and search docs/help for non-developer `dotnet run --project tools/Hx.Runner.Cli -- doti install` guidance. <!-- doti-task-hash: ee14ce08f76e934bf446b3033af6d330f32d2978c85dc4a5eda8b55553f02040 -->
+
 ## Dependencies
 
 - `T001` blocks `T002`, `T003`, `T004`, and `T005`.
@@ -123,6 +134,10 @@ Ordered so contracts and tests land before the production behavior they protect 
 - `T048` runs after implementation shape is concrete and before full verification.
 - `T049`, `T050`, and `T051` depend on all implementation tasks.
 - `T052` depends on green verification, valid task hashes, release documentation proof, Velopack artifact proof, and scoped stage-transition commits.
+- `T053` blocks `T054`; `T054` blocks correction proof in `T058`.
+- `T055` blocks `T056`; `T056` blocks `T057` and correction proof in `T058`.
+- `T057` blocks `T058`.
+- `T058` must pass before `T050`, `T051`, and `T052` can be considered current for the clarified installer model.
 
 ## Coverage
 
@@ -191,14 +206,14 @@ Ordered so contracts and tests land before the production behavior they protect 
 | FR-061 | T022D, T025, T027, T028, T044 |
 | FR-062 | T022D, T025, T028, T030 |
 | FR-063 | T019, T021, T022C, T022E, T024 |
-| FR-064 | T025, T029 |
-| FR-065 | T025, T029 |
-| FR-066 | T025, T029 |
-| FR-067 | T025, T029 |
-| FR-068 | T025, T028, T029 |
-| FR-069 | T025, T029 |
-| FR-070 | T025, T029, T030 |
-| FR-071 | T025, T029, T044 |
+| FR-064 | T053, T054, T058 |
+| FR-065 | T053, T054, T058 |
+| FR-066 | T055, T056, T058 |
+| FR-067 | T055, T056, T058 |
+| FR-068 | T055, T056, T058 |
+| FR-069 | T055, T056, T058 |
+| FR-070 | T055, T056, T058 |
+| FR-071 | T055, T056, T058 |
 | FR-072 | T031, T032 |
 | FR-073 | T031, T032 |
 | FR-074 | T031, T032 |
@@ -216,6 +231,11 @@ Ordered so contracts and tests land before the production behavior they protect 
 | FR-086 | T040, T041, T042, T043 |
 | FR-087 | T018A, T048 |
 | FR-088 | T046A |
+| FR-089 | T055, T056, T058 |
+| FR-090 | T055, T056, T058 |
+| FR-091 | T055, T056, T058 |
+| FR-092 | T053, T054, T058 |
+| FR-093 | T057, T058 |
 | SC-001 | T006, T008 |
 | SC-002 | T006, T008 |
 | SC-003 | T006, T007, T009 |
@@ -250,11 +270,11 @@ Ordered so contracts and tests land before the production behavior they protect 
 | SC-032 | T022D, T025, T027, T028 |
 | SC-033 | T022D, T025, T028, T030 |
 | SC-034 | T019, T021, T022B, T022C, T022E, T024 |
-| SC-035 | T025, T029 |
-| SC-036 | T025, T029 |
-| SC-037 | T025, T028, T029, T030 |
-| SC-038 | T025, T029, T030 |
-| SC-039 | T025, T029, T044 |
+| SC-035 | T053, T054, T058 |
+| SC-036 | T055, T056, T058 |
+| SC-037 | T055, T056, T058 |
+| SC-038 | T055, T056, T058 |
+| SC-039 | T055, T056, T058 |
 | SC-040 | T031, T034, T044 |
 | SC-041 | T031, T034 |
 | SC-042 | T031, T033, T045, T046 |
@@ -266,6 +286,8 @@ Ordered so contracts and tests land before the production behavior they protect 
 | SC-048 | T040, T041, T042, T044 |
 | SC-049 | T018A, T048 |
 | SC-050 | T046A |
+| SC-051 | T055, T056, T058 |
+| SC-052 | T057, T058 |
 
 ## Gate Notes
 

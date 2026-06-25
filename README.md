@@ -258,7 +258,12 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 
 Current release: [**v0.5.0**](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0).
 
-Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) now treats Velopack installer/update packages as the product. Download the platform package for your OS, install or update `hx`, and run the bundled executable from the installed location:
+Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) now treats Velopack installer/update packages as the product. Download the platform package for your OS, install or update `hx`, and run the bundled executable from the installed location. On Windows, use Velopack's install-location switch when you want a specific application directory:
+
+```powershell
+.\speckit-doti-Setup.exe --installto C:\Tools\speckit-doti
+C:\Tools\speckit-doti\hx.exe version --json
+```
 
 ```bash
 # macOS / Linux
@@ -269,7 +274,7 @@ Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) now
 .\hx.exe new --name Acme.Widget --output .\Acme.Widget --company Acme --agents codex,claude
 ```
 
-Use the same standalone `hx` to inspect a doti-enabled repository. Product executable installs and updates are handled by Velopack installer/update artifacts; repo workflow assets are installed or repaired with `doti install`.
+Use the same standalone `hx` to inspect a doti-enabled repository. Product executable installs and updates are handled by Velopack installer/update artifacts; repo workflow assets are installed or repaired with installed `hx doti install`.
 
 ```powershell
 # report the running hx version, the target repo's installed scaffold version,
@@ -277,10 +282,10 @@ Use the same standalone `hx` to inspect a doti-enabled repository. Product execu
 .\hx.exe version --repo . --json
 
 # repair/reinstall repo-owned Doti workflow assets when needed
-dotnet run --project tools/Hx.Runner.Cli -- doti install --repo <target-repo> --agents codex,claude --json
+.\hx.exe doti install --repo <target-repo> --agents codex,claude --json
 ```
 
-The previous repository updater subcommand has been removed. Use the Velopack installer/update channel to update installed `hx`/product executables, and use `doti install --repo <path> --agents codex,claude --json` to install, repair, or migrate repo-owned Doti workflow assets. `--repo` is required; the command never defaults to the current directory. Its JSON proof classifies the target as `installed-new-target`, `installed-empty-target`, `installed-non-empty-non-doti-target`, or `upgraded-existing-doti-repo` and reports installed/preserved/removed/skipped/blocked paths with reasons. Live repo configuration and baselines, including `.doti/release.json`, cycle/gate state, prerequisite overrides, and Sentrux state, remain target-owned.
+The previous repository updater subcommand has been removed. Use the Velopack installer/update channel to update installed `hx`/product executables, and use installed `hx doti install --repo <path> --agents codex,claude --json` to install, repair, or migrate repo-owned Doti workflow assets. `--repo` is required; the command never defaults to the current directory. Its JSON proof classifies the target as `installed-new-target`, `installed-empty-target`, `installed-non-empty-non-doti-target`, or `upgraded-existing-doti-repo` and reports installed/preserved/removed/skipped/blocked paths with reasons. Live repo configuration and baselines, including `.doti/release.json`, cycle/gate state, prerequisite overrides, and Sentrux state, remain target-owned.
 
 When repairing a repo that already has doti v0.5 installed, project-owned feature docs are not silently renamed. Leave implemented or completed historical specs on their existing filenames. If an open, unimplemented legacy spec is still unnumbered, migrate it before continuing: choose the next `NNN-` prefix, rename the matching `docs/specs`, `docs/plans`, and `docs/tasks` artifacts to the same numbered slug, then re-stamp `specify` with that `NNN-short-name`. All subsequent new specs use the numbered format.
 
@@ -377,7 +382,7 @@ Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- 
 | `doti task-hash stamp [--feature <NNN-slug>]` | Refuse unchecked tasks and stamp canonical `doti-task-hash` markers for checked tasks |
 | `doti payload check --repo <path>` | Verify scaffold-installed Doti payload parity by installing to a temp target and comparing managed `.doti` assets plus rendered skills/entrypoints |
 | `doti question check` | Validate operator-question format compliance |
-| `doti render-skills` / `doti install --repo <path>` / `doti install-hooks` | Re-render skills / install the workflow into an explicit classified target and auto-arm the hook / repair the pre-commit hook |
+| `doti render-skills` / `hx doti install --repo <path>` / `doti install-hooks` | Re-render skills / install the workflow into an explicit classified target and auto-arm the hook / repair the pre-commit hook |
 | `describe` | Self-describe the CLI surface as JSON |
 
 ## The deterministic gate

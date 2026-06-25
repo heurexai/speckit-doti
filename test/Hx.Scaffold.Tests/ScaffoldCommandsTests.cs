@@ -50,6 +50,7 @@ public sealed partial class ScaffoldCommandsTests
         Assert.True(r.Ok);
         ScaffoldVersionReport report = r.Data!.Deserialize<ScaffoldVersionReport>(JsonContractSerializerOptions.Create())!;
         Assert.Equal("1.0.0", report.Running.Version);
+        Assert.False(string.IsNullOrWhiteSpace(report.Running.ApplicationDirectory));
         Assert.Null(report.Target);
     }
 

@@ -106,6 +106,49 @@ public sealed class VelopackReleaseTests : IDisposable
     }
 
     [Fact]
+    public void Install_location_proof_selects_current_executable_with_payload_not_root_stub()
+    {
+        string install = Path.Combine(_root, "install-layout");
+        string current = Path.Combine(install, "current");
+        Directory.CreateDirectory(current);
+        File.WriteAllText(Path.Combine(install, "hx.exe"), "stub");
+        File.WriteAllText(Path.Combine(current, "hx.exe"), "app");
+        File.WriteAllText(Path.Combine(current, "hx.config.json"), "{}");
+        Directory.CreateDirectory(Path.Combine(current, ".doti", "core"));
+        File.WriteAllText(Path.Combine(current, ".doti", "core", "skills.json"), "{}");
+        MethodInfo finder = typeof(LocalReleaseService).GetMethod(
+            "FindInstalledExecutableWithPayload",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Install executable finder was not found.");
+
+        string? selected = (string?)finder.Invoke(null, [install, "hx.exe"]);
+
+        Assert.Equal(Path.Combine(current, "hx.exe"), selected);
+    }
+
+    [Fact]
+    public void Pack_arguments_disable_os_shortcuts_for_cli_release_smoke()
+    {
+        MethodInfo builder = typeof(LocalReleaseService).GetMethod(
+            "BuildVelopackPackArguments",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Velopack pack argument builder was not found.");
+
+        string arguments = (string)builder.Invoke(null, [
+            @"C:\tmp\publish",
+            @"C:\tmp\releases",
+            "speckit-doti",
+            "1.2.3",
+            "hx.exe",
+            "Doti",
+            "win",
+            "win-x64"
+        ])!;
+
+        Assert.Contains("--shortcuts None", arguments);
+    }
+
+    [Fact]
     public void Local_release_artifact_can_carry_velopack_identity_metadata()
     {
         var artifact = new LocalReleaseArtifact(
@@ -201,7 +244,16 @@ public sealed class VelopackReleaseTests : IDisposable
             ConfigurationPath: @"C:\tools\hx.config.json",
             ReleaseProduct: "velopack",
             SourceArchiveExcluded: true,
-            Blockers: []);
+            Blockers: [],
+            InstallLocationProof: new LocalReleaseInstallLocationProof(
+                "pass",
+                "DotiSetup.exe",
+                @"C:\tools\hx",
+                @"C:\tools\hx\hx.exe",
+                "hx version --json",
+                "version-output-hash",
+                ["hx.config.json", ".doti/core/skills.json"],
+                []));
 
         Assert.Equal("hx release", result.CommandName);
         Assert.Equal("1.2.3", result.CommandVersion);
@@ -209,6 +261,10 @@ public sealed class VelopackReleaseTests : IDisposable
         Assert.EndsWith("hx.config.json", result.ConfigurationPath, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("velopack", result.ReleaseProduct);
         Assert.True(result.SourceArchiveExcluded);
+        Assert.Equal("pass", result.InstallLocationProof!.Outcome);
+        Assert.Equal(@"C:\tools\hx\hx.exe", result.InstallLocationProof.InstalledExecutablePath);
+        Assert.Contains("hx.config.json", result.InstallLocationProof.PayloadChecks);
+        Assert.Contains(".doti/core/skills.json", result.InstallLocationProof.PayloadChecks);
         Assert.Equal("006-feature", Assert.Single(result.ReleaseTrain!.Features).Feature);
         Assert.Equal(StageOutcome.Pass, result.DocumentationProof!.Outcome);
         Assert.All(result.VelopackArtifacts, artifact =>

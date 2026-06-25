@@ -22,7 +22,9 @@ public sealed record ScaffoldVersionIdentity(
     string? BuildMetadata,
     string Source,
     string? ReleaseAssetName = null,
-    string? ReleaseAssetSha256 = null);
+    string? ReleaseAssetSha256 = null,
+    string? ExecutablePath = null,
+    string? ApplicationDirectory = null);
 
 public sealed record ScaffoldVersionStamp(
     int SchemaVersion,
@@ -51,7 +53,9 @@ public static class ScaffoldVersionReporter
         string version,
         string source,
         string? releaseAssetName = null,
-        string? releaseAssetSha256 = null)
+        string? releaseAssetSha256 = null,
+        string? executablePath = null,
+        string? applicationDirectory = null)
     {
         string trimmed = string.IsNullOrWhiteSpace(version) ? "0.0.0" : version.Trim();
         string normalized = NormalizeSemVer(trimmed);
@@ -70,7 +74,9 @@ public static class ScaffoldVersionReporter
             build,
             source,
             releaseAssetName,
-            releaseAssetSha256);
+            releaseAssetSha256,
+            executablePath,
+            applicationDirectory);
     }
 
     public static void WriteStamp(string repoRoot, ScaffoldVersionIdentity identity)
@@ -88,7 +94,13 @@ public static class ScaffoldVersionReporter
         string? repoRoot,
         PrerequisiteCheckReport? prerequisites = null)
     {
-        ScaffoldVersionIdentity running = IdentityFromVersion(runningVersion, "hx-scaffold");
+        string? executablePath = Environment.ProcessPath;
+        string? applicationDirectory = executablePath is null ? AppContext.BaseDirectory : Path.GetDirectoryName(executablePath);
+        ScaffoldVersionIdentity running = IdentityFromVersion(
+            runningVersion,
+            "hx-scaffold",
+            executablePath: executablePath,
+            applicationDirectory: applicationDirectory);
         if (string.IsNullOrWhiteSpace(repoRoot))
         {
             return new ScaffoldVersionReport(
