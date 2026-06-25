@@ -59,7 +59,13 @@ public sealed partial class CycleService
         }
 
         CycleState? existing = recovery.State;
-        if (existing?.Completion is null)
+
+        // A previous cycle is concluded either by a recorded Completion (the clean drift-review handoff) or
+        // by having been released. MarkReleaseTrainReleased moves the active feature into ReleasedCycles
+        // WITHOUT setting Completion and leaves CurrentStage = "release"; recognizing the released feature
+        // here is what lets the next feature start. Without it the cycle wedges after every release — there
+        // is no path from (CurrentStage = "release", Completion = null) to a new feature.
+        if (existing?.Completion is null && !IsCurrentFeatureReleased(existing))
         {
             if (existing is not null
                 && stage.Prereqs.Count == 0
@@ -77,20 +83,34 @@ public sealed partial class CycleService
             return existing;
         }
 
+        string concludedAt = existing!.Completion?.CommitSha
+            ?? ReleasedCommitShaForCurrentFeature(existing)
+            ?? existing.CurrentStage;
+
         if (stage.Prereqs.Count > 0)
         {
             throw new InvalidOperationException(
-                $"The previous cycle completed at {existing.Completion.CommitSha}; start the next cycle with `doti cycle stamp --stage specify --feature <NNN-slug>`.");
+                $"The previous cycle completed at {concludedAt}; start the next cycle with `doti cycle stamp --stage specify --feature <NNN-slug>`.");
         }
 
         if (string.IsNullOrWhiteSpace(feature))
         {
             throw new InvalidOperationException(
-                $"The previous cycle completed at {existing.Completion.CommitSha}; pass --feature <NNN-slug> to start a new cycle.");
+                $"The previous cycle completed at {concludedAt}; pass --feature <NNN-slug> to start a new cycle.");
         }
 
         return null;
     }
+
+    private static bool IsCurrentFeatureReleased(CycleState? existing) =>
+        existing is not null
+        && (existing.ReleasedCycles ?? []).Any(c =>
+            string.Equals(c.Feature, existing.Feature, StringComparison.OrdinalIgnoreCase));
+
+    private static string? ReleasedCommitShaForCurrentFeature(CycleState existing) =>
+        (existing.ReleasedCycles ?? [])
+            .LastOrDefault(c => string.Equals(c.Feature, existing.Feature, StringComparison.OrdinalIgnoreCase))
+            ?.CommitSha;
 
     private static string ResolveStampFeature(string? feature, CycleState? existing) =>
         feature

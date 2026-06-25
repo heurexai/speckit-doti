@@ -315,6 +315,39 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
+    public void ReleasedCycle_AllowsNextSpecifyStampToStartNextCycle()
+    {
+        string dir = InitRepo();
+        try
+        {
+            var service = new CycleService(dir);
+            PrepareDocsOnlyCycle(dir, service);
+            CompleteSecondCycleToRelease(dir, service);
+            service.MarkReleaseTrainReleased();
+
+            // The wedged shape after a real release: at the release stage, no Completion record, but the
+            // active feature is in ReleasedCycles. Before the fix this dead-ended — no next feature could start.
+            CycleState releasedState = new CycleStateStore(dir).Read()!;
+            Assert.Equal("release", releasedState.CurrentStage);
+            Assert.Null(releasedState.Completion);
+            Assert.Contains(releasedState.ReleasedCycles!, c => c.Feature == "002-next");
+
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "003-after-release.md"), "third spec body");
+            CycleState next = service.Stamp("specify", "003-after-release", null);
+
+            Assert.Equal("003-after-release", next.Feature);
+            Assert.Equal("specify", next.CurrentStage);
+            Assert.Null(next.Completion);
+            Assert.Single(next.Stages);
+            Assert.Equal("specify", next.Stages[0].Stage);
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
     public void Stamp_SpecifyFromImplementStage_FailsClosed()
     {
         string dir = InitRepo();
