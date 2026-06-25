@@ -1,6 +1,7 @@
 using Hx.Impact.Core.Domain;
 using Hx.Impact.Core.Graph;
 using Hx.Impact.Core.Planning;
+using Hx.Runner.Core.Process;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Cycle.Core;
@@ -21,7 +22,7 @@ public static class GateProofValidator
             reasons.Add($"affected-test proof schema version {proof.SchemaVersion} is unsupported");
         }
 
-        if (!string.Equals(proof.BaseRef, persisted.BaseRef, StringComparison.Ordinal))
+        if (!RefsResolveToSameCommit(repositoryRoot, proof.BaseRef, persisted.BaseRef))
         {
             reasons.Add("affected-test proof base ref does not match the persisted gate proof");
         }
@@ -113,4 +114,23 @@ public static class GateProofValidator
     }
 
     private static string Normalize(string path) => path.Replace('\\', '/');
+
+    private static bool RefsResolveToSameCommit(string repositoryRoot, string left, string right)
+    {
+        if (string.Equals(left, right, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        string? leftSha = TryResolve(repositoryRoot, left);
+        string? rightSha = TryResolve(repositoryRoot, right);
+        return !string.IsNullOrWhiteSpace(leftSha)
+            && string.Equals(leftSha, rightSha, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? TryResolve(string repositoryRoot, string reference)
+    {
+        ProcessRunResult result = ProcessRunner.Run(new ToolCommand("git", ["rev-parse", reference], repositoryRoot));
+        return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
+    }
 }

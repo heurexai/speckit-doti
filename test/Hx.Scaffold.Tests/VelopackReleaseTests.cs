@@ -74,6 +74,19 @@ public sealed class VelopackReleaseTests : IDisposable
         Assert.Contains("tools fetch --tool velopack", ex.Message);
     }
 
+    [Theory]
+    [InlineData("tools/Hx.Scaffold.Cli/Program.cs", "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj")]
+    [InlineData("scaffold/templates/dotnet-cli/src/HxScaffoldSample.Cli/Program.cs", "scaffold/templates/dotnet-cli/src/HxScaffoldSample.Cli/HxScaffoldSample.Cli.csproj")]
+    public void Velopack_packaged_executables_call_startup_hook(string programPath, string projectPath)
+    {
+        string root = RepoRoot();
+        string program = File.ReadAllText(Path.Combine(root, programPath));
+        string project = File.ReadAllText(Path.Combine(root, projectPath));
+
+        Assert.Contains("VelopackApp.Build().Run()", program);
+        Assert.Contains("PackageReference Include=\"Velopack\"", project);
+    }
+
     [Fact]
     public void Local_release_artifact_can_carry_velopack_identity_metadata()
     {
@@ -249,4 +262,20 @@ public sealed class VelopackReleaseTests : IDisposable
     }
 
     private static string Sha256(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
+
+    private static string RepoRoot()
+    {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "scaffold-dotnet.slnx")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new InvalidOperationException("Could not locate repository root.");
+    }
 }

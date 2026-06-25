@@ -7,12 +7,24 @@ public sealed partial class CycleService
     private TransitionReadiness ValidateTransitionReadiness(CycleState state, CycleStage current)
     {
         var reasons = new List<string>();
-        CycleCheckReport check = Check(current.Id);
-        if (!check.Passed)
+        CommitScope scope = CommitScopeInspector.Inspect(_repositoryRoot);
+        if (!IsReleaseStageRecovery(state, current, scope))
         {
-            reasons.AddRange(check.Prerequisites
-                .Where(p => !p.Ok)
-                .Select(p => $"prerequisite '{p.Stage}': {p.Status} ({p.Reason})"));
+            CycleCheckReport check = Check(current.Id);
+            if (!check.Passed)
+            {
+                reasons.AddRange(check.Prerequisites
+                    .Where(p => !p.Ok)
+                    .Select(p => $"prerequisite '{p.Stage}': {p.Status} ({p.Reason})"));
+            }
+        }
+        else
+        {
+            CycleReleaseTrain releaseTrain = BuildReleaseTrain(state);
+            if (!releaseTrain.Valid)
+            {
+                reasons.AddRange(releaseTrain.Blockers.Select(blocker => $"release train: {blocker}"));
+            }
         }
 
         string identity = ChangeSetIdentity.Of(_repositoryRoot, state.BaseRef, "HEAD");
@@ -38,7 +50,6 @@ public sealed partial class CycleService
             }
         }
 
-        CommitScope scope = CommitScopeInspector.Inspect(_repositoryRoot);
         if (scope.HasUnstagedTrackedChanges)
         {
             reasons.Add("unstaged tracked changes present; stage or revert them for a deliberate transition scope");
@@ -71,7 +82,14 @@ public sealed partial class CycleService
     }
 
     private static bool RequiresGateProof(CycleStage stage) =>
-        string.Equals(stage.Kind, "diff", StringComparison.OrdinalIgnoreCase);
+        string.Equals(stage.Kind, "diff", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(stage.Kind, "release", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsReleaseStageRecovery(CycleState state, CycleStage current, CommitScope scope) =>
+        string.Equals(state.CurrentStage, "release", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(current.Id, "release", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(current.Kind, "release", StringComparison.OrdinalIgnoreCase)
+        && scope.HasStaged;
 
     private sealed record TransitionReadiness(
         IReadOnlyList<string> Reasons,

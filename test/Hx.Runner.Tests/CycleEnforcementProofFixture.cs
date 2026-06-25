@@ -9,6 +9,16 @@ public sealed partial class CycleEnforcementTests
 {
     private static void WritePassingGateProofForCurrentDiff(string dir)
     {
+        WritePassingGateProofForCurrentDiff(dir, Lane.Normal, fullSuite: false);
+    }
+
+    private static void WritePassingReleaseGateProofForCurrentDiff(string dir)
+    {
+        WritePassingGateProofForCurrentDiff(dir, Lane.Release, fullSuite: true);
+    }
+
+    private static void WritePassingGateProofForCurrentDiff(string dir, Lane lane, bool fullSuite)
+    {
         CycleState state = new CycleStateStore(dir).Read()
             ?? throw new InvalidOperationException("cycle state missing");
         string changeSetId = ChangeSetIdentity.Of(dir, state.BaseRef, "HEAD");
@@ -21,8 +31,8 @@ public sealed partial class CycleEnforcementTests
             AffectedTestProofHasher.HashPlan(plan),
             AffectedTestProofHasher.HashTestScope([]),
             AffectedTestProofHasher.HashExecutedTests([]),
-            FullSuite: false,
-            FullSuiteReason: null,
+            FullSuite: fullSuite,
+            FullSuiteReason: fullSuite ? "release lane" : null,
             plan,
             []);
         var gateProof = new GateProof(JsonContractDefaults.SchemaVersion, StageOutcome.Pass, [], [], affectedProof);
@@ -30,7 +40,7 @@ public sealed partial class CycleEnforcementTests
             JsonContractDefaults.SchemaVersion,
             changeSetId,
             state.BaseRef,
-            Lane.Normal,
+            lane,
             gateProof,
             GitHead(dir)));
     }

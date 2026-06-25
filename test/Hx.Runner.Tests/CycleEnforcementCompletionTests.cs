@@ -64,6 +64,36 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
+    public void Stamp_ReleaseStageRecovery_CommitsStagedFixAfterGateProof()
+    {
+        string dir = InitRepo();
+        try
+        {
+            var service = new CycleService(dir);
+            PrepareDocsOnlyCycle(dir, service);
+            service.Stamp("release", null, null, "minor");
+            string before = GitHead(dir);
+
+            File.WriteAllText(Path.Combine(dir, "release-fix.txt"), "late packaging fix");
+            Git(dir, "add", "release-fix.txt");
+            WritePassingReleaseGateProofForCurrentDiff(dir);
+
+            CycleState state = service.Stamp("release", null, null, "minor");
+
+            string after = GitHead(dir);
+            Assert.NotEqual(before, after);
+            Assert.Equal("release", state.CurrentStage);
+            Assert.Contains(state.Transitions!, t => t.Stage == "release" && t.NextStage == "release" && t.CommitSha == after);
+            Assert.Equal($"release: 001-f", GitLogSubject(dir, after));
+            Assert.Contains("+semver: minor", GitLogBody(dir, after));
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
     public void Stamp_TransitionRefusesUntrackedFilesWithPathDiagnostic()
     {
         string dir = InitRepo();

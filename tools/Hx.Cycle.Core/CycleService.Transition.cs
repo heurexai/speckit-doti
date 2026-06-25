@@ -54,6 +54,12 @@ public sealed partial class CycleService
 
         if (string.Equals(existing.CurrentStage, target.Id, StringComparison.OrdinalIgnoreCase))
         {
+            if (CanCommitReleaseStageRecovery(target) && CommitScopeInspector.Inspect(_repositoryRoot).HasStaged)
+            {
+                CycleTransitionRecord recovery = CommitStageTransition(existing, target.Id, releaseIntent);
+                return RebaseStateAfterTransition(existing, recovery);
+            }
+
             return existing;
         }
 
@@ -113,4 +119,8 @@ public sealed partial class CycleService
 
         return message;
     }
+
+    private static bool CanCommitReleaseStageRecovery(CycleStage target) =>
+        string.Equals(target.Id, "release", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(target.Kind, "release", StringComparison.OrdinalIgnoreCase);
 }
