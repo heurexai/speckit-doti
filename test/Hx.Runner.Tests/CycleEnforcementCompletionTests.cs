@@ -86,6 +86,10 @@ public sealed partial class CycleEnforcementTests
             Assert.Contains(state.Transitions!, t => t.Stage == "release" && t.NextStage == "release" && t.CommitSha == after);
             Assert.Equal($"release: 001-f", GitLogSubject(dir, after));
             Assert.Contains("+semver: minor", GitLogBody(dir, after));
+
+            CycleReleaseTrainFeature feature = Assert.Single(service.Status().ReleaseTrain!.Features);
+            Assert.EndsWith(".." + before, feature.StageCommitRange, StringComparison.Ordinal);
+            Assert.False(feature.StageCommitRange!.StartsWith(after + "..", StringComparison.Ordinal));
         }
         finally
         {

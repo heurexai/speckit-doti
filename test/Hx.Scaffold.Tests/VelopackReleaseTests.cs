@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -85,6 +86,23 @@ public sealed class VelopackReleaseTests : IDisposable
 
         Assert.Contains("VelopackApp.Build().Run()", program);
         Assert.Contains("PackageReference Include=\"Velopack\"", project);
+    }
+
+    [Theory]
+    [InlineData(".doti/cycle-state.json", false)]
+    [InlineData(".doti/gate-proof.json", false)]
+    [InlineData(".doti/agent-context.md", true)]
+    [InlineData(".doti/workflows/doti/workflow.yml", true)]
+    public void Release_payload_excludes_runtime_cycle_state(string path, bool expected)
+    {
+        MethodInfo filter = typeof(LocalReleaseService).GetMethod(
+            "IncludeDotiReleasePayloadFile",
+            BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("Release payload filter was not found.");
+
+        bool actual = (bool)filter.Invoke(null, [path])!;
+
+        Assert.Equal(expected, actual);
     }
 
     [Fact]

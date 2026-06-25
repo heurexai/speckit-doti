@@ -4,12 +4,24 @@ namespace Hx.Scaffold.Core;
 /// lets callers skip build artifacts (bin/obj). Overwrites existing files (idempotent re-vendor).</summary>
 internal static class DirectoryCopy
 {
-    public static void Copy(string sourceDir, string targetDir, Func<string, bool> includeDirectory)
+    public static void Copy(string sourceDir, string targetDir, Func<string, bool> includeDirectory) =>
+        Copy(sourceDir, targetDir, includeDirectory, _ => true);
+
+    public static void Copy(
+        string sourceDir,
+        string targetDir,
+        Func<string, bool> includeDirectory,
+        Func<string, bool> includeFile)
     {
         Directory.CreateDirectory(targetDir);
 
         foreach (string file in Directory.GetFiles(sourceDir))
         {
+            if (!includeFile(file))
+            {
+                continue;
+            }
+
             File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)), overwrite: true);
         }
 

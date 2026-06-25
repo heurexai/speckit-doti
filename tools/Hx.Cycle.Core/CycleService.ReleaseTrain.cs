@@ -78,7 +78,7 @@ public sealed partial class CycleService
                 && string.Equals(t.Stage, "drift-review", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(t.NextStage, "release", StringComparison.OrdinalIgnoreCase));
 
-        return transition is null ? null : CompletionFromTransition(transition, state);
+        return transition is null ? null : CompletionFromTransition(transition, state with { BaseRef = transition.PreCommitHead });
     }
 
     private CycleReleaseTrainFeature FeatureForCompletion(CycleState state, CycleCompletionRecord completion)

@@ -506,7 +506,7 @@ public static class LocalReleaseService
         string doti = Path.Combine(repo, ".doti");
         if (Directory.Exists(doti))
         {
-            DirectoryCopy.Copy(doti, Path.Combine(publish, ".doti"), _ => true);
+            DirectoryCopy.Copy(doti, Path.Combine(publish, ".doti"), _ => true, IncludeDotiReleasePayloadFile);
         }
 
         string legacyDoti = Path.Combine(repo, "doti");
@@ -514,6 +514,13 @@ public static class LocalReleaseService
         {
             DirectoryCopy.Copy(legacyDoti, Path.Combine(publish, "doti"), _ => true);
         }
+    }
+
+    private static bool IncludeDotiReleasePayloadFile(string path)
+    {
+        string file = Path.GetFileName(path);
+        return !string.Equals(file, "cycle-state.json", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(file, "gate-proof.json", StringComparison.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<LocalReleasePayloadCheck> InspectPayload(string publish)
