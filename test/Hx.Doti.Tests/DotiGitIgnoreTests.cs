@@ -11,7 +11,7 @@ public sealed class DotiGitIgnoreTests
         {
           "schemaVersion": 1,
           "maturity": "command-aware-advisory",
-          "commandTemplateDir": "doti/core/templates/commands",
+          "commandTemplateDir": ".doti/core/templates/commands",
           "agentContextRef": ".doti/agent-context.md",
           "introTemplate": "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
           "skills": [
@@ -99,12 +99,12 @@ public sealed class DotiGitIgnoreTests
     private static string NewSourceRepo()
     {
         string repo = NewTempDir();
-        Directory.CreateDirectory(Path.Combine(repo, "doti", "core", "templates", "commands"));
-        Directory.CreateDirectory(Path.Combine(repo, "doti", "profiles", "dotnet-cli"));
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "skills.json"), SkillsJson);
-        File.WriteAllText(Path.Combine(repo, "doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "templates", "agent-context-template.md"), "context body\n");
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "templates", "commands", "doti-specify.md"), "# specify\n");
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "core", "templates", "commands"));
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "profiles", "dotnet-cli"));
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "skills.json"), SkillsJson);
+        File.WriteAllText(Path.Combine(repo, ".doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "agent-context-template.md"), "context body\n");
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "commands", "doti-specify.md"), "# specify\n");
         return repo;
     }
 

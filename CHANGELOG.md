@@ -6,6 +6,7 @@ All notable changes to speckit-doti are documented here. The format follows
 
 ## [Unreleased]
 
+- **Added** `006-task-hash-gated-velopack-completion`: task-hash-gated implementation proof, multi-feature release-train handling, Velopack-only installer/update release artifacts, scaffold payload parity proof, executable-local `hx.config.json`, generated starter configuration, release documentation proof, and stable diagnostics for the new fail-closed surfaces.
 - **Changed** `hx release` now owns release intent and local tag creation (`--major|--minor|--patch`) and records tag/GitVersion/Velopack payload identity in the local release result.
 - **Removed** the bespoke repository updater command and the runner-side standalone tag command; Velopack owns installed executable updates, while `doti install` remains the repo workflow asset install/repair path.
 

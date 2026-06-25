@@ -33,16 +33,20 @@ public sealed partial class CycleService
         if (HeadMatchesIntent(intent, head))
         {
             CycleCompletionRecord completion = CreateCompletion(intent, head);
-            CycleState completed = state with
-            {
-                CurrentStage = "commit",
-                PendingCommit = null,
-                Completion = completion,
-            };
+            CycleState completed = string.Equals(intent.ExpectedCompletionShape, "cycle-transition/v1", StringComparison.Ordinal)
+                ? RebaseStateAfterTransition(state, TransitionFromIntent(intent, head))
+                : state with
+                {
+                    CurrentStage = intent.Stage,
+                    PendingCommit = null,
+                    Completion = completion,
+                };
             _store.Write(completed);
             return new RecoveryEvaluation(completed, new CycleRecoveryReport(
                 CycleRecoveryVerdict.Completed,
-                $"recovered completed cycle at commit {head}",
+                string.Equals(intent.ExpectedCompletionShape, "cycle-transition/v1", StringComparison.Ordinal)
+                    ? $"recovered transition commit at {head}"
+                    : $"recovered completed cycle at commit {head}",
                 completion));
         }
 
@@ -81,7 +85,8 @@ public sealed partial class CycleService
             intent.StageProofHashes,
             intent.GateProofDigest,
             intent.RunnerIdentity,
-            intent.ExpectedCompletionShape);
+            intent.ExpectedCompletionShape,
+            intent.NextStage);
 
     private bool HeadMatchesIntent(CycleCompletionIntent intent, string head)
     {
@@ -99,6 +104,8 @@ public sealed partial class CycleService
 
         string body = message.StandardOutput;
         return body.Contains($"Doti-Cycle: {intent.Feature}/{intent.Stage}", StringComparison.Ordinal)
+            && (string.IsNullOrWhiteSpace(intent.NextStage)
+                || body.Contains($"Doti-Transition: {intent.Feature}/{intent.Stage}->{intent.NextStage}", StringComparison.Ordinal))
             && body.Contains($"Doti-ChangeSet: {intent.ChangeSetId}", StringComparison.Ordinal)
             && body.Contains($"Doti-Message: {intent.MessageHash}", StringComparison.Ordinal)
             && (string.IsNullOrWhiteSpace(intent.StagedTreeId)

@@ -50,6 +50,34 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
+    public void InsuranceHook_BlocksRawEmptyCommit_AllowsSanctionedEmptyReleaseCommit()
+    {
+        string dir = InitRepo();
+        try
+        {
+            HookInstaller.Install(dir);
+            if (OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            ProcessRunResult bareEmpty = ProcessRunner.Run(new ToolCommand(
+                "git", ["commit", "--allow-empty", "-m", "raw empty"], dir));
+            Assert.NotEqual(0, bareEmpty.ExitCode);
+            Assert.Contains("Doti workflow transitions", bareEmpty.StandardError);
+
+            ProcessRunResult sanctionedEmpty = ProcessRunner.Run(new ToolCommand(
+                "git", ["commit", "--allow-empty", "-m", "release: sanctioned"], dir,
+                new Dictionary<string, string> { [PrecommitGuard.SentinelEnvVar] = "1" }));
+            Assert.True(sanctionedEmpty.ExitCode == 0, sanctionedEmpty.StandardError + sanctionedEmpty.StandardOutput);
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
     public void InsuranceHook_RefusesToOverwriteExternalPreCommitHook()
     {
         string dir = InitRepo();

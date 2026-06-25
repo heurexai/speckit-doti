@@ -7,8 +7,8 @@ namespace Hx.Cycle.Core;
 /// <summary>
 /// Installs the insurance pre-commit hook into a repo's <b>untracked</b> git hooks directory (resolved via
 /// <c>git rev-parse --git-path hooks</c>, so it respects worktrees / <c>core.hooksPath</c>). The hook is a
-/// thin, logic-free POSIX-sh stub: it redirects a bare <c>git commit</c> to <c>doti cycle commit</c> by
-/// checking the sentinel <c>cycle commit</c> sets — the verification logic stays in .NET. Because it lives
+/// thin, logic-free POSIX-sh stub: it blocks a bare <c>git commit</c> and routes the operator back to the Doti workflow by
+/// checking the sentinel Doti-owned transition/release code sets — the verification logic stays in .NET. Because it lives
 /// in <c>.git/</c> (not a tracked repo file) it honors the no-shell-runners policy, and because it is
 /// git-local per-clone it must be (re)installed per clone via <c>doti install-hooks</c>.
 /// </summary>
@@ -21,14 +21,14 @@ public static class HookInstaller
     public const string VerdictExternal = "external";
 
     private const string DotiHookMarker = "doti insurance pre-commit hook";
-    private const string DotiCommitRedirect = "doti cycle commit";
+    private const string DotiCommitRedirect = "doti workflow transition";
 
     public static string HookScript =>
         "#!/bin/sh\n"
         + "# doti insurance pre-commit hook (installed by `doti install-hooks`; untracked, logic-free).\n"
-        + "# Redirects a bare `git commit` to the sanctioned `doti cycle commit`; the verification is in .NET.\n"
+        + "# Blocks a bare `git commit`; verified commits are owned by Doti workflow transitions.\n"
         + $"if [ \"${PrecommitGuard.SentinelEnvVar}\" = \"1\" ]; then exit 0; fi\n"
-        + "echo \"doti: this repo commits through the cycle - run: doti cycle commit --message <m>\" 1>&2\n"
+        + "echo \"doti: this repo commits through Doti workflow transitions - continue with the next numbered Doti step\" 1>&2\n"
         + "exit 1\n";
 
     public static DotiHookInspection Inspect(string repositoryRoot)

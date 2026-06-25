@@ -6,10 +6,10 @@ namespace Hx.Cycle.Core;
 
 /// <summary>
 /// Records + reports cycle state (<see cref="Stamp"/>/<see cref="Status"/> — non-enforcing) and
-/// <b>enforces</b> it: <see cref="Check"/> is the fail-closed chokepoint (every transitive
-/// prerequisite stamped + fresh + valid) and <see cref="Commit"/> is the sanctioned commit path (refuses
-/// unless the prerequisites, the persisted gate proof, and the staged scope are all clean). Fails closed
-/// (throws) only on a genuine execution error; otherwise returns a verdict the CLI maps to an exit code.
+/// <b>enforces</b> it: <see cref="Check"/> is the fail-closed prerequisite chokepoint, while
+/// <see cref="Stamp"/> creates sanctioned automatic transition commits before a next stage starts.
+/// Fails closed (throws) only on a genuine execution error; otherwise returns a verdict the CLI maps to
+/// an exit code.
 /// </summary>
 public sealed partial class CycleService
 {

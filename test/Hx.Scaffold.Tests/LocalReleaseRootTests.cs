@@ -1,5 +1,7 @@
+using System.CommandLine;
 using Hx.Cli.Kernel;
 using Hx.Scaffold.Cli;
+using Hx.Scaffold.Core.Configuration;
 using Hx.Scaffold.Core.Release;
 using Hx.Tooling.Contracts;
 using System.Text.Json;
@@ -10,75 +12,104 @@ namespace Hx.Scaffold.Tests;
 public sealed class LocalReleaseRootTests
 {
     [Fact]
-    public void Explicit_root_wins_over_named_environment_variable()
+    public void Missing_executable_adjacent_hx_config_fails_operational_commands()
     {
-        LocalReleaseRootDecision decision = LocalReleaseRootResolver.Resolve(
-            @"D:\releases",
-            "CUSTOM_RELEASE_ROOT",
-            name => throw new InvalidOperationException("environment should not be read: " + name));
+        using TempRepo exe = TempRepo.Create();
+        RootCommand root = ScaffoldCommandFactory.Create(new CliMeta("hx", "0.0.0-test"), exe.Root);
 
-        Assert.Equal("explicit", decision.Source);
-        Assert.Equal(@"D:\releases", decision.ReleaseRoot);
-        Assert.Equal("CUSTOM_RELEASE_ROOT", decision.EffectiveEnvironmentVariableName);
-        Assert.False(decision.EnvironmentVariableRead);
-        Assert.True(decision.EnvironmentVariableIgnored);
+        Assert.Equal((int)ExitClass.Validation, root.Parse(["profile", "--json"]).Invoke());
+        Assert.Equal((int)ExitClass.Validation, root.Parse(["version", "--json"]).Invoke());
+        Assert.Equal((int)ExitClass.Validation, root.Parse(["new", "--name", "Demo", "--output", Path.Combine(exe.Root, "out"), "--json"]).Invoke());
+        Assert.Equal((int)ExitClass.Validation, root.Parse(["release", "--repo", exe.Root, "--json"]).Invoke());
+        Assert.Equal((int)ExitClass.Validation, root.Parse(["prereq", "check", "--json"]).Invoke());
+        Assert.Equal((int)ExitClass.Validation, root.Parse(["prereq", "install", "--json"]).Invoke());
     }
 
     [Fact]
-    public void Default_environment_variable_is_doti_release_root()
+    public void Help_and_describe_remain_available_without_hx_config()
     {
-        LocalReleaseRootDecision decision = LocalReleaseRootResolver.Resolve(
-            null,
-            null,
-            name => name == "DOTI_RELEASE_ROOT" ? @"D:\releases" : null);
+        using TempRepo exe = TempRepo.Create();
+        RootCommand root = ScaffoldCommandFactory.Create(new CliMeta("hx", "0.0.0-test"), exe.Root);
 
-        Assert.Equal("default-environment", decision.Source);
-        Assert.Equal("DOTI_RELEASE_ROOT", decision.EffectiveEnvironmentVariableName);
-        Assert.Equal(@"D:\releases", decision.ReleaseRoot);
-        Assert.True(decision.EnvironmentVariableRead);
+        TextWriter original = Console.Out;
+        using var writer = new StringWriter();
+        try
+        {
+            Console.SetOut(writer);
+            int helpExit = CliApp.Invoke(root, new CliMeta("hx", "0.0.0-test"),
+                ["release", "--help-mode", "plain", "--help"], "speckit-doti", "tagline");
+            Assert.Equal((int)ExitClass.Success, helpExit);
+            Assert.Contains("hx release", writer.ToString());
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.Equal((int)ExitClass.Success, root.Parse(["describe", "--json"]).Invoke());
     }
 
     [Fact]
-    public void Named_environment_variable_is_read_when_no_explicit_root_is_provided()
+    public void Enabled_local_release_output_requires_absolute_directory()
     {
-        LocalReleaseRootDecision decision = LocalReleaseRootResolver.Resolve(
-            null,
-            "HX_RELEASES",
-            name => name == "HX_RELEASES" ? @"D:\hx-releases" : null);
+        var missing = new HxLocalConfiguration
+        {
+            SchemaVersion = 1,
+            SourcePath = "hx.config.json",
+            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = true }
+        };
+        var blank = new HxLocalConfiguration
+        {
+            SchemaVersion = 1,
+            SourcePath = "hx.config.json",
+            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = true, Directory = " " }
+        };
+        var relative = new HxLocalConfiguration
+        {
+            SchemaVersion = 1,
+            SourcePath = "hx.config.json",
+            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = true, Directory = "releases" }
+        };
 
-        Assert.Equal("named-environment", decision.Source);
-        Assert.Equal("HX_RELEASES", decision.EffectiveEnvironmentVariableName);
-        Assert.Equal(@"D:\hx-releases", decision.ReleaseRoot);
+        Assert.Contains("directory is required", Assert.Throws<InvalidOperationException>(() => HxLocalConfigurationLoader.Validate(missing)).Message);
+        Assert.Contains("directory is required", Assert.Throws<InvalidOperationException>(() => HxLocalConfigurationLoader.Validate(blank)).Message);
+        Assert.Contains("absolute path", Assert.Throws<InvalidOperationException>(() => HxLocalConfigurationLoader.Validate(relative)).Message);
     }
 
     [Fact]
-    public void Target_default_environment_variable_is_used_when_no_override_is_provided()
+    public void Disabled_local_release_output_succeeds_without_directory()
     {
-        LocalReleaseRootDecision decision = LocalReleaseRootResolver.Resolve(
-            null,
-            null,
-            name => name == "ERGON_RELEASE_ROOT" ? @"D:\ergon-releases" : null,
-            "ERGON_RELEASE_ROOT");
+        var configuration = new HxLocalConfiguration
+        {
+            SchemaVersion = 1,
+            SourcePath = "hx.config.json",
+            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = false }
+        };
 
-        Assert.Equal("default-environment", decision.Source);
-        Assert.Equal("ERGON_RELEASE_ROOT", decision.EffectiveEnvironmentVariableName);
-        Assert.Equal(@"D:\ergon-releases", decision.ReleaseRoot);
+        HxLocalConfigurationLoader.Validate(configuration);
     }
 
     [Fact]
-    public void Save_release_root_requires_an_explicit_release_root()
+    public void Hx_config_loads_from_executable_directory_not_current_directory()
     {
-        CliResult result = ScaffoldCommands.Release(
-            new CliMeta("hx", "0.0.0-test"),
-            ".",
-            "",
-            "",
-            "",
-            saveReleaseRoot: true);
+        using TempRepo exe = TempRepo.Create();
+        using TempRepo cwd = TempRepo.Create();
+        string releaseRoot = Path.Combine(exe.Root, "releases");
+        WriteHxConfig(exe.Root, enabled: true, releaseRoot);
+        string original = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(cwd.Root);
 
-        Assert.False(result.Ok);
-        Assert.Equal((int)ExitClass.Usage, result.ExitCode);
-        Assert.Contains("--save-release-root requires", result.Errors.Single().Message);
+            HxLocalConfiguration configuration = HxLocalConfigurationLoader.LoadRequired(exe.Root);
+
+            Assert.Equal(Path.Combine(exe.Root, "hx.config.json"), configuration.SourcePath);
+            Assert.Equal(releaseRoot, configuration.LocalReleaseOutput.Directory);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(original);
+        }
     }
 
     [Fact]
@@ -88,9 +119,7 @@ public sealed class LocalReleaseRootTests
             new CliMeta("hx", "0.0.0-test"),
             ".",
             "",
-            "",
-            "",
-            saveReleaseRoot: false,
+            ValidConfig(),
             major: true,
             minor: true);
 
@@ -99,22 +128,25 @@ public sealed class LocalReleaseRootTests
         Assert.Contains("Specify at most one release intent", result.Errors.Single().Message);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("DOTI_RELEASE_ROOT")]
-    [InlineData("_CUSTOM123")]
-    public void Environment_variable_name_validation_accepts_safe_names(string name)
+    [Fact]
+    public void Release_help_and_describe_do_not_expose_removed_release_root_flags()
     {
-        bool valid = string.IsNullOrEmpty(name) || LocalReleaseRootResolver.IsValidEnvironmentVariableName(name);
-        Assert.True(valid);
-    }
+        using TempRepo exe = TempRepo.Create();
+        RootCommand root = ScaffoldCommandFactory.Create(new CliMeta("hx", "0.0.0-test"), exe.Root);
+        Command release = root.Subcommands.Single(command => command.Name == "release");
 
-    [Theory]
-    [InlineData("1BAD")]
-    [InlineData("BAD-NAME")]
-    [InlineData("BAD NAME")]
-    public void Environment_variable_name_validation_rejects_unsafe_names(string name) =>
-        Assert.False(LocalReleaseRootResolver.IsValidEnvironmentVariableName(name));
+        string help = CliRenderer.RenderPlainHelp(root, release, ["release"], new CliMeta("hx", "0.0.0-test"),
+            "speckit-doti", "tagline");
+        CliDescribe describe = DescribeWalker.Describe(new CliMeta("hx", "0.0.0-test"), root, ErrorCodes.All);
+        CliDescribeCommand describedRelease = describe.Root.Subcommands.Single(command => command.Name == "release");
+
+        Assert.DoesNotContain("--release-root", help);
+        Assert.DoesNotContain("--release-root-env", help);
+        Assert.DoesNotContain("--save-release-root", help);
+        Assert.DoesNotContain(describedRelease.Options, option => option.Name == "--release-root");
+        Assert.DoesNotContain(describedRelease.Options, option => option.Name == "--release-root-env");
+        Assert.DoesNotContain(describedRelease.Options, option => option.Name == "--save-release-root");
+    }
 
     [Fact]
     public void Release_target_manifest_loads_repo_declared_product()
@@ -143,6 +175,68 @@ public sealed class LocalReleaseRootTests
     }
 
     [Fact]
+    public void Default_release_target_manifest_points_at_generated_cli_product()
+    {
+        using TempRepo repo = TempRepo.Create();
+        repo.WriteProject("src/Contoso.App.Cli/Contoso.App.Cli.csproj");
+
+        ReleaseTargetManifest.WriteDefault(
+            repo.Root,
+            productName: "Contoso.App",
+            publishProject: "src/Contoso.App.Cli/Contoso.App.Cli.csproj",
+            publishedExecutableName: "Contoso.App.Cli",
+            executableName: "Contoso.App",
+            defaultReleaseRootEnvironmentVariable: "DOTI_RELEASE_ROOT");
+
+        LocalReleaseTarget target = ReleaseTargetManifest.Load(repo.Root);
+
+        Assert.Equal("Contoso.App", target.ProductName);
+        Assert.Equal("Contoso.App", target.PackageName);
+        Assert.Equal("src/Contoso.App.Cli/Contoso.App.Cli.csproj", target.PublishProject);
+        Assert.Equal("Contoso.App.Cli", target.PublishedExecutableName);
+        Assert.Equal("Contoso.App", target.ExecutableName);
+        Assert.Equal("DOTI_RELEASE_ROOT", target.DefaultReleaseRootEnvironmentVariable);
+    }
+
+    [Fact]
+    public void Scaffold_release_target_writer_uses_generated_cli_defaults()
+    {
+        using TempRepo repo = TempRepo.Create();
+        repo.WriteProject("src/Hx.Sample.Cli/Hx.Sample.Cli.csproj");
+
+        ScaffoldReleaseTargetWriter.WriteDefault(repo.Root, "Hx.Sample");
+
+        LocalReleaseTarget target = ReleaseTargetManifest.Load(repo.Root);
+        Assert.Equal("Hx.Sample", target.ProductName);
+        Assert.Equal("Hx.Sample", target.PackageName);
+        Assert.Equal("src/Hx.Sample.Cli/Hx.Sample.Cli.csproj", target.PublishProject);
+        Assert.Equal("Hx.Sample.Cli", target.PublishedExecutableName);
+        Assert.Equal("Hx.Sample", target.ExecutableName);
+        Assert.Equal("DOTI_RELEASE_ROOT", target.DefaultReleaseRootEnvironmentVariable);
+    }
+
+    [Fact]
+    public void Release_target_manifest_preserves_explicit_package_name_for_velopack_package_id()
+    {
+        using TempRepo repo = TempRepo.Create();
+        repo.WriteProject("src/Contoso.App.Cli/Contoso.App.Cli.csproj");
+
+        ReleaseTargetManifest.WriteDefault(
+            repo.Root,
+            productName: "Contoso App",
+            packageName: "contoso-app",
+            publishProject: "src/Contoso.App.Cli/Contoso.App.Cli.csproj",
+            publishedExecutableName: "Contoso.App.Cli",
+            executableName: "Contoso.App",
+            defaultReleaseRootEnvironmentVariable: "DOTI_RELEASE_ROOT");
+
+        LocalReleaseTarget target = ReleaseTargetManifest.Load(repo.Root);
+
+        Assert.Equal("Contoso App", target.ProductName);
+        Assert.Equal("contoso-app", target.PackageName);
+    }
+
+    [Fact]
     public void Release_target_manifest_is_required_before_release_side_effects()
     {
         using TempRepo repo = TempRepo.Create();
@@ -151,13 +245,34 @@ public sealed class LocalReleaseRootTests
             new CliMeta("hx", "0.0.0-test"),
             repo.Root,
             "",
-            @"D:\releases",
-            "",
-            saveReleaseRoot: false);
+            ValidConfig());
 
         Assert.False(result.Ok);
         Assert.Equal((int)ExitClass.Validation, result.ExitCode);
         Assert.Contains(".doti/release.json", result.Errors.Single().Message);
+    }
+
+    [Fact]
+    public void Invalid_hx_config_fails_before_release_manifest_inspection()
+    {
+        using TempRepo repo = TempRepo.Create();
+        var invalid = new HxLocalConfiguration
+        {
+            SchemaVersion = 1,
+            SourcePath = Path.Combine(repo.Root, "hx.config.json"),
+            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = true, Directory = "relative" }
+        };
+
+        CliResult result = ScaffoldCommands.Release(
+            new CliMeta("hx", "0.0.0-test"),
+            repo.Root,
+            "",
+            invalid);
+
+        Assert.False(result.Ok);
+        Assert.Equal((int)ExitClass.Validation, result.ExitCode);
+        Assert.Contains("absolute path", result.Errors.Single().Message);
+        Assert.DoesNotContain(".doti/release.json", result.Errors.Single().Message);
     }
 
     [Fact]
@@ -179,6 +294,31 @@ public sealed class LocalReleaseRootTests
 
         Assert.Contains("publishProject must be a relative path inside the repository", ex.Message);
     }
+
+    private static void WriteHxConfig(string executableDirectory, bool enabled, string? releaseRoot)
+    {
+        File.WriteAllText(Path.Combine(executableDirectory, HxLocalConfiguration.FileName),
+            JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                localReleaseOutput = new
+                {
+                    enabled,
+                    directory = releaseRoot
+                }
+            }, JsonContractSerializerOptions.Create()));
+    }
+
+    private static HxLocalConfiguration ValidConfig() => new()
+    {
+        SchemaVersion = 1,
+        SourcePath = Path.Combine(Path.GetTempPath(), "hx.config.json"),
+        LocalReleaseOutput = new HxLocalReleaseOutputConfiguration
+        {
+            Enabled = true,
+            Directory = Path.Combine(Path.GetTempPath(), "hx-release-output")
+        }
+    };
 
     private sealed class TempRepo : IDisposable
     {

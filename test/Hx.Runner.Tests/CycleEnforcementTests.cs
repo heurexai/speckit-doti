@@ -8,7 +8,7 @@ namespace Hx.Runner.Tests;
 
 /// <summary>
 /// Enforcement: the operator-question validator (Layers B+C), the prereq-chain keystone, the
-/// gate-proof store, and the fail-closed `cycle check`/`cycle commit` behavior (temp git repo fixtures).
+/// gate-proof store, and the fail-closed cycle transition behavior (temp git repo fixtures).
 /// </summary>
 public sealed partial class CycleEnforcementTests
 {
@@ -56,11 +56,11 @@ public sealed partial class CycleEnforcementTests
         {
             string wf = Path.Combine(dir, "workflow.yml");
             File.WriteAllText(wf,
-                "schemaVersion: 2\nstages:\n  - id: specify\n    kind: doc\n    prereqs: []\n  - id: clarify\n    kind: doc\n    prereqs: [specify]\n  - id: commit\n    kind: commit\n    prereqs: [clarify]\n");
+                "schemaVersion: 2\nstages:\n  - id: specify\n    kind: doc\n    prereqs: []\n  - id: clarify\n    kind: doc\n    prereqs: [specify]\n  - id: release\n    kind: release\n    prereqs: [clarify]\n");
             StageModel model = StageModel.Load(wf);
             Assert.Empty(model.Find("specify").Prereqs);
             Assert.Equal("specify", Assert.Single(model.Find("clarify").Prereqs));
-            Assert.Equal("clarify", Assert.Single(model.Find("commit").Prereqs));
+            Assert.Equal("clarify", Assert.Single(model.Find("release").Prereqs));
         }
         finally
         {
@@ -114,7 +114,7 @@ public sealed partial class CycleEnforcementTests
         }
     }
 
-    // ---------------- cycle check / commit (temp git repo) ----------------
+    // ---------------- cycle check / transition (temp git repo) ----------------
 
     [Fact]
     public void Check_FailsClosed_WhenPrerequisitesAreMissing()
@@ -122,7 +122,7 @@ public sealed partial class CycleEnforcementTests
         string dir = InitRepo();
         try
         {
-            CycleCheckReport report = new CycleService(dir).Check("commit");
+            CycleCheckReport report = new CycleService(dir).Check("release");
             Assert.False(report.Passed);
             Assert.Contains(report.Prerequisites, p => p.Stage == "specify" && p.Status == "missing");
             Assert.Contains(report.Prerequisites, p => p.Stage == "drift-review" && p.Status == "missing");
@@ -213,7 +213,7 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
-    public void Commit_Refuses_WhenPrerequisitesOrGateProofMissing()
+    public void Stamp_RefusesStartingAnotherFeatureBeforeDriftReview()
     {
         string dir = InitRepo();
         try
@@ -224,12 +224,10 @@ public sealed partial class CycleEnforcementTests
             var service = new CycleService(dir);
             service.Stamp("specify", "001-f", null); // cycle-state now exists; only specify is stamped
 
-            CycleCommitResult result = service.Commit("a message");
-            Assert.False(result.Committed);
-            Assert.Null(result.CommitSha);
-            // refuses for at least the missing drift-review prerequisite and the absent gate proof
-            Assert.Contains(result.Reasons, r => r.Contains("drift-review", StringComparison.Ordinal));
-            Assert.Contains(result.Reasons, r => r.Contains("gate proof", StringComparison.Ordinal));
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+                () => service.Stamp("specify", "002-next", null));
+
+            Assert.Contains("Complete drift-review", ex.Message);
         }
         finally
         {

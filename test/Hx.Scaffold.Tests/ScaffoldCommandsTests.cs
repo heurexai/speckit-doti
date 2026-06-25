@@ -78,4 +78,32 @@ public sealed partial class ScaffoldCommandsTests
         }
     }
 
+    [Fact]
+    public void Version_reports_installed_release_asset_identity()
+    {
+        string repo = NewVersionedRepo();
+        try
+        {
+            ScaffoldVersionReporter.WriteStamp(repo,
+                ScaffoldVersionReporter.IdentityFromVersion(
+                    "1.2.3",
+                    "velopack",
+                    releaseAssetName: "DotiSetup.exe",
+                    releaseAssetSha256: "abc123"));
+
+            CliResult r = ScaffoldCommands.Version(Meta, repo);
+
+            Assert.True(r.Ok);
+            ScaffoldVersionReport report = r.Data!.Deserialize<ScaffoldVersionReport>(JsonContractSerializerOptions.Create())!;
+            Assert.Equal("1.2.3", report.Target!.Version);
+            Assert.Equal("velopack", report.Target.Source);
+            Assert.Equal("DotiSetup.exe", report.Target.ReleaseAssetName);
+            Assert.Equal("abc123", report.Target.ReleaseAssetSha256);
+        }
+        finally
+        {
+            ForceDelete(repo);
+        }
+    }
+
 }

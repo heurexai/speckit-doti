@@ -1,6 +1,9 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using Hx.Cli.Kernel;
+using Hx.Runner.Cli;
 using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 using Xunit;
@@ -65,6 +68,36 @@ public sealed partial class ToolFetcherTests : IDisposable
         Assert.Equal(ToolFetchStatus.Fetched, outcome.Status);
         string installed = Path.Combine(_root, "tools", "sentrux", "bin", "win-x64", "sentrux.exe");
         Assert.Equal(exeBytes, File.ReadAllBytes(installed));
+    }
+
+    [Fact]
+    public void Vendored_manifest_list_includes_velopack()
+    {
+        Assert.Contains("tools/velopack/velopack.version.json", ToolFetcher.ManifestRelativePaths);
+    }
+
+    [Fact]
+    public void Tools_fetch_accepts_velopack_filter()
+    {
+        byte[] packageBytes = Encoding.UTF8.GetBytes("fake-vpk-nupkg");
+        string manifest = WriteManifest("velopack", "tools/velopack/velopack.version.json",
+            downloadUrl: "https://github.com/velopack/velopack/releases/download/1.2.0/vpk.1.2.0.nupkg",
+            archiveSha256: null,
+            executablePath: "tools/velopack/bin/win-x64/vpk.1.2.0.nupkg",
+            executableSha256: Sha256(packageBytes),
+            executableName: "vpk.1.2.0.nupkg");
+        string packagePath = Path.Combine(_root, "tools", "velopack", "bin", "win-x64", "vpk.1.2.0.nupkg");
+        Directory.CreateDirectory(Path.GetDirectoryName(packagePath)!);
+        File.WriteAllBytes(packagePath, packageBytes);
+
+        CliResult result = RunnerCommands.ToolsFetch(new CliMeta("runner", "0.0.0-test"), _root, Rid, "velopack");
+
+        Assert.True(result.Ok);
+        ToolFetchResult fetch = result.Data!.Deserialize<ToolFetchResult>(JsonContractSerializerOptions.Create())!;
+        ToolFetchOutcome outcome = Assert.Single(fetch.Tools);
+        Assert.Equal("velopack", outcome.Tool);
+        Assert.Equal(ToolFetchStatus.Fetched, outcome.Status);
+        Assert.Equal(manifest, Path.Combine(_root, "tools", "velopack", "velopack.version.json"));
     }
 
     [Fact]

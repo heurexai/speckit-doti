@@ -7,7 +7,7 @@ namespace Hx.Runner.Tests;
 public sealed partial class CycleEnforcementTests
 {
     [Fact]
-    public void AmbiguousHeadMovementDuringPendingCommit_FailsClosed()
+    public void AmbiguousHeadMovementDuringPendingTransition_FailsClosed()
     {
         string dir = InitRepo();
         try
@@ -18,19 +18,16 @@ public sealed partial class CycleEnforcementTests
             CycleState state = store.Read()!;
             store.Write(state with { PendingCommit = PendingIntentFor(state, dir) });
 
+            File.WriteAllText(Path.Combine(dir, "external.txt"), "external");
+            Git(dir, "add", "external.txt");
             Git(dir, "commit", "-q", "-m", "external commit without doti trailers");
 
             CycleStatusReport status = service.Status();
             Assert.Equal(CycleRecoveryVerdict.Ambiguous, status.Recovery?.Verdict);
 
-            CycleCheckReport check = service.Check("commit");
+            CycleCheckReport check = service.Check("release");
             Assert.False(check.Passed);
             Assert.Contains(check.Prerequisites, p => p.Stage == "commit-recovery" && p.Status == "ambiguous");
-
-            CycleCommitResult commit = service.Commit("finish cycle");
-            Assert.False(commit.Committed);
-            Assert.False(commit.AlreadyCompleted);
-            Assert.Contains(commit.Reasons, r => r.Contains("ambiguous", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
@@ -39,30 +36,23 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
-    public void NewEditsAfterCompletion_RequireNewSpecifyStamp()
+    public void NewEditsAfterTransition_MakePrerequisitesStale()
     {
         string dir = InitRepo();
         try
         {
             var service = new CycleService(dir);
             PrepareDocsOnlyCycle(dir, service);
-            CycleCommitResult commit = service.Commit("finish cycle");
-            Assert.True(commit.Committed, string.Join("; ", commit.Reasons));
 
-            File.WriteAllText(Path.Combine(dir, "docs", "specs", "002-next.md"), "next spec body");
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-f.md"), "edited after transition");
 
             CycleStatusReport status = service.Status();
-            Assert.NotNull(status.Completion);
+            Assert.Null(status.Completion);
             Assert.Contains(status.Freshness, f => f.Freshness == StageFreshness.Stale);
 
-            CycleCheckReport check = service.Check("commit");
+            CycleCheckReport check = service.Check("release");
             Assert.False(check.Passed);
-            Assert.Contains(check.Prerequisites, p => p.Status == "completed-with-new-changes");
-
-            CycleCommitResult repeated = service.Commit("finish cycle");
-            Assert.False(repeated.Committed);
-            Assert.False(repeated.AlreadyCompleted);
-            Assert.Contains(repeated.Reasons, r => r.Contains("new specify stamp", StringComparison.Ordinal));
+            Assert.Contains(check.Prerequisites, p => p.Stage == "drift-review" && p.Status == "stale");
         }
         finally
         {
@@ -71,21 +61,85 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
-    public void CompletedCycle_AllowsOnlyNewSpecifyStampToStartNextCycle()
+    public void ImplementationEdits_DoNotStalePreImplementationDocAndReviewPrerequisites()
+    {
+        string dir = InitRepo();
+        try
+        {
+            WriteWorkflow(dir,
+                "schemaVersion: 2\nstages:\n" +
+                "  - id: specify\n    kind: doc\n    produces: docs/specs/{feature}.md\n    prereqs: []\n" +
+                "  - id: analyze\n    kind: review\n    prereqs: [specify]\n" +
+                "  - id: implement\n    kind: diff\n    prereqs: [analyze]\n");
+
+            var service = new CycleService(dir);
+            Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-f.md"), "spec body");
+            Git(dir, "add", "docs/specs/001-f.md");
+            service.Stamp("specify", "001-f", null);
+            service.Stamp("analyze", null, null);
+
+            Directory.CreateDirectory(Path.Combine(dir, "src"));
+            File.WriteAllText(Path.Combine(dir, "src", "Feature.cs"), "implementation edit");
+
+            CycleCheckReport check = service.Check("implement");
+
+            Assert.True(check.Passed, string.Join("; ", check.Prerequisites.Select(p => $"{p.Stage}:{p.Status}:{p.Reason}")));
+            Assert.Contains(check.Prerequisites, p => p.Stage == "specify" && p.Status == "fresh");
+            Assert.Contains(check.Prerequisites, p => p.Stage == "analyze" && p.Status == "fresh");
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
+    public void RestampingEarlierStage_DoesNotMoveCurrentStageBackward()
+    {
+        string dir = InitRepo();
+        try
+        {
+            WriteWorkflow(dir,
+                "schemaVersion: 2\nstages:\n" +
+                "  - id: specify\n    kind: doc\n    produces: docs/specs/{feature}.md\n    prereqs: []\n" +
+                "  - id: plan\n    kind: review\n    prereqs: [specify]\n" +
+                "  - id: implement\n    kind: diff\n    prereqs: [plan]\n");
+
+            Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-f.md"), "spec body");
+            Git(dir, "add", "docs/specs/001-f.md");
+
+            var service = new CycleService(dir);
+            service.Stamp("specify", "001-f", null);
+            service.Stamp("plan", null, null);
+
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-f.md"), "spec body refreshed");
+            CycleState refreshed = service.Stamp("specify", "001-f", null);
+
+            Assert.Equal("plan", refreshed.CurrentStage);
+            Assert.Single(refreshed.Stages, s => s.Stage == "specify");
+            Assert.Contains(refreshed.Stages, s => s.Stage == "plan");
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
+    public void DriftReviewCycle_AllowsOnlyNewSpecifyStampToStartNextCycle()
     {
         string dir = InitRepo();
         try
         {
             var service = new CycleService(dir);
             PrepareDocsOnlyCycle(dir, service);
-            CycleCommitResult commit = service.Commit("finish cycle");
-            Assert.True(commit.Committed, string.Join("; ", commit.Reasons));
 
-            InvalidOperationException oldStage = Assert.Throws<InvalidOperationException>(
-                () => service.Stamp("drift-review", null, null));
-            Assert.Contains("previous cycle completed", oldStage.Message);
+            CycleState sameStage = service.Stamp("drift-review", null, null);
+            Assert.Equal("drift-review", sameStage.CurrentStage);
+            Assert.Single(sameStage.Transitions!);
 
-            File.WriteAllText(Path.Combine(dir, "docs", "specs", "002-next.md"), "next spec body");
             CycleState next = service.Stamp("specify", "002-next", null);
 
             Assert.Equal("002-next", next.Feature);
@@ -93,6 +147,7 @@ public sealed partial class CycleEnforcementTests
             Assert.Null(next.Completion);
             Assert.Null(next.PendingCommit);
             Assert.Single(next.Stages);
+            Assert.Single(next.CompletedUnreleasedCycles!);
         }
         finally
         {
@@ -153,19 +208,21 @@ public sealed partial class CycleEnforcementTests
             var completion = new CycleCompletionRecord(
                 JsonContractDefaults.SchemaVersion,
                 "legacy-done",
-                "commit",
+                "drift-review",
                 "HEAD",
                 head,
                 head,
                 "legacy-change-set",
                 "legacy-gate-change-set",
                 "legacy-message",
-                DateTimeOffset.UtcNow.ToString("O"));
+                DateTimeOffset.UtcNow.ToString("O"),
+                ExpectedCompletionShape: "cycle-transition/v1",
+                NextStage: "specify");
             new CycleStateStore(dir).Write(new CycleState(
                 JsonContractDefaults.SchemaVersion,
                 "legacy-done",
                 "HEAD",
-                "commit",
+                "drift-review",
                 [new CycleStageProof("specify", CycleStageOutcome.Stamped, "legacy-change-set", ["legacy-hash"], head)],
                 Completion: completion));
 
@@ -209,5 +266,13 @@ public sealed partial class CycleEnforcementTests
         {
             ForceDelete(dir);
         }
+    }
+
+    private static void WriteWorkflow(string dir, string content)
+    {
+        string workflow = Path.Combine(dir, ".doti", "workflows", "doti", "workflow.yml");
+        File.WriteAllText(workflow, content);
+        Git(dir, "add", ".doti/workflows/doti/workflow.yml");
+        Git(dir, "commit", "-q", "-m", "replace workflow");
     }
 }

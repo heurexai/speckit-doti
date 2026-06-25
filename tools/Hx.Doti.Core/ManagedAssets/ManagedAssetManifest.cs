@@ -30,7 +30,8 @@ public sealed record ManagedAssetHashEntry(
 
 public sealed record ManagedAssetManifest(
     int SchemaVersion,
-    IReadOnlyList<ManagedAssetHashEntry> Assets);
+    IReadOnlyList<ManagedAssetHashEntry> Assets,
+    IReadOnlyList<ManagedAssetHashEntry>? ObsoleteAssets = null);
 
 public sealed record ManagedAssetStatus(
     string Path,

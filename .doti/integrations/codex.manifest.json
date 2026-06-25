@@ -5,5 +5,5 @@
   "entrypoint": "AGENTS.md",
   "sharedContext": ".doti/agent-context.md",
   "maturity": "command-aware-advisory",
-  "renderedFrom": "doti/core/templates/commands"
+  "renderedFrom": ".doti/core/templates/commands"
 }

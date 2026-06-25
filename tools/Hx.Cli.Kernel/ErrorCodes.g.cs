@@ -28,6 +28,22 @@ public static class ErrorCodes
     public const string Validation_PrerequisiteWingetUnavailable = "VAL0009";
     public const string Validation_PrerequisiteWingetFailed = "VAL0010";
     public const string Integrity_PrerequisiteManifestUntrusted = "ITG0005";
+    public const string Validation_DotiTaskFileMissing = "VAL0011";
+    public const string Validation_DotiTaskFileEmpty = "VAL0012";
+    public const string Validation_DotiTaskIdDuplicate = "VAL0013";
+    public const string Validation_DotiTaskUnchecked = "VAL0014";
+    public const string Validation_DotiTaskHashMissing = "VAL0015";
+    public const string Validation_DotiTaskHashMismatch = "VAL0016";
+    public const string Validation_CycleTransitionBlocked = "VAL0017";
+    public const string Validation_ReleaseTrainInvalid = "VAL0018";
+    public const string Validation_ReleaseDocumentationStale = "VAL0019";
+    public const string Validation_HxConfigMissing = "VAL0020";
+    public const string Validation_LocalReleaseDirectoryInvalid = "VAL0021";
+    public const string Validation_InstallerTargetMissing = "VAL0022";
+    public const string Integrity_ManagedAssetModified = "ITG0006";
+    public const string Integrity_ObsoleteRemovalBlocked = "ITG0007";
+    public const string Integrity_VelopackArtifactMissing = "ITG0008";
+    public const string Integrity_DotiPayloadDrift = "ITG0009";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -70,5 +86,37 @@ public static class ErrorCodes
             "Windows Package Manager failed to install a prerequisite.", "Review the winget result, install the prerequisite manually if needed, and re-run the prerequisite check."),
         new("ITG0005", "integrity", "ITG", 5, Severity.Error, ExitClass.Integrity, "integrity.prerequisite-manifest-untrusted",
             "The trusted prerequisite manifest is missing or invalid.", "Use a verified speckit-doti release payload; do not use repo-local install sources."),
+        new("VAL0011", "validation", "VAL", 11, Severity.Error, ExitClass.Validation, "validation.doti-task-file-missing",
+            "The active Doti task file is missing.", "Create or restore the active feature task file, then re-run the Doti task hash or gate command."),
+        new("VAL0012", "validation", "VAL", 12, Severity.Error, ExitClass.Validation, "validation.doti-task-file-empty",
+            "The active Doti task file contains no required tasks.", "Add required Markdown task entries before completing the implementation gate."),
+        new("VAL0013", "validation", "VAL", 13, Severity.Error, ExitClass.Validation, "validation.doti-task-id-duplicate",
+            "A Doti task id appears more than once.", "Give each task a unique id before stamping task hashes."),
+        new("VAL0014", "validation", "VAL", 14, Severity.Error, ExitClass.Validation, "validation.doti-task-unchecked",
+            "A required Doti task is not checked.", "Complete the task, check it in the task ledger, and re-run `doti task-hash stamp`."),
+        new("VAL0015", "validation", "VAL", 15, Severity.Error, ExitClass.Validation, "validation.doti-task-hash-missing",
+            "A checked Doti task is missing its canonical hash marker.", "Run `doti task-hash stamp` after every required task is complete."),
+        new("VAL0016", "validation", "VAL", 16, Severity.Error, ExitClass.Validation, "validation.doti-task-hash-mismatch",
+            "A checked Doti task hash no longer matches the canonical task content.", "Review the task text change, then re-run `doti task-hash stamp` only after the task is still complete."),
+        new("VAL0017", "validation", "VAL", 17, Severity.Error, ExitClass.Validation, "validation.cycle-transition-blocked",
+            "A Doti stage-transition commit is blocked.", "Fix the reported scope, gate, task-hash, or freshness blocker before starting the next Doti stage."),
+        new("VAL0018", "validation", "VAL", 18, Severity.Error, ExitClass.Validation, "validation.release-train-invalid",
+            "The Doti release train is invalid.", "Repair or complete every included feature cycle before running the release path."),
+        new("VAL0019", "validation", "VAL", 19, Severity.Error, ExitClass.Validation, "validation.release-documentation-stale",
+            "Release-facing documentation is stale for the release train.", "Update README, CHANGELOG, or relevant documentation with the included feature slugs before release."),
+        new("VAL0020", "validation", "VAL", 20, Severity.Error, ExitClass.Validation, "validation.hx-config-missing",
+            "The required executable-adjacent hx.config.json file is missing.", "Use a verified hx installation or restore hx.config.json next to hx.exe before running operational commands."),
+        new("VAL0021", "validation", "VAL", 21, Severity.Error, ExitClass.Validation, "validation.local-release-directory-invalid",
+            "The configured local release directory is invalid.", "Set localReleaseOutput.directory in hx.config.json to an absolute path, or disable local release output."),
+        new("VAL0022", "validation", "VAL", 22, Severity.Error, ExitClass.Validation, "validation.installer-target-missing",
+            "The installer or Doti install target repository argument is missing.", "Pass the explicit target repository directory; the command does not default to the current directory."),
+        new("ITG0006", "integrity", "ITG", 6, Severity.Error, ExitClass.Integrity, "integrity.managed-asset-modified",
+            "A managed Doti asset has been modified from its canonical baseline.", "Review the modified path and use --force only when replacing local customization is intended."),
+        new("ITG0007", "integrity", "ITG", 7, Severity.Error, ExitClass.Integrity, "integrity.obsolete-removal-blocked",
+            "Obsolete Doti asset removal was blocked by unproven or modified content.", "Inspect the blocked legacy path, preserve repo-owned content, or rerun with --force only when replacement is intended."),
+        new("ITG0008", "integrity", "ITG", 8, Severity.Error, ExitClass.Integrity, "integrity.velopack-artifact-missing",
+            "A required Velopack release artifact is missing.", "Re-run the release command so installer/update artifacts and checksums are produced and inspected."),
+        new("ITG0009", "integrity", "ITG", 9, Severity.Error, ExitClass.Integrity, "integrity.doti-payload-drift",
+            "Scaffold-installed Doti payload parity drift was detected.", "Run doti render-skills or repair the scaffold payload source before relying on generated repos."),
     ];
 }

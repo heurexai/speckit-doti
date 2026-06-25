@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Hx.Cli.Kernel;
 using Hx.Runner.Cli;
 using Hx.Tooling.Contracts;
@@ -30,6 +31,14 @@ public sealed class RunnerCommandsTests
         AssertUsage(RunnerCommands.CycleStamp(Meta, ".", stage: "", feature: "", baseRef: ""));
 
     [Fact]
+    public void CycleStamp_rejects_release_intent_outside_release_stage() =>
+        AssertUsage(RunnerCommands.CycleStamp(Meta, ".", stage: "implement", feature: "", baseRef: "", releaseIntent: "minor"));
+
+    [Fact]
+    public void CycleStamp_rejects_unknown_release_intent() =>
+        AssertUsage(RunnerCommands.CycleStamp(Meta, ".", stage: "release", feature: "", baseRef: "", releaseIntent: "tiny"));
+
+    [Fact]
     public void CycleCheck_requires_a_stage() =>
         AssertUsage(RunnerCommands.CycleCheck(Meta, ".", stage: ""));
 
@@ -48,5 +57,63 @@ public sealed class RunnerCommandsTests
         Assert.False(r.Ok);
         Assert.Equal((int)ExitClass.Validation, r.ExitCode);
         Assert.Equal(ErrorCodes.Validation_Failed, Assert.Single(r.Errors).Code);
+    }
+
+    [Fact]
+    public void TaskHashStamp_stamps_checked_tasks_and_reports_unchecked_with_stable_code()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "hx-runner-task-hash-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string taskDir = Path.Combine(dir, "docs", "tasks");
+            Directory.CreateDirectory(taskDir);
+            string taskFile = Path.Combine(taskDir, "001-example-tasks.md");
+            File.WriteAllText(taskFile,
+                "- [x] `T001` (FR-001, SC-001) - Finish the first task.\n" +
+                "- [ ] `T002` (FR-002, SC-002) - Finish the second task.\n");
+
+            CliResult r = RunnerCommands.TaskHashStamp(Meta, dir, "001-example");
+
+            Assert.False(r.Ok);
+            Assert.Equal((int)ExitClass.Validation, r.ExitCode);
+            Assert.Contains(r.Errors, e => e.Code == ErrorCodes.Validation_DotiTaskUnchecked && e.Target == "T002");
+            string text = File.ReadAllText(taskFile);
+            Assert.Contains("doti-task-hash", text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void DotiPayloadCheck_reports_payload_parity()
+    {
+        CliResult r = RunnerCommands.DotiPayloadCheck(Meta, FindRepoRoot());
+
+        Assert.True(r.Ok);
+        Assert.Equal((int)ExitClass.Success, r.ExitCode);
+        DotiPayloadCheckResult result = r.Data!.Deserialize<DotiPayloadCheckResult>(JsonContractSerializerOptions.Create())!;
+        Assert.Equal(StageOutcome.Pass, result.Outcome);
+        Assert.Empty(result.Drifted);
+    }
+
+    private static string FindRepoRoot()
+    {
+        DirectoryInfo? dir = new(Directory.GetCurrentDirectory());
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, ".doti", "core", "skills.json")))
+            {
+                return dir.FullName;
+            }
+
+            dir = dir.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not find repository root with .doti/core/skills.json.");
     }
 }

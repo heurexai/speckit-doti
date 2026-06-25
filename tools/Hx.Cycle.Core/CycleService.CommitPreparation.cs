@@ -7,19 +7,24 @@ namespace Hx.Cycle.Core;
 
 public sealed partial class CycleService
 {
-    private PendingCycleCommit PreparePendingCommit(string message, CycleState state, CommitReadiness readiness)
+    private PendingCycleCommit PreparePendingCommit(
+        string message,
+        CycleState state,
+        CommitReadiness readiness,
+        string? nextStage,
+        string expectedCompletionShape)
     {
         string preCommitHead = GitRefs.TryHeadSha(_repositoryRoot)
             ?? throw new InvalidOperationException("Could not resolve HEAD before commit.");
         string messageHash = FileHashing.Sha256OfText(message);
         IReadOnlyList<string> stageProofHashes = StageProofHashes(state);
-        string gateProofDigest = DigestOf(readiness.GateProof!);
+        string? gateProofDigest = readiness.GateProof is null ? null : DigestOf(readiness.GateProof);
         string runnerIdentity = RunnerIdentity();
-        string expectedCompletionShape = "cycle-completion/v1";
         string fullMessage = BuildCommitMessage(
             message,
             state.Feature,
             state.CurrentStage,
+            nextStage,
             readiness.Identity,
             messageHash,
             readiness.Scope.StagedTreeId,
@@ -32,48 +37,42 @@ public sealed partial class CycleService
             state.BaseRef,
             preCommitHead,
             readiness.Identity,
-            readiness.GateProof!.ChangeSetId,
+            readiness.GateProof?.ChangeSetId ?? readiness.Identity,
             messageHash,
             DateTimeOffset.UtcNow.ToString("O"),
             readiness.Scope.StagedTreeId,
             stageProofHashes,
             gateProofDigest,
             runnerIdentity,
-            expectedCompletionShape);
+            expectedCompletionShape,
+            nextStage);
         CycleState stateWithIntent = state with { PendingCommit = intent, Completion = null };
         _store.Write(stateWithIntent);
         return new PendingCycleCommit(intent, stateWithIntent, fullMessage);
     }
 
-    private ProcessRunResult RunGitCommit(string fullMessage) =>
+    private ProcessRunResult RunGitCommit(string fullMessage, bool allowEmpty = false) =>
         ProcessRunner.Run(new ToolCommand(
             "git",
-            ["commit", "-m", fullMessage],
+            allowEmpty ? ["commit", "--allow-empty", "-m", fullMessage] : ["commit", "-m", fullMessage],
             _repositoryRoot,
             new Dictionary<string, string> { [PrecommitGuard.SentinelEnvVar] = "1" }));
-
-    private CycleCompletionRecord CompletePendingCommit(PendingCycleCommit pending, string commitSha)
-    {
-        CycleCompletionRecord completion = CreateCompletion(pending.Intent, commitSha);
-        _store.Write(pending.StateWithIntent with
-        {
-            CurrentStage = "commit",
-            PendingCommit = null,
-            Completion = completion,
-        });
-        return completion;
-    }
 
     private static string BuildCommitMessage(
         string message,
         string feature,
         string stage,
+        string? nextStage,
         string changeSetId,
         string messageHash,
         string stagedTreeId,
-        string gateProofDigest,
+        string? gateProofDigest,
         string runnerIdentity) =>
-        $"{message}\n\nDoti-Cycle: {feature}/{stage}\nDoti-ChangeSet: {changeSetId}\nDoti-Message: {messageHash}\nDoti-StagedTree: {stagedTreeId}\nDoti-GateProof: {gateProofDigest}\nDoti-Runner: {runnerIdentity}";
+        $"{message}\n\nDoti-Cycle: {feature}/{stage}\n"
+        + (string.IsNullOrWhiteSpace(nextStage) ? "" : $"Doti-Transition: {feature}/{stage}->{nextStage}\n")
+        + $"Doti-ChangeSet: {changeSetId}\nDoti-Message: {messageHash}\nDoti-StagedTree: {stagedTreeId}\n"
+        + (string.IsNullOrWhiteSpace(gateProofDigest) ? "" : $"Doti-GateProof: {gateProofDigest}\n")
+        + $"Doti-Runner: {runnerIdentity}";
 
     private static IReadOnlyList<string> StageProofHashes(CycleState state) =>
         state.Stages

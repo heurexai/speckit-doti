@@ -25,7 +25,8 @@ public sealed record CycleCompletionIntent(
     IReadOnlyList<string>? StageProofHashes = null,
     string? GateProofDigest = null,
     string? RunnerIdentity = null,
-    string? ExpectedCompletionShape = null);
+    string? ExpectedCompletionShape = null,
+    string? NextStage = null);
 
 /// <summary>
 /// A completed sanctioned cycle. The stage proofs that authorized the commit are preserved for audit, but
@@ -46,7 +47,27 @@ public sealed record CycleCompletionRecord(
     IReadOnlyList<string>? StageProofHashes = null,
     string? GateProofDigest = null,
     string? RunnerIdentity = null,
-    string? ExpectedCompletionShape = null);
+    string? ExpectedCompletionShape = null,
+    string? NextStage = null);
+
+/// <summary>
+/// A sanctioned automatic commit created when the next Doti stage starts. These commits replace the
+/// previously agent-visible commit command and are preserved for release-train audit.
+/// </summary>
+public sealed record CycleTransitionRecord(
+    int SchemaVersion,
+    string Feature,
+    string Stage,
+    string NextStage,
+    string PreCommitHead,
+    string CommitSha,
+    string ChangeSetId,
+    string MessageHash,
+    string CompletedAtUtc,
+    string? StagedTreeId = null,
+    IReadOnlyList<string>? StageProofHashes = null,
+    string? GateProofDigest = null,
+    string? RunnerIdentity = null);
 
 /// <summary>
 /// A non-forgeable record that a doti cycle stage was completed, bound to the diff at stamp time.
@@ -79,4 +100,23 @@ public sealed record CycleState(
     string CurrentStage,
     IReadOnlyList<CycleStageProof> Stages,
     CycleCompletionIntent? PendingCommit = null,
-    CycleCompletionRecord? Completion = null);
+    CycleCompletionRecord? Completion = null,
+    IReadOnlyList<CycleTransitionRecord>? Transitions = null,
+    IReadOnlyList<CycleCompletionRecord>? CompletedUnreleasedCycles = null,
+    IReadOnlyList<CycleCompletionRecord>? ReleasedCycles = null);
+
+public sealed record CycleReleaseTrainFeature(
+    string Feature,
+    string CompletedStage,
+    string CommitSha,
+    string? StageCommitRange,
+    string TaskCompletionStatus,
+    string GateProofStatus,
+    string InclusionStatus,
+    IReadOnlyList<string> Blockers);
+
+public sealed record CycleReleaseTrain(
+    int SchemaVersion,
+    bool Valid,
+    IReadOnlyList<CycleReleaseTrainFeature> Features,
+    IReadOnlyList<string> Blockers);

@@ -10,9 +10,13 @@ namespace Hx.Cli.Kernel;
 /// </summary>
 public static class DescribeWalker
 {
-    public static CliDescribe Describe(CliMeta meta, Command root, IReadOnlyList<ErrorCodeEntry> errorCodes) =>
+    public static CliDescribe Describe(
+        CliMeta meta,
+        Command root,
+        IReadOnlyList<ErrorCodeEntry> errorCodes,
+        CliDescribeWorkflow? workflow = null) =>
         new(JsonContractDefaults.SchemaVersion, meta.Tool, meta.Version, Walk(root),
-            Enum.GetNames<ExitClass>(), errorCodes);
+            Enum.GetNames<ExitClass>(), errorCodes, workflow);
 
     private static CliDescribeCommand Walk(Command command) =>
         new(command.Name,

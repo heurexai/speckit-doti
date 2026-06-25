@@ -11,7 +11,7 @@ public sealed class DotiRendererTests
         {
           "schemaVersion": 1,
           "maturity": "command-aware-advisory",
-          "commandTemplateDir": "doti/core/templates/commands",
+          "commandTemplateDir": ".doti/core/templates/commands",
           "agentContextRef": ".doti/agent-context.md",
           "introTemplate": "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
           "skills": [
@@ -28,11 +28,11 @@ public sealed class DotiRendererTests
     private static string NewRepo()
     {
         string repo = Path.Combine(Path.GetTempPath(), "hx-doti-" + Guid.NewGuid().ToString("n"));
-        Directory.CreateDirectory(Path.Combine(repo, "doti", "core", "templates", "commands"));
-        Directory.CreateDirectory(Path.Combine(repo, "doti", "profiles", "dotnet-cli"));
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "skills.json"), SkillsJson);
-        File.WriteAllText(Path.Combine(repo, "doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "templates", "agent-context-template.md"), "context body\n");
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "core", "templates", "commands"));
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "profiles", "dotnet-cli"));
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "skills.json"), SkillsJson);
+        File.WriteAllText(Path.Combine(repo, ".doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "agent-context-template.md"), "context body\n");
         return repo;
     }
 
@@ -48,8 +48,8 @@ public sealed class DotiRendererTests
             Assert.Equal(5, write.Written.Count);
             Assert.True(File.Exists(Path.Combine(repo, "CLAUDE.md")));
             Assert.True(File.Exists(Path.Combine(repo, "AGENTS.md")));
-            Assert.True(File.Exists(Path.Combine(repo, ".claude", "skills", "doti-specify", "SKILL.md")));
-            Assert.True(File.Exists(Path.Combine(repo, ".agents", "skills", "doti-specify", "SKILL.md")));
+            Assert.True(File.Exists(Path.Combine(repo, ".claude", "skills", "01-doti-specify", "SKILL.md")));
+            Assert.True(File.Exists(Path.Combine(repo, ".agents", "skills", "01-doti-specify", "SKILL.md")));
 
             DotiRenderResult check = DotiRenderer.Render(repo, DotiAgentTarget.All, check: true);
             Assert.Equal(StageOutcome.Pass, check.Outcome);
@@ -69,12 +69,12 @@ public sealed class DotiRendererTests
         {
             DotiRenderer.Render(repo, DotiAgentTarget.All, check: false);
 
-            string claudeSkill = Path.Combine(repo, ".claude", "skills", "doti-specify", "SKILL.md");
+            string claudeSkill = Path.Combine(repo, ".claude", "skills", "01-doti-specify", "SKILL.md");
             File.AppendAllText(claudeSkill, "hand edit\n");
 
             DotiRenderResult check = DotiRenderer.Render(repo, DotiAgentTarget.All, check: true);
             Assert.Equal(StageOutcome.Fail, check.Outcome);
-            Assert.Contains(".claude/skills/doti-specify/SKILL.md", check.Drifted);
+            Assert.Contains(".claude/skills/01-doti-specify/SKILL.md", check.Drifted);
         }
         finally
         {

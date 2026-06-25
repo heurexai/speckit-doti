@@ -6,6 +6,7 @@ using Hx.Runner.Cli;
 using Hx.Runner.Core.Tools;
 using Hx.Scaffold.Cli;
 using Hx.Tooling.Contracts;
+using System.Text.Json;
 using Xunit;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
@@ -79,5 +80,61 @@ public sealed class ArchitectureTests
         Assert.Contains(Arch.Types, t =>
             t.FullName.Contains(".Cli.", System.StringComparison.Ordinal)
             && t.FullName.EndsWith("Commands", System.StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Architecture_guidance_matches_declared_families()
+    {
+        string root = FindRepositoryRoot();
+        string[] familyIds = LoadArchitectureFamilyIds(root);
+        Assert.Equal(["cliSurfaceConfinement", "cliDelegation"], familyIds);
+
+        string[] guidanceFiles =
+        [
+            Path.Combine(root, "README.md"),
+            Path.Combine(root, ".doti", "core", "skills.json"),
+            Path.Combine(root, ".doti", "core", "templates", "agent-context-template.md"),
+            Path.Combine(root, ".doti", "core", "templates", "commands", "doti-arch-review.md"),
+        ];
+
+        foreach (string path in guidanceFiles)
+        {
+            string text = File.ReadAllText(path);
+            foreach (string familyId in familyIds)
+            {
+                Assert.Contains(familyId, text, System.StringComparison.Ordinal);
+            }
+
+            Assert.DoesNotContain("nine ArchUnitNET", text, System.StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("nine rule", text, System.StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("nine families", text, System.StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "scaffold-dotnet.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root from " + AppContext.BaseDirectory);
+    }
+
+    private static string[] LoadArchitectureFamilyIds(string repositoryRoot)
+    {
+        string path = Path.Combine(repositoryRoot, "rules", "architecture.json");
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
+        return document.RootElement.GetProperty("families")
+            .EnumerateArray()
+            .Select(family => family.GetProperty("id").GetString() ?? string.Empty)
+            .Where(id => id.Length > 0)
+            .ToArray();
     }
 }

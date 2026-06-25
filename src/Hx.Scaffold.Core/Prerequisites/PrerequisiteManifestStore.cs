@@ -11,7 +11,7 @@ public sealed record LoadedPrerequisiteManifest(
 
 public static class PrerequisiteManifestStore
 {
-    public const string SourceRelativePath = "doti/core/prerequisites.json";
+    public const string SourceRelativePath = ".doti/core/prerequisites.json";
     public const string TargetRelativePath = ".doti/prerequisites.json";
 
     public static LoadedPrerequisiteManifest LoadFromSourceRoot(string sourceRoot)

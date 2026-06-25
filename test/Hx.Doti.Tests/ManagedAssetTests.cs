@@ -12,7 +12,7 @@ public sealed class ManagedAssetTests
         {
           "schemaVersion": 1,
           "maturity": "command-aware-advisory",
-          "commandTemplateDir": "doti/core/templates/commands",
+          "commandTemplateDir": ".doti/core/templates/commands",
           "agentContextRef": ".doti/agent-context.md",
           "introTemplate": "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
           "skills": [
@@ -119,14 +119,14 @@ public sealed class ManagedAssetTests
             Assert.Equal(StageOutcome.Pass.ToString().ToLowerInvariant(), whitespaceOnly.Outcome);
 
             File.WriteAllText(workflow, "schemaVersion: 2\nstages:\n  - id: clarify\n    prereqs: []\n");
-            string codexSkill = Path.Combine(repo, ".agents", "skills", "doti-specify", "SKILL.md");
+            string codexSkill = Path.Combine(repo, ".agents", "skills", "01-doti-specify", "SKILL.md");
             File.AppendAllText(codexSkill, "\nlocal customization\n");
 
             ManagedAssetScanResult scan = ManagedAssetScanner.Scan(repo);
 
             Assert.Equal(StageOutcome.Fail.ToString().ToLowerInvariant(), scan.Outcome);
             Assert.Contains(scan.ModifiedWorkflowTemplates, s => s.Path == ".doti/workflows/doti/workflow.yml");
-            Assert.Contains(scan.ModifiedSkillGeneratedInstructions, s => s.Path == ".agents/skills/doti-specify/SKILL.md");
+            Assert.Contains(scan.ModifiedSkillGeneratedInstructions, s => s.Path == ".agents/skills/01-doti-specify/SKILL.md");
         }
         finally
         {
@@ -137,13 +137,13 @@ public sealed class ManagedAssetTests
     private static string NewDotiRepo()
     {
         string repo = NewTempDir();
-        Directory.CreateDirectory(Path.Combine(repo, "doti", "core", "templates", "commands"));
-        Directory.CreateDirectory(Path.Combine(repo, "doti", "profiles", "dotnet-cli"));
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "core", "templates", "commands"));
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "profiles", "dotnet-cli"));
         Directory.CreateDirectory(Path.Combine(repo, ".doti", "workflows", "doti"));
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "skills.json"), SkillsJson);
-        File.WriteAllText(Path.Combine(repo, "doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "templates", "agent-context-template.md"), "context body\n");
-        File.WriteAllText(Path.Combine(repo, "doti", "core", "templates", "commands", "doti-specify.md"), "# command\n");
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "skills.json"), SkillsJson);
+        File.WriteAllText(Path.Combine(repo, ".doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "agent-context-template.md"), "context body\n");
+        File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "commands", "doti-specify.md"), "# command\n");
         File.WriteAllText(Path.Combine(repo, ".doti", "workflows", "doti", "workflow.yml"),
             "schemaVersion: 2\nstages:\n  - id: specify\n    prereqs: []\n");
         return repo;

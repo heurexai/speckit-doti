@@ -6,7 +6,7 @@ namespace Hx.Cycle.Core;
 /// <summary>
 /// Reads/writes the persisted, change-set-bound gate proof at <c>.doti/gate-proof.json</c> (gitignored).
 /// <see cref="Persist"/> binds the proof to the current change-set identity (computed against the cycle's
-/// base ref, so persist and <c>cycle commit</c>'s verify agree). Non-forgeable freshness: a later diff
+/// base ref, so persisted proof and transition/release verification agree). Non-forgeable freshness: a later diff
 /// change moves the identity, so the stored proof reads stale.
 /// </summary>
 public sealed class GateProofStore
@@ -38,7 +38,7 @@ public sealed class GateProofStore
 
     /// <summary>Bind <paramref name="proof"/> to the current change set + persist it. Called by <c>gate run</c>
     /// after a passing run. Uses the cycle's recorded <c>BaseRef</c> if a cycle is active (so it matches what
-    /// <c>cycle commit</c> will verify), else the resolved default.</summary>
+    /// transition/release verification will verify), else the resolved default.</summary>
     public static PersistedGateProof Persist(string repositoryRoot, Lane lane, GateProof proof)
     {
         string baseRef = new CycleStateStore(repositoryRoot).Read()?.BaseRef ?? GitRefs.ResolveBaseRef(repositoryRoot);

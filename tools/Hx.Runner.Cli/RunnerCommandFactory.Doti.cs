@@ -10,7 +10,9 @@ internal static partial class RunnerCommandFactory
         Command dotiCommand = new("doti", "Doti self-hosting: render skills, cycle state, hooks, operator-question protocol.");
         AddDotiRenderSkills(dotiCommand, meta);
         AddDotiInstall(dotiCommand, meta);
+        AddDotiPayload(dotiCommand, meta);
         AddDotiCycle(dotiCommand, meta);
+        AddDotiTaskHash(dotiCommand, meta);
         AddDotiInstallHooks(dotiCommand, meta);
         AddDotiQuestion(dotiCommand, meta);
         rootCommand.Subcommands.Add(dotiCommand);
@@ -35,17 +37,34 @@ internal static partial class RunnerCommandFactory
         dotiCommand.Subcommands.Add(command);
     }
 
+    private static void AddDotiPayload(Command dotiCommand, CliMeta meta)
+    {
+        Command payloadCommand = new("payload", "Doti payload parity tooling.");
+        Command checkCommand = new("check", "Check scaffold-installed Doti payload parity against this repo's source assets.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        checkCommand.Options.Add(repo);
+        checkCommand.Options.Add(json);
+        checkCommand.SetAction(parseResult => CliHost.Run(meta, "doti payload check",
+            () => RunnerCommands.DotiPayloadCheck(meta, parseResult.GetValue(repo)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        payloadCommand.Subcommands.Add(checkCommand);
+        dotiCommand.Subcommands.Add(payloadCommand);
+    }
+
     private static void AddDotiInstall(Command dotiCommand, CliMeta meta)
     {
-        Command command = new("install", "Install Doti assets (doti/ source + rendered skills + repo metadata) into a target repo.");
-        Option<string> repo = new("--repo") { Description = "Target repository root to install into.", DefaultValueFactory = _ => "." };
+        Command command = new("install", "Install or repair .doti workflow assets into an explicit target repo.");
+        Option<string?> repo = new("--repo") { Description = "Target repository root to install into. Required; the command never defaults to the current directory." };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
+        Option<bool> force = new("--force") { Description = "Replace modified/unknown legacy Doti-owned assets during migration." };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
         command.Options.Add(agents);
+        command.Options.Add(force);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti install",
-            () => RunnerCommands.DotiInstall(meta, parseResult.GetValue(repo)!, parseResult.GetValue(agents)!),
+            () => RunnerCommands.DotiInstall(meta, parseResult.GetValue(repo), parseResult.GetValue(agents)!, parseResult.GetValue(force)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
     }
@@ -61,6 +80,23 @@ internal static partial class RunnerCommandFactory
             () => RunnerCommands.InstallHooks(meta, parseResult.GetValue(repo)!),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
+    }
+
+    private static void AddDotiTaskHash(Command dotiCommand, CliMeta meta)
+    {
+        Command taskHashCommand = new("task-hash", "Task-completion hash tooling.");
+        Command stampCommand = new("stamp", "Stamp canonical doti-task-hash markers for checked tasks; refuse unchecked tasks.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<string> feature = new("--feature") { Description = "Numbered feature slug. Defaults to the active Doti cycle feature.", DefaultValueFactory = _ => "" };
+        Option<bool> json = CliApp.JsonOption();
+        stampCommand.Options.Add(repo);
+        stampCommand.Options.Add(feature);
+        stampCommand.Options.Add(json);
+        stampCommand.SetAction(parseResult => CliHost.Run(meta, "doti task-hash stamp",
+            () => RunnerCommands.TaskHashStamp(meta, parseResult.GetValue(repo)!, parseResult.GetValue(feature)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        taskHashCommand.Subcommands.Add(stampCommand);
+        dotiCommand.Subcommands.Add(taskHashCommand);
     }
 
     private static void AddDotiQuestion(Command dotiCommand, CliMeta meta)

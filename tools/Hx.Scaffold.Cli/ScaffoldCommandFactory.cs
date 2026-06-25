@@ -1,33 +1,39 @@
 using System.CommandLine;
 using Hx.Cli.Kernel;
+using Hx.Scaffold.Core.Configuration;
+using Hx.Tooling.Contracts;
 
 namespace Hx.Scaffold.Cli;
 
-internal static class ScaffoldCommandFactory
+public static class ScaffoldCommandFactory
 {
-    public static RootCommand Create(CliMeta meta)
+    public static RootCommand Create(CliMeta meta, string? executableDirectory = null)
     {
+        string configurationDirectory = string.IsNullOrWhiteSpace(executableDirectory)
+            ? AppContext.BaseDirectory
+            : executableDirectory;
         RootCommand rootCommand = new("scaffold-dotnet generation CLI");
-        AddProfile(rootCommand, meta);
-        AddNew(rootCommand, meta);
-        AddVersion(rootCommand, meta);
-        AddRelease(rootCommand, meta);
-        AddPrereq(rootCommand, meta);
+        AddProfile(rootCommand, meta, configurationDirectory);
+        AddNew(rootCommand, meta, configurationDirectory);
+        AddVersion(rootCommand, meta, configurationDirectory);
+        AddRelease(rootCommand, meta, configurationDirectory);
+        AddPrereq(rootCommand, meta, configurationDirectory);
         CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
         return rootCommand;
     }
 
-    private static void AddProfile(RootCommand rootCommand, CliMeta meta)
+    private static void AddProfile(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
     {
         Command command = new("profile", "Print the default scaffold profile.");
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "profile",
-            () => ScaffoldCommands.Profile(meta), forceJson: CliApp.ForceJson(parseResult, json)));
+            () => WithRequiredConfiguration(meta, "profile", configurationDirectory, _ => ScaffoldCommands.Profile(meta)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
         rootCommand.Subcommands.Add(command);
     }
 
-    private static void AddNew(RootCommand rootCommand, CliMeta meta)
+    private static void AddNew(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
     {
         Command command = new(
             "new", "Generate a repo from the hx-dotnet-cli template, finish it (vendor tooling + Doti), and run the first smoke.");
@@ -44,19 +50,20 @@ internal static class ScaffoldCommandFactory
         command.Options.Add(agents);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.RunWithProgress(meta, "new",
-            emit => ScaffoldCommands.New(
-                meta,
-                parseResult.GetValue(name)!,
-                parseResult.GetValue(company)!,
-                parseResult.GetValue(output)!,
-                parseResult.GetValue(profile)!,
-                parseResult.GetValue(agents)!,
-                emit),
+            emit => WithRequiredConfiguration(meta, "new", configurationDirectory,
+                _ => ScaffoldCommands.New(
+                    meta,
+                    parseResult.GetValue(name)!,
+                    parseResult.GetValue(company)!,
+                    parseResult.GetValue(output)!,
+                    parseResult.GetValue(profile)!,
+                    parseResult.GetValue(agents)!,
+                    emit)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         rootCommand.Subcommands.Add(command);
     }
 
-    private static void AddVersion(RootCommand rootCommand, CliMeta meta)
+    private static void AddVersion(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
     {
         Command command = new("version", "Report the running hx version and target repo scaffold/Doti state.");
         Option<string> repo = new("--repo") { Description = "Repository root to inspect.", DefaultValueFactory = _ => "." };
@@ -64,57 +71,51 @@ internal static class ScaffoldCommandFactory
         command.Options.Add(repo);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "version",
-            () => ScaffoldCommands.Version(meta, parseResult.GetValue(repo)!),
+            () => WithRequiredConfiguration(meta, "version", configurationDirectory,
+                _ => ScaffoldCommands.Version(meta, parseResult.GetValue(repo)!)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         rootCommand.Subcommands.Add(command);
     }
 
-    private static void AddRelease(RootCommand rootCommand, CliMeta meta)
+    private static void AddRelease(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
     {
         Command command = new("release",
             "Build the manifest-declared target release, create/verify the local GitVersion tag, and copy Velopack artifacts when configured.");
         Option<string> repo = new("--repo") { Description = "Repository root to release.", DefaultValueFactory = _ => "." };
         Option<string> rid = new("--rid") { Description = "Runtime identifier to publish (defaults to the current host RID).", DefaultValueFactory = _ => "" };
-        Option<string> releaseRoot = new("--release-root") { Description = "Explicit local release root. Overrides environment lookup.", DefaultValueFactory = _ => "" };
-        Option<string> releaseRootEnv = new("--release-root-env") { Description = "Environment variable name for the local release root (overrides the target manifest default).", DefaultValueFactory = _ => "" };
-        Option<bool> saveReleaseRoot = new("--save-release-root") { Description = "Persist --release-root into the manifest default release-root variable or --release-root-env for future runs.", DefaultValueFactory = _ => false };
         Option<bool> major = new("--major") { Description = "Require GitVersion to calculate a major release before tagging.", DefaultValueFactory = _ => false };
         Option<bool> minor = new("--minor") { Description = "Require GitVersion to calculate a minor release before tagging.", DefaultValueFactory = _ => false };
         Option<bool> patch = new("--patch") { Description = "Require GitVersion to calculate a patch release before tagging (default).", DefaultValueFactory = _ => false };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
         command.Options.Add(rid);
-        command.Options.Add(releaseRoot);
-        command.Options.Add(releaseRootEnv);
-        command.Options.Add(saveReleaseRoot);
         command.Options.Add(major);
         command.Options.Add(minor);
         command.Options.Add(patch);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "release",
-            () => ScaffoldCommands.Release(
-                meta,
-                parseResult.GetValue(repo)!,
-                parseResult.GetValue(rid)!,
-                parseResult.GetValue(releaseRoot)!,
-                parseResult.GetValue(releaseRootEnv)!,
-                parseResult.GetValue(saveReleaseRoot),
-                parseResult.GetValue(major),
-                parseResult.GetValue(minor),
-                parseResult.GetValue(patch)),
+            () => WithRequiredConfiguration(meta, "release", configurationDirectory,
+                configuration => ScaffoldCommands.Release(
+                    meta,
+                    parseResult.GetValue(repo)!,
+                    parseResult.GetValue(rid)!,
+                    configuration,
+                    parseResult.GetValue(major),
+                    parseResult.GetValue(minor),
+                    parseResult.GetValue(patch))),
             forceJson: CliApp.ForceJson(parseResult, json)));
         rootCommand.Subcommands.Add(command);
     }
 
-    private static void AddPrereq(RootCommand rootCommand, CliMeta meta)
+    private static void AddPrereq(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
     {
         Command group = new("prereq", "Check or install trusted system prerequisites.");
-        AddPrereqCheck(group, meta);
-        AddPrereqInstall(group, meta);
+        AddPrereqCheck(group, meta, configurationDirectory);
+        AddPrereqInstall(group, meta, configurationDirectory);
         rootCommand.Subcommands.Add(group);
     }
 
-    private static void AddPrereqCheck(Command group, CliMeta meta)
+    private static void AddPrereqCheck(Command group, CliMeta meta, string configurationDirectory)
     {
         Command command = new("check", "Check trusted prerequisites without installing anything.");
         Option<string> targetCommand = new("--for") { Description = "Command to check: new, version, or generated-validation.", DefaultValueFactory = _ => "new" };
@@ -126,16 +127,17 @@ internal static class ScaffoldCommandFactory
         command.Options.Add(output);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "prereq check",
-            () => ScaffoldCommands.PrereqCheck(
-                meta,
-                parseResult.GetValue(targetCommand)!,
-                parseResult.GetValue(repo)!,
-                parseResult.GetValue(output)!),
+            () => WithRequiredConfiguration(meta, "prereq check", configurationDirectory,
+                _ => ScaffoldCommands.PrereqCheck(
+                    meta,
+                    parseResult.GetValue(targetCommand)!,
+                    parseResult.GetValue(repo)!,
+                    parseResult.GetValue(output)!)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         group.Subcommands.Add(command);
     }
 
-    private static void AddPrereqInstall(Command group, CliMeta meta)
+    private static void AddPrereqInstall(Command group, CliMeta meta, string configurationDirectory)
     {
         Command command = new("install", "Install missing trusted prerequisites through an approved Windows winget plan.");
         Option<string> targetCommand = new("--for") { Description = "Command to unblock: new.", DefaultValueFactory = _ => "new" };
@@ -149,13 +151,31 @@ internal static class ScaffoldCommandFactory
         command.Options.Add(confirmPlan);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "prereq install",
-            () => ScaffoldCommands.PrereqInstall(
-                meta,
-                parseResult.GetValue(targetCommand)!,
-                parseResult.GetValue(repo)!,
-                parseResult.GetValue(output)!,
-                parseResult.GetValue(confirmPlan)!),
+            () => WithRequiredConfiguration(meta, "prereq install", configurationDirectory,
+                _ => ScaffoldCommands.PrereqInstall(
+                    meta,
+                    parseResult.GetValue(targetCommand)!,
+                    parseResult.GetValue(repo)!,
+                    parseResult.GetValue(output)!,
+                    parseResult.GetValue(confirmPlan)!)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         group.Subcommands.Add(command);
+    }
+
+    private static CliResult WithRequiredConfiguration(
+        CliMeta meta,
+        string command,
+        string configurationDirectory,
+        Func<HxLocalConfiguration, CliResult> action)
+    {
+        try
+        {
+            return action(HxLocalConfigurationLoader.LoadRequired(configurationDirectory));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return CliResults.Fail(meta, command, ExitClass.Validation,
+                [Diag.Of(ErrorCodes.Validation_Failed, ex.Message)]);
+        }
     }
 }

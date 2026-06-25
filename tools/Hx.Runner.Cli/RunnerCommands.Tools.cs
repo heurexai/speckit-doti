@@ -73,7 +73,7 @@ public static partial class RunnerCommands
             .ToList();
         if (selected.Count == 0)
         {
-            error = $"Unknown --tool '{toolFilter}'. Known: all, gitleaks, sentrux, gitversion.";
+            error = $"Unknown --tool '{toolFilter}'. Known: all, gitleaks, sentrux, gitversion, velopack.";
         }
 
         return selected;

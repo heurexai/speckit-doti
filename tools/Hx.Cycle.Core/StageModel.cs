@@ -4,7 +4,7 @@ using YamlDotNet.Serialization.NamingConventions;
 namespace Hx.Cycle.Core;
 
 /// <summary>One declared cycle stage from <c>workflow.yml</c> (schemaVersion 2): its id, the command that
-/// runs it, its <c>kind</c> (doc | review | diff | commit), the artifact it <c>produces</c> (a path
+/// runs it, its <c>kind</c> (doc | review | diff | release), the artifact it <c>produces</c> (a path
 /// pattern with <c>{feature}</c>, or null for stages with no file yet), and its prerequisite stage ids.</summary>
 public sealed record CycleStage(string Id, string Command, string Kind, string? Produces, IReadOnlyList<string> Prereqs);
 

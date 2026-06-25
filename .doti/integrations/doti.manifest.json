@@ -13,7 +13,6 @@
     "doti-arch-review",
     "doti-implement",
     "doti-drift-review",
-    "doti-commit",
     "doti-release"
   ]
 }

@@ -10,5 +10,6 @@
     <ProjectReference Include="..\Hx.Security.Core\Hx.Security.Core.csproj" />
     <ProjectReference Include="..\Hx.Sentrux.Core\Hx.Sentrux.Core.csproj" />
     <ProjectReference Include="..\Hx.Doti.Core\Hx.Doti.Core.csproj" />
+    <ProjectReference Include="..\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
   </ItemGroup>
 </Project>

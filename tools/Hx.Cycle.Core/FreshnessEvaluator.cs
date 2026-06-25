@@ -14,9 +14,9 @@ public enum StageFreshness
 public sealed record StageFreshnessResult(string Stage, StageFreshness Freshness, string? Reason);
 
 /// <summary>
-/// Re-derives whether a stamped stage is still fresh: (1) its recorded change-set identity must equal the
-/// current one (the diff has not moved), and (2) its produced artifact (for doc stages) must re-hash to a
-/// recorded value (the artifact has not changed). Any mismatch ⇒ stale. Pure given the repo + inputs.
+/// Re-derives whether a stamped stage is still fresh. Code-bound stages must keep the same change-set
+/// identity; doc/review stages that happen before implementation are bound by their artifact and
+/// prerequisite hashes so normal implementation edits do not stale the entire pre-workflow.
 /// </summary>
 public sealed class FreshnessEvaluator
 {
@@ -29,9 +29,14 @@ public sealed class FreshnessEvaluator
         _stageModel = stageModel;
     }
 
-    public StageFreshnessResult Evaluate(CycleStageProof proof, string feature, string currentIdentity)
+    public StageFreshnessResult Evaluate(
+        CycleStageProof proof,
+        string feature,
+        string currentIdentity,
+        bool requireChangeSetIdentity = true)
     {
-        if (!string.Equals(proof.ChangeSetId, currentIdentity, StringComparison.Ordinal))
+        if (requireChangeSetIdentity
+            && !string.Equals(proof.ChangeSetId, currentIdentity, StringComparison.Ordinal))
         {
             return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
                 "change-set identity differs from the current diff (code changed since stamp)");

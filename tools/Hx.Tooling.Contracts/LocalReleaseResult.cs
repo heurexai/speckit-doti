@@ -21,6 +21,14 @@ public sealed record LocalReleaseResult(
     IReadOnlyList<LocalReleaseArtifact> Artifacts,
     IReadOnlyList<LocalReleaseArtifact> VelopackArtifacts,
     IReadOnlyList<LocalReleasePayloadCheck> PayloadChecks,
+    CycleReleaseTrain? ReleaseTrain,
+    ReleaseDocumentationProof? DocumentationProof,
+    string CommandName,
+    string CommandVersion,
+    string ConfigurationSource,
+    string ConfigurationPath,
+    string ReleaseProduct,
+    bool SourceArchiveExcluded,
     IReadOnlyList<string> Blockers);
 
 public sealed record LocalReleaseRootDecision(
@@ -40,7 +48,15 @@ public sealed record LocalReleaseEnvironmentPersistence(
     string? Scope,
     string? Limitation);
 
-public sealed record LocalReleaseArtifact(string Name, string Sha256, long SizeBytes);
+public sealed record LocalReleaseArtifact(
+    string Name,
+    string Sha256,
+    long SizeBytes,
+    string Type = "file",
+    string? RuntimeIdentifier = null,
+    string? Channel = null,
+    string? Version = null,
+    string? PackageId = null);
 
 public sealed record LocalReleasePayloadCheck(
     string Path,

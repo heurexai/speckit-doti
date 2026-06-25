@@ -19,7 +19,8 @@ public sealed record CycleStatusReport(
     CycleState State,
     IReadOnlyList<StageFreshnessResult> Freshness,
     CycleCompletionRecord? Completion = null,
-    CycleRecoveryReport? Recovery = null);
+    CycleRecoveryReport? Recovery = null,
+    CycleReleaseTrain? ReleaseTrain = null);
 
 /// <summary>One prerequisite's verdict in a <c>cycle check</c>: the stage, its status (fresh|stale|missing|invalid), and a reason.</summary>
 public sealed record StagePrereqResult(string Stage, string Status, bool Ok, string? Reason);
@@ -31,15 +32,5 @@ public sealed record CycleCheckReport(
     bool Passed,
     IReadOnlyList<StagePrereqResult> Prerequisites,
     CycleCompletionRecord? Completion = null,
-    CycleRecoveryReport? Recovery = null);
-
-/// <summary>The <c>doti cycle commit</c> output: whether the commit was performed, the sha if so, and the refusal reasons if not.</summary>
-public sealed record CycleCommitResult(
-    int SchemaVersion,
-    bool Committed,
-    string? CommitSha,
-    IReadOnlyList<string> Reasons,
-    bool AlreadyCompleted = false,
-    bool CompletionPersistenceFailed = false,
-    CycleCompletionRecord? Completion = null,
-    CycleRecoveryReport? Recovery = null);
+    CycleRecoveryReport? Recovery = null,
+    CycleReleaseTrain? ReleaseTrain = null);

@@ -1,8 +1,9 @@
-using System.IO.Compression;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Hx.Cycle.Core;
+using Hx.Cycle.Core.Documentation;
 using Hx.Runner.Core.Platform;
+using Hx.Scaffold.Core.Configuration;
 using Hx.Tooling.Contracts;
 using Hx.Version.Core;
 
@@ -10,9 +11,7 @@ namespace Hx.Scaffold.Core.Release;
 
 public sealed record LocalReleaseRequest(
     string RepositoryRoot,
-    string? ReleaseRoot,
-    string? ReleaseRootEnvironmentVariable,
-    bool SaveReleaseRoot,
+    HxLocalConfiguration Configuration,
     string? RuntimeIdentifier,
     string CommandVersion,
     string ReleaseIntent);
@@ -25,9 +24,33 @@ public static class LocalReleaseService
         string rid = string.IsNullOrWhiteSpace(request.RuntimeIdentifier)
             ? HostPlatformDetector.DetectCurrent().RuntimeIdentifier
             : request.RuntimeIdentifier.Trim();
-        LocalReleaseTarget target = ReleaseTargetManifest.Load(repo);
-        string projectName = SafeSegment(target.PackageName);
         string releaseIntent = NormalizeReleaseIntent(request.ReleaseIntent);
+        HxLocalConfigurationLoader.Validate(request.Configuration);
+        LocalReleaseRootDecision rootDecision = ResolveRootFromConfiguration(request.Configuration);
+        LocalReleaseTarget target = ReleaseTargetManifest.Load(repo);
+        var cycle = new CycleService(repo);
+        CycleReleaseTrain releaseTrain = cycle.GetReleaseTrain();
+        if (!releaseTrain.Valid)
+        {
+            throw new InvalidOperationException(
+                "Release train is invalid: " + string.Join("; ", releaseTrain.Blockers));
+        }
+
+        ReleaseDocumentationProof documentationProof = ReleaseDocumentationInspector.Inspect(repo, releaseTrain);
+        if (documentationProof.Outcome != StageOutcome.Pass)
+        {
+            throw new InvalidOperationException(
+                "Release documentation proof failed: " + string.Join("; ", documentationProof.Blockers));
+        }
+
+        string projectName = SafeSegment(target.PackageName);
+        var persistence = new LocalReleaseEnvironmentPersistence(
+            Requested: false,
+            VariableName: null,
+            Value: null,
+            Written: false,
+            Scope: null,
+            Limitation: "release roots are read from executable-adjacent hx.config.json; environment persistence is no longer supported");
         VersionResult version = GitVersionTool.Calculate(repo);
         string sourceCommit = Git(repo, "rev-parse HEAD").Trim();
         ValidateReleaseIntent(repo, version.Version, releaseIntent);
@@ -35,47 +58,109 @@ public static class LocalReleaseService
         string velopackPackageId = projectName;
         string velopackChannel = ChannelFromRid(rid);
 
-        LocalReleaseRootDecision rootDecision = LocalReleaseRootResolver.Resolve(
-            request.ReleaseRoot,
-            request.ReleaseRootEnvironmentVariable,
-            Environment.GetEnvironmentVariable,
-            target.DefaultReleaseRootEnvironmentVariable);
-
-        var persistence = new LocalReleaseEnvironmentPersistence(
-            request.SaveReleaseRoot,
-            request.SaveReleaseRoot ? rootDecision.EffectiveEnvironmentVariableName : null,
-            request.SaveReleaseRoot ? rootDecision.ReleaseRoot : null,
-            Written: false,
-            Scope: null,
-            Limitation: null);
-
         if (rootDecision.ReleaseRoot is null)
         {
-            return new LocalReleaseResult(
-                JsonContractDefaults.SchemaVersion,
+            return BuildSkippedResult(
+                request,
                 projectName,
-                version.Version,
+                version,
                 releaseIntent,
                 tag,
-                version.Source,
-                velopackPackageId,
-                velopackChannel,
                 rid,
                 sourceCommit,
                 target,
                 rootDecision,
                 persistence,
-                LocalCopyProduced: false,
-                SkippedReason: rootDecision.Reason ?? "no local release root configured",
-                VersionDirectory: null,
-                LatestDirectory: null,
-                Artifacts: [],
-                VelopackArtifacts: [],
-                PayloadChecks: [],
-                Blockers: []);
+                releaseTrain,
+                documentationProof,
+                velopackPackageId,
+                velopackChannel);
         }
 
-        string releaseRoot = Path.GetFullPath(rootDecision.ReleaseRoot);
+        return BuildAndPublishResult(
+            request,
+            repo,
+            cycle,
+            projectName,
+            version,
+            releaseIntent,
+            tag,
+            rid,
+            sourceCommit,
+            target,
+            rootDecision,
+            persistence,
+            releaseTrain,
+            documentationProof,
+            velopackPackageId,
+            velopackChannel);
+    }
+
+    private static LocalReleaseResult BuildSkippedResult(
+        LocalReleaseRequest request,
+        string projectName,
+        VersionResult version,
+        string releaseIntent,
+        LocalReleaseTag tag,
+        string rid,
+        string sourceCommit,
+        LocalReleaseTarget target,
+        LocalReleaseRootDecision rootDecision,
+        LocalReleaseEnvironmentPersistence persistence,
+        CycleReleaseTrain releaseTrain,
+        ReleaseDocumentationProof documentationProof,
+        string velopackPackageId,
+        string velopackChannel) =>
+        new(
+            JsonContractDefaults.SchemaVersion,
+            projectName,
+            version.Version,
+            releaseIntent,
+            tag,
+            version.Source,
+            velopackPackageId,
+            velopackChannel,
+            rid,
+            sourceCommit,
+            target,
+            rootDecision,
+            persistence,
+            LocalCopyProduced: false,
+            SkippedReason: rootDecision.Reason ?? "no local release root configured",
+            VersionDirectory: null,
+            LatestDirectory: null,
+            Artifacts: [],
+            VelopackArtifacts: [],
+            PayloadChecks: [],
+            ReleaseTrain: releaseTrain,
+            DocumentationProof: documentationProof,
+            CommandName: "hx release",
+            CommandVersion: request.CommandVersion,
+            ConfigurationSource: request.Configuration.Source,
+            ConfigurationPath: request.Configuration.SourcePath,
+            ReleaseProduct: "velopack",
+            SourceArchiveExcluded: true,
+            Blockers: []);
+
+    private static LocalReleaseResult BuildAndPublishResult(
+        LocalReleaseRequest request,
+        string repo,
+        CycleService cycle,
+        string projectName,
+        VersionResult version,
+        string releaseIntent,
+        LocalReleaseTag tag,
+        string rid,
+        string sourceCommit,
+        LocalReleaseTarget target,
+        LocalReleaseRootDecision rootDecision,
+        LocalReleaseEnvironmentPersistence persistence,
+        CycleReleaseTrain releaseTrain,
+        ReleaseDocumentationProof documentationProof,
+        string velopackPackageId,
+        string velopackChannel)
+    {
+        string releaseRoot = Path.GetFullPath(rootDecision.ReleaseRoot!);
         EnsureRootIsSafe(repo, releaseRoot);
 
         string tempRoot = Path.Combine(Path.GetTempPath(), "speckit-doti-release-" + Guid.NewGuid().ToString("N"));
@@ -92,19 +177,19 @@ public static class LocalReleaseService
                 rid,
                 sourceCommit,
                 request.CommandVersion,
+                request.Configuration.Source,
+                request.Configuration.SourcePath,
+                documentationProof,
                 velopackPackageId,
-                velopackChannel);
+                velopackChannel,
+                releaseTrain);
 
             string projectRoot = EnsureInside(releaseRoot, Path.Combine(releaseRoot, projectName));
             string versionDir = EnsureInside(releaseRoot, Path.Combine(projectRoot, version.Version));
             string latestDir = EnsureInside(releaseRoot, Path.Combine(projectRoot, "latest"));
             PublishLocalCopy(tempRoot, versionDir, latestDir, artifacts.Artifacts, projectName, version.Version, sourceCommit);
 
-            if (request.SaveReleaseRoot)
-            {
-                persistence = PersistEnvironmentRoot(rootDecision.EffectiveEnvironmentVariableName, releaseRoot);
-            }
-
+            cycle.MarkReleaseTrainReleased();
             return new LocalReleaseResult(
                 JsonContractDefaults.SchemaVersion,
                 projectName,
@@ -126,12 +211,45 @@ public static class LocalReleaseService
                 Artifacts: artifacts.Artifacts,
                 VelopackArtifacts: artifacts.VelopackArtifacts,
                 PayloadChecks: artifacts.PayloadChecks,
+                ReleaseTrain: releaseTrain,
+                DocumentationProof: documentationProof,
+                CommandName: "hx release",
+                CommandVersion: request.CommandVersion,
+                ConfigurationSource: request.Configuration.Source,
+                ConfigurationPath: request.Configuration.SourcePath,
+                ReleaseProduct: "velopack",
+                SourceArchiveExcluded: true,
                 Blockers: []);
         }
         finally
         {
             TryDelete(tempRoot);
         }
+    }
+
+    private static LocalReleaseRootDecision ResolveRootFromConfiguration(HxLocalConfiguration configuration)
+    {
+        if (!configuration.LocalReleaseOutput.Enabled)
+        {
+            return new LocalReleaseRootDecision(
+                EffectiveEnvironmentVariableName: "",
+                RequestedEnvironmentVariableName: null,
+                EnvironmentVariableRead: false,
+                EnvironmentVariableIgnored: false,
+                Source: "hx-config",
+                ReleaseRoot: null,
+                Reason: "local release output disabled by hx.config.json");
+        }
+
+        string releaseDirectory = configuration.LocalReleaseOutput.Directory!.Trim();
+        return new LocalReleaseRootDecision(
+            EffectiveEnvironmentVariableName: "",
+            RequestedEnvironmentVariableName: null,
+            EnvironmentVariableRead: false,
+            EnvironmentVariableIgnored: false,
+            Source: "hx-config",
+            ReleaseRoot: releaseDirectory,
+            Reason: "local release output configured by hx.config.json");
     }
 
     private sealed record ReleaseArtifactBuild(
@@ -149,8 +267,12 @@ public static class LocalReleaseService
         string rid,
         string sourceCommit,
         string commandVersion,
+        string configurationSource,
+        string configurationPath,
+        ReleaseDocumentationProof documentationProof,
         string velopackPackageId,
-        string velopackChannel)
+        string velopackChannel,
+        CycleReleaseTrain releaseTrain)
     {
         string projectName = SafeSegment(target.PackageName);
         string publishProject = target.PublishProject.Replace('/', Path.DirectorySeparatorChar);
@@ -178,27 +300,36 @@ public static class LocalReleaseService
 
         IReadOnlyList<LocalReleasePayloadCheck> payloadChecks = InspectPayload(publish);
         PackVelopack(repo, publish, tempRoot, velopackPackageId, version, executableName, target.ProductName, velopackChannel, rid);
-
-        string payloadName = $"{projectName}-v{version}-{rid}";
-        string payload = Path.Combine(tempRoot, payloadName);
-        Directory.CreateDirectory(payload);
-        DirectoryCopy.Copy(publish, payload, _ => true);
-
-        string archiveName = payloadName + ".zip";
-        string archive = Path.Combine(tempRoot, archiveName);
-        ZipFile.CreateFromDirectory(payload, archive, CompressionLevel.Optimal, includeBaseDirectory: false);
-        string archiveSha = Sha256(archive);
-        string checksum = archive + ".sha256";
-        File.WriteAllText(checksum, $"{archiveSha}  {archiveName}");
-
-        var artifacts = new List<LocalReleaseArtifact>
+        IReadOnlyList<LocalReleaseArtifact> velopackArtifacts = DiscoverVelopackArtifacts(tempRoot)
+            .Select(artifact => artifact with
+            {
+                RuntimeIdentifier = rid,
+                Channel = velopackChannel,
+                Version = version,
+                PackageId = velopackPackageId
+            })
+            .ToArray();
+        if (velopackArtifacts.Count == 0)
         {
-            new(archiveName, archiveSha, new FileInfo(archive).Length),
-            new(Path.GetFileName(checksum), Sha256(checksum), new FileInfo(checksum).Length)
-        };
+            throw new InvalidOperationException(
+                "Velopack did not produce any recognized installer/update artifacts. Refusing raw-archive-only release output.");
+        }
 
-        IReadOnlyList<LocalReleaseArtifact> velopackArtifacts = DiscoverVelopackArtifacts(tempRoot);
-        artifacts.AddRange(velopackArtifacts);
+        var artifacts = new List<LocalReleaseArtifact>(velopackArtifacts);
+        foreach (LocalReleaseArtifact velopackArtifact in velopackArtifacts)
+        {
+            string checksumPath = Path.Combine(tempRoot, velopackArtifact.Name + ".sha256");
+            File.WriteAllText(checksumPath, $"{velopackArtifact.Sha256}  {velopackArtifact.Name}");
+            artifacts.Add(new LocalReleaseArtifact(
+                Path.GetFileName(checksumPath),
+                Sha256(checksumPath),
+                new FileInfo(checksumPath).Length,
+                Type: "checksum",
+                RuntimeIdentifier: rid,
+                Channel: velopackChannel,
+                Version: version,
+                PackageId: velopackPackageId));
+        }
 
         string identity = Path.Combine(tempRoot, "release.identity.json");
         File.WriteAllText(identity, JsonSerializer.Serialize(new
@@ -216,11 +347,25 @@ public static class LocalReleaseService
             target,
             command = "hx release",
             commandVersion,
+            configurationSource,
+            configurationPath,
+            documentationProof,
+            releaseProduct = "velopack",
+            sourceArchiveExcluded = true,
+            releaseTrain,
             artifacts,
             velopackArtifacts,
             payloadChecks
         }, JsonContractSerializerOptions.Create()));
-        artifacts.Add(new("release.identity.json", Sha256(identity), new FileInfo(identity).Length));
+        artifacts.Add(new(
+            "release.identity.json",
+            Sha256(identity),
+            new FileInfo(identity).Length,
+            Type: "release-identity",
+            RuntimeIdentifier: rid,
+            Channel: velopackChannel,
+            Version: version,
+            PackageId: velopackPackageId));
         return new ReleaseArtifactBuild(artifacts, velopackArtifacts, payloadChecks);
     }
 
@@ -274,18 +419,7 @@ public static class LocalReleaseService
     private static void ValidateReleaseIntent(string repo, string version, string releaseIntent)
     {
         string? previous = LatestVersionTag(repo, version);
-        if (previous is null)
-        {
-            return;
-        }
-
-        string actual = ClassifyVersionChange(previous, version);
-        if (!string.Equals(actual, releaseIntent, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                $"Release intent mismatch: requested {releaseIntent}, but GitVersion calculated {version} from previous tag {previous} as a {actual} release. " +
-                "Add the appropriate GitVersion +semver commit-message signal before running hx release.");
-        }
+        LocalReleaseVersionPolicy.ValidateIntent(previous, version, releaseIntent);
     }
 
     private static LocalReleaseTag EnsureReleaseTag(string repo, string version, string releaseIntent, string sourceCommit)
@@ -358,52 +492,6 @@ public static class LocalReleaseService
         return null;
     }
 
-    private static string ClassifyVersionChange(string previous, string current)
-    {
-        Semver p = ParseSemver(previous);
-        Semver c = ParseSemver(current);
-        if (c.Major > p.Major)
-        {
-            return "major";
-        }
-
-        if (c.Major == p.Major && c.Minor > p.Minor)
-        {
-            return "minor";
-        }
-
-        if (c.Major == p.Major && c.Minor == p.Minor && c.Patch >= p.Patch)
-        {
-            return "patch";
-        }
-
-        throw new InvalidOperationException(
-            $"GitVersion calculated {current}, which is older than previous release tag {previous}.");
-    }
-
-    private static Semver ParseSemver(string value)
-    {
-        string core = value.Trim().TrimStart('v', 'V');
-        int delimiter = core.IndexOfAny(['+', '-']);
-        if (delimiter >= 0)
-        {
-            core = core[..delimiter];
-        }
-
-        string[] parts = core.Split('.');
-        if (parts.Length < 3
-            || !int.TryParse(parts[0], out int major)
-            || !int.TryParse(parts[1], out int minor)
-            || !int.TryParse(parts[2], out int patch))
-        {
-            throw new InvalidOperationException($"Release version '{value}' is not a three-part SemVer version.");
-        }
-
-        return new Semver(major, minor, patch);
-    }
-
-    private sealed record Semver(int Major, int Minor, int Patch);
-
     private static void StagePackagedAssets(string repo, string publish)
     {
         foreach (string tool in new[] { "gitleaks", "sentrux", "gitversion" })
@@ -461,7 +549,12 @@ public static class LocalReleaseService
             $"--runtime {Quote(rid)} " +
             $"--outputDir {Quote(outputDir)}";
 
-        (int exitCode, string output) = ProcessRunner.Run("vpk", arguments, repo, ProcessRunner.NestedDotnetEnv());
+        VelopackToolInvocation tool = VelopackTool.Prepare(repo, rid, outputDir);
+        (int exitCode, string output) = ProcessRunner.Run(
+            tool.FileName,
+            tool.ArgumentsPrefix + " " + arguments,
+            repo,
+            ProcessRunner.NestedDotnetEnv());
         if (exitCode != 0)
         {
             throw new InvalidOperationException("vpk pack failed: " + ProcessRunner.Tail(output));
@@ -474,15 +567,18 @@ public static class LocalReleaseService
             .Where(path =>
             {
                 string name = Path.GetFileName(path);
-                return !name.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase)
-                    && !name.Equals("release.identity.json", StringComparison.OrdinalIgnoreCase)
-                    && !name.Equals("source.zip", StringComparison.OrdinalIgnoreCase);
+                return VelopackArtifactClassifier.IsVelopackArtifactName(name);
             })
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .Select(path => new LocalReleaseArtifact(
-                Path.GetFileName(path),
-                Sha256(path),
-                new FileInfo(path).Length))
+            .Select(path =>
+            {
+                string name = Path.GetFileName(path);
+                return new LocalReleaseArtifact(
+                    name,
+                    Sha256(path),
+                    new FileInfo(path).Length,
+                    Type: VelopackArtifactClassifier.Classify(name) ?? "velopack-artifact");
+            })
             .ToArray();
     }
 
@@ -521,17 +617,6 @@ public static class LocalReleaseService
         root.TryGetProperty(name, out JsonElement property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
-
-    private static LocalReleaseEnvironmentPersistence PersistEnvironmentRoot(string variableName, string releaseRoot)
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            throw new InvalidOperationException("--save-release-root is supported only for the Windows user environment.");
-        }
-
-        Environment.SetEnvironmentVariable(variableName, releaseRoot, EnvironmentVariableTarget.User);
-        return new LocalReleaseEnvironmentPersistence(true, variableName, releaseRoot, true, "user", null);
-    }
 
     private static void VerifyArtifact(string path, LocalReleaseArtifact expected)
     {

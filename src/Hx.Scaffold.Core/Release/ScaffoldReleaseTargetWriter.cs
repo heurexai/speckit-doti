@@ -1,6 +1,6 @@
 namespace Hx.Scaffold.Core.Release;
 
-internal static class ScaffoldReleaseTargetWriter
+public static class ScaffoldReleaseTargetWriter
 {
     public static void WriteDefault(string targetRoot, string projectName)
     {

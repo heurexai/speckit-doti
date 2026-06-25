@@ -52,7 +52,11 @@ public static class CliApp
     /// Adds a kernel-generated <c>describe</c> subcommand that emits the capability model for <paramref name="root"/>
     /// (command/option tree + exit classes + error-code catalog) so an agent learns the whole tool in one call.
     /// </summary>
-    public static void AddDescribe(RootCommand root, CliMeta meta, IReadOnlyList<ErrorCodeEntry> errorCodes)
+    public static void AddDescribe(
+        RootCommand root,
+        CliMeta meta,
+        IReadOnlyList<ErrorCodeEntry> errorCodes,
+        CliDescribeWorkflow? workflow = null)
     {
         Option<bool> jsonOption = JsonOption();
         Command describe = new("describe",
@@ -60,7 +64,7 @@ public static class CliApp
         describe.Options.Add(jsonOption);
         describe.SetAction(parseResult => CliHost.Run(meta, "describe",
             () => CliResults.Ok(meta, "describe", $"{meta.Tool} capability description.",
-                DescribeWalker.Describe(meta, root, errorCodes)),
+                DescribeWalker.Describe(meta, root, errorCodes, workflow)),
             forceJson: ForceJson(parseResult, jsonOption)));
         root.Subcommands.Add(describe);
     }

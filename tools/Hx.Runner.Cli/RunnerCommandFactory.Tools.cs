@@ -11,7 +11,7 @@ internal static partial class RunnerCommandFactory
         Command command = new("fetch", "Fetch + hash-verify the vendored tool binaries from their pinned manifests (fail-closed on mismatch).");
         Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
         Option<string?> rid = new("--rid") { Description = "Target RID (default: host)." };
-        Option<string> tool = new("--tool") { Description = "all | gitleaks | sentrux | gitversion", DefaultValueFactory = _ => "all" };
+        Option<string> tool = new("--tool") { Description = "all | gitleaks | sentrux | gitversion | velopack", DefaultValueFactory = _ => "all" };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
         command.Options.Add(rid);

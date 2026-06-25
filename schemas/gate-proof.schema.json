@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heurex.dev/schemas/gate-proof.schema.json",
+  "title": "Hx gate proof",
+  "description": "The deterministic gate proof payload produced by `gate run`. Camel-cased (System.Text.Json Web defaults); enums are camelCase strings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "outcome", "steps", "evidence"],
+  "properties": {
+    "schemaVersion": { "type": "integer" },
+    "outcome": { "$ref": "#/$defs/stageOutcome" },
+    "steps": { "type": "array", "items": { "$ref": "#/$defs/gateStep" } },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/gateEvidence" } },
+    "affectedTestProof": { "oneOf": [{ "type": "null" }, { "type": "object" }] },
+    "taskCompletionProof": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/taskCompletionProof" }
+      ]
+    }
+  },
+  "$defs": {
+    "stageOutcome": {
+      "type": "string",
+      "enum": ["pass", "fail", "blocked", "skipped", "stamped", "completed", "stale"]
+    },
+    "gateStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "outcome", "evidence"],
+      "properties": {
+        "name": { "type": "string" },
+        "outcome": { "$ref": "#/$defs/stageOutcome" },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/gateEvidence" } }
+      }
+    },
+    "gateEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "type": "string" },
+        "message": { "type": "string" },
+        "path": { "type": ["string", "null"] }
+      }
+    },
+    "taskCompletionProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "outcome",
+        "feature",
+        "taskFile",
+        "taskCount",
+        "taskSetHash",
+        "tasks",
+        "diagnostics"
+      ],
+      "properties": {
+        "schemaVersion": { "type": "integer" },
+        "outcome": { "$ref": "#/$defs/stageOutcome" },
+        "feature": { "type": ["string", "null"] },
+        "taskFile": { "type": ["string", "null"] },
+        "taskCount": { "type": "integer", "minimum": 0 },
+        "taskSetHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "tasks": { "type": "array", "items": { "$ref": "#/$defs/taskCompletionProofItem" } },
+        "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/taskCompletionProofDiagnostic" } }
+      }
+    },
+    "taskCompletionProofItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "path", "lineNumber", "checked", "canonicalHash", "storedHash"],
+      "properties": {
+        "taskId": { "type": "string" },
+        "path": { "type": "string" },
+        "lineNumber": { "type": "integer", "minimum": 1 },
+        "checked": { "type": "boolean" },
+        "canonicalHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "storedHash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "taskCompletionProofDiagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "lineNumber", "taskId", "reason", "message"],
+      "properties": {
+        "path": { "type": "string" },
+        "lineNumber": { "type": "integer", "minimum": 0 },
+        "taskId": { "type": ["string", "null"] },
+        "reason": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

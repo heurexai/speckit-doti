@@ -1,20 +1,21 @@
 using System.Text;
 using System.Text.Json;
+using Hx.Doti.Core.Workflow;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Doti.Core;
 
 /// <summary>
 /// Renders the installed Doti skills (Claude + Codex) and the shared agent context from their
-/// single sources (<c>doti/core/skills.json</c> + the canonical availability footnote in the
+/// single sources (<c>.doti/core/skills.json</c> + the canonical availability footnote in the
 /// profile + the agent-context template), and drift-checks them. Self-contained IO (no
 /// <c>Hx.Runner.Core</c> dependency — arch-review F1); output is byte-stable and LF-only.
 /// </summary>
 public static class DotiRenderer
 {
-    public const string ManifestRelativePath = "doti/core/skills.json";
-    public const string ProfileRelativePath = "doti/profiles/dotnet-cli/profile.json";
-    public const string AgentContextTemplateRelativePath = "doti/core/templates/agent-context-template.md";
+    public const string ManifestRelativePath = ".doti/core/skills.json";
+    public const string ProfileRelativePath = ".doti/profiles/dotnet-cli/profile.json";
+    public const string AgentContextTemplateRelativePath = ".doti/core/templates/agent-context-template.md";
     public const string AgentContextOutputRelativePath = ".doti/agent-context.md";
 
     public static DotiSkillsManifest LoadManifest(string repoRoot)
@@ -54,10 +55,11 @@ public static class DotiRenderer
 
         foreach (DotiSkillEntry skill in manifest.Skills)
         {
+            DotiWorkflowStage stage = DotiWorkflowRegistry.FindByCommandName(skill.Name);
             foreach (DotiAgentTarget agent in agents)
             {
                 string content = SkillMarkdownRenderer.Render(manifest, skill, agent, footnote);
-                targets.Add(new DotiRenderTarget($"{agent.SkillsRoot}/{skill.Name}/SKILL.md", content));
+                targets.Add(new DotiRenderTarget($"{agent.SkillsRoot}/{stage.SkillId}/SKILL.md", content));
             }
         }
 

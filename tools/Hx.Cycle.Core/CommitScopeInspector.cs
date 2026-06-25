@@ -9,12 +9,13 @@ public sealed record CommitScope(
     bool HasUnstagedTrackedChanges,
     bool HasUntrackedChanges,
     int StagedCount,
-    string StagedTreeId);
+    string StagedTreeId,
+    IReadOnlyList<string> StagedPaths);
 
 /// <summary>
 /// Inspects <c>git status --porcelain=v1 -z</c> to decide whether the tree is a clean, deliberate scope
-/// for <c>cycle commit</c>: a non-empty staged set, no unstaged tracked modifications, and no untracked
-/// files. Fails closed (throws) on a git error.
+/// for a Doti-owned transition/release commit: no unstaged tracked modifications and no untracked files.
+/// Fails closed (throws) on a git error.
 /// </summary>
 public static class CommitScopeInspector
 {
@@ -33,7 +34,8 @@ public static class CommitScopeInspector
             parsed.HasUnstagedTrackedChanges,
             parsed.HasUntrackedChanges,
             parsed.StagedCount,
-            ComputeStagedTreeId(repositoryRoot, parsed.StagedPaths ?? []));
+            ComputeStagedTreeId(repositoryRoot, parsed.StagedPaths ?? []),
+            parsed.StagedPaths ?? []);
     }
 
     private static ParsedScope ParseStatus(string porcelain)

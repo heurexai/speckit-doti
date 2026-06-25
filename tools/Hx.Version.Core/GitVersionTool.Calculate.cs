@@ -27,8 +27,11 @@ public static partial class GitVersionTool
                 (string.IsNullOrWhiteSpace(run.StandardError) ? run.StandardOutput : run.StandardError));
         }
 
-        return ParseVersion(run.StandardOutput, ManifestVersion(repositoryRoot));
+        return ParseOutput(run.StandardOutput, ManifestVersion(repositoryRoot));
     }
+
+    public static VersionResult ParseOutput(string json, string toolVersion) =>
+        ParseVersion(json, toolVersion);
 
     public static int CompareVersions(string left, string right)
     {
@@ -73,7 +76,11 @@ public static partial class GitVersionTool
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
         string majorMinorPatch = ReadString(root, "MajorMinorPatch") ?? "0.0.0";
-        return new VersionResult(majorMinorPatch, "patch", $"gitversion {toolVersion}");
+        string? versionSourceSha = ReadString(root, "VersionSourceSha");
+        string? sha = ReadString(root, "Sha");
+        string commitsSinceSource = ReadString(root, "CommitsSinceVersionSource") ?? ReadNumber(root, "CommitsSinceVersionSource") ?? "unknown";
+        string source = $"gitversion {toolVersion}; versionSourceSha={versionSourceSha ?? "unknown"}; sha={sha ?? "unknown"}; commitsSinceVersionSource={commitsSinceSource}";
+        return new VersionResult(majorMinorPatch, "gitversion", source);
     }
 
     private static string? ReadString(JsonElement root, string name)
@@ -83,6 +90,20 @@ public static partial class GitVersionTool
             if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.String)
             {
                 return property.Value.GetString();
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ReadNumber(JsonElement root, string name)
+    {
+        foreach (JsonProperty property in root.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)
+                && property.Value.ValueKind == JsonValueKind.Number)
+            {
+                return property.Value.GetRawText();
             }
         }
 

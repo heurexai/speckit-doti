@@ -5,15 +5,17 @@ namespace Hx.Cycle.Core;
 
 public sealed partial class CycleService
 {
-    public CycleState Stamp(string stageId, string? feature, string? baseRef)
+    public CycleState Stamp(string stageId, string? feature, string? baseRef, string? releaseIntent = null)
     {
         CycleStage stage = _stageModel.Find(stageId); // fail-closed on an unknown stage
+        string? normalizedReleaseIntent = NormalizeReleaseIntent(stage, releaseIntent);
         RecoveryEvaluation recovery = RecoverStateIfNeeded();
         CycleState? existing = ResolveExistingForStamp(stage, feature, recovery);
         string resolvedFeature = ResolveStampFeature(feature, existing);
-        string resolvedBaseRef = baseRef ?? existing?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
 
         EnsureNumberedFeatureSlugOnInitialStamp(stage, feature);
+        existing = TransitionBeforeStamp(stage, feature, existing, normalizedReleaseIntent);
+        string resolvedBaseRef = baseRef ?? existing?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
         EnsurePrerequisitesFresh(stage);
         string? prerequisiteProofHash = CycleStageProofHasher.HashPrerequisites(existing, stage.Prereqs);
         string identity = ChangeSetIdentity.Of(_repositoryRoot, resolvedBaseRef, "HEAD");
@@ -22,10 +24,31 @@ public sealed partial class CycleService
             JsonContractDefaults.SchemaVersion,
             resolvedFeature,
             resolvedBaseRef,
-            stage.Id,
-            ReplaceStageProof(existing, stage.Id, proof));
+            CurrentStageAfterStamp(existing, stage),
+            ReplaceStageProof(existing, stage.Id, proof),
+            Transitions: existing?.Transitions,
+            CompletedUnreleasedCycles: existing?.CompletedUnreleasedCycles,
+            ReleasedCycles: existing?.ReleasedCycles);
         _store.Write(state);
         return state;
+    }
+
+    private static string? NormalizeReleaseIntent(CycleStage stage, string? releaseIntent)
+    {
+        if (string.IsNullOrWhiteSpace(releaseIntent))
+        {
+            return null;
+        }
+
+        if (!string.Equals(stage.Id, "release", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("--release-intent is only valid when stamping the release stage.");
+        }
+
+        string normalized = releaseIntent.Trim().ToLowerInvariant();
+        return normalized is "major" or "minor" or "patch"
+            ? normalized
+            : throw new InvalidOperationException("--release-intent must be major, minor, or patch.");
     }
 
     private CycleState? ResolveExistingForStamp(CycleStage stage, string? feature, RecoveryEvaluation recovery)
@@ -38,6 +61,19 @@ public sealed partial class CycleService
         CycleState? existing = recovery.State;
         if (existing?.Completion is null)
         {
+            if (existing is not null
+                && stage.Prereqs.Count == 0
+                && !string.IsNullOrWhiteSpace(feature)
+                && !string.Equals(existing.Feature, feature, StringComparison.OrdinalIgnoreCase)
+                && !(string.Equals(existing.CurrentStage, stage.Id, StringComparison.OrdinalIgnoreCase)
+                    && !CycleFeatureSlug.IsNumbered(existing.Feature)
+                    && CycleFeatureSlug.IsNumbered(feature))
+                && !string.Equals(existing.CurrentStage, "drift-review", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot start feature '{feature}' while feature '{existing.Feature}' is at stage '{existing.CurrentStage}'. Complete drift-review before beginning another specification.");
+            }
+
             return existing;
         }
 
@@ -118,6 +154,31 @@ public sealed partial class CycleService
         string artifactPath = FreshnessEvaluator.ResolveProduces(pattern, resolvedFeature);
         string full = Path.GetFullPath(Path.Combine(_repositoryRoot, artifactPath.Replace('/', Path.DirectorySeparatorChar)));
         return File.Exists(full) ? [FileHashing.Sha256OfFile(full)] : [];
+    }
+
+    private string CurrentStageAfterStamp(CycleState? existing, CycleStage stampedStage)
+    {
+        if (existing is null)
+        {
+            return stampedStage.Id;
+        }
+
+        int existingOrdinal = StageOrdinal(existing.CurrentStage);
+        int stampedOrdinal = StageOrdinal(stampedStage.Id);
+        return stampedOrdinal < existingOrdinal ? existing.CurrentStage : stampedStage.Id;
+    }
+
+    private int StageOrdinal(string stageId)
+    {
+        for (int i = 0; i < _stageModel.Stages.Count; i++)
+        {
+            if (string.Equals(_stageModel.Stages[i].Id, stageId, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return int.MaxValue;
     }
 
     private static List<CycleStageProof> ReplaceStageProof(

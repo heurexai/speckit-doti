@@ -20,8 +20,8 @@
 ## Why .NET devs use it
 
 - **One command, a project that builds.** `dotnet new hx-dotnet-cli` emits a layered .NET 10 solution — domain library, agent-first CLI, xUnit tests, ArchUnitNET architecture tests, security analyzers, gate configs — that compiles and tests **green on day one**. No wiring, no "TODO: add tests later."
-- **Architecture rules that fail the build.** Nine [ArchUnitNET](https://github.com/TNG/ArchUnitNET) families + a vendored [Sentrux](https://github.com/heurexai/sentrux) boundary engine run on every `dotnet test`. Layering drift is a red build, not a code-review nit.
-- **Guardrails your agent can't talk its way around.** Unlike Spec Kit's advisory markdown prompts, every doti stage is backed by a CLI command that emits a hash-bound proof, and the gate ladder is **fail-closed** — a commit chokepoint refuses work it didn't verify.
+- **Architecture rules that fail the build.** [ArchUnitNET](https://github.com/TNG/ArchUnitNET) thin-CLI families plus a vendored [Sentrux](https://github.com/heurexai/sentrux) boundary engine run in the gate. Layering drift is a red build, not a code-review nit.
+- **Guardrails your agent can't talk its way around.** Unlike Spec Kit's advisory markdown prompts, every doti stage is backed by a CLI command that emits a hash-bound proof, and the gate ladder is **fail-closed** — Doti-owned transition and release paths refuse work they did not verify.
 - **Agent-first by design.** Every operation is a JSON-first command, so Claude Code or Codex can drive, verify, and report on the whole spec → ship loop with no human in the path. Human help uses one shared rich/plain renderer across root menus and subcommands (`--help-mode plain` / `--plain-help` / `NO_COLOR` for ANSI-free output).
 
 ## 30-second quickstart
@@ -39,8 +39,8 @@ dotnet test  ./Acme.Widget/Acme.Widget.slnx -c Release
 Then point your agent at the slash-commands and let the gates do the enforcing:
 
 ```
-/doti-specify → /doti-clarify → /doti-plan → /doti-tasks → /doti-analyze
-→ /doti-arch-review → /doti-implement → /doti-drift-review → /doti-commit → /doti-release
+/01-doti-specify → /02-doti-clarify → /03-doti-plan → /04-doti-tasks → /05-doti-analyze
+→ /06-doti-arch-review → /07-doti-implement → /08-doti-drift-review → /09-doti-release
 ```
 
 Full setup (build the toolkit, install hooks, run the gate) is in [Get started](#get-started).
@@ -74,7 +74,7 @@ It's two things in one repo, and **the scaffold (the starter kit) is the headlin
 
 1. **A scaffold / `dotnet new` template.** `dotnet new hx-dotnet-cli` (or `Hx.Scaffold.Cli new`) generates a ready-to-build .NET 10 solution — a pure domain library, an agent-first CLI, xUnit tests, ArchUnitNET architecture tests, build-time security analyzers, and the rules/configs for the gate — **and installs the doti workflow into it**. It compiles and tests green on day one.
 
-2. **A workflow.** doti is a Spec Kit-based, spec-driven development process (`specify → … → commit → release`) where every stage emits a command-backed, hash-bound proof and the gate ladder is fail-closed. It rides on top of whatever the scaffold generated.
+2. **A workflow.** doti is a Spec Kit-based, spec-driven development process (`specify → … → drift-review → release`) where every stage emits a command-backed, hash-bound proof and the gate ladder is fail-closed. It rides on top of whatever the scaffold generated.
 
 In short: **speckit-doti is the starter kit; doti is the process it installs.** You get a project that builds immediately and is wired for an AI coding agent to develop it safely — spec-first, architecture-gated, and unable to commit work it didn't verify.
 
@@ -84,11 +84,11 @@ In short: **speckit-doti is the starter kit; doti is the process it installs.** 
 
 ### vs. plain Spec Kit — the workflow is *enforced*, not suggested
 
-Spec Kit's commands are markdown prompts and its quality checks are prose. Nothing stops an agent — working largely unattended — from skipping clarification, ignoring the plan, or committing unverified work. **"The prompt told it to" is not "the tooling made it."** doti backs every stage with a deterministic CLI command and a hash-bound proof, and makes commit a fail-closed chokepoint. (Full comparison: [doti vs Spec Kit](#doti-vs-spec-kit).)
+Spec Kit's commands are markdown prompts and its quality checks are prose. Nothing stops an agent — working largely unattended — from skipping clarification, ignoring the plan, or committing unverified work. **"The prompt told it to" is not "the tooling made it."** doti backs every stage with a deterministic CLI command and a hash-bound proof, and makes transition/release proof fail closed. (Full comparison: [doti vs Spec Kit](#doti-vs-spec-kit).)
 
 ### vs. "just use an AI assistant" — guardrails are the answer
 
-Handing a capable agent a `.csproj` and hoping is how you get plausible code that quietly violates your architecture, drops the test it couldn't make pass, and commits anyway. speckit-doti replaces hope with **enforcement**: architecture tests that fail the build, a deterministic gate ladder, and a commit path that re-verifies a fresh passing proof before anything lands. The agent moves fast *inside* boundaries it cannot cross.
+Handing a capable agent a `.csproj` and hoping is how you get plausible code that quietly violates your architecture, drops the test it couldn't make pass, and commits anyway. speckit-doti replaces hope with **enforcement**: architecture tests that fail the build, a deterministic gate ladder, and coded transition/release paths that re-verify fresh passing proof before anything lands. The agent moves fast *inside* boundaries it cannot cross.
 
 There was also **no opinionated, _compiling_ .NET starting point** that bakes the workflow, the architecture rules, and the gates into a project you can build on the first commit. speckit-doti is that starting point — and it takes an opinionated stance on three things Spec Kit leaves to judgement:
 
@@ -139,19 +139,14 @@ The point of the scaffold is that good design is **enforced from the first commi
 
 - **Layered & dependency-directed.** A pure domain `library` that may depend on nothing, and a `CLI` that may depend only on the library — enforced by tests, not just documented.
 - **Agent-first CLI.** Commands return a `CliResult` envelope — _Status / Identity / Diagnostics / Direction / Result_, plus _Effects / Progress_ — serialized as LF-normalized, JSON-first output. A single `Agent` host is the only type allowed to write to the console, so output is one machine-consumable chokepoint. Structured error codes (`<PREFIX><NNNN>`), a `describe` command for self-description, and NDJSON streaming come built in.
-- **Architecture gated by code.** `test/*.Architecture.Tests` runs **nine ArchUnitNET families** on every `dotnet test`:
+- **Architecture gated by code.** `test/*.Architecture.Tests` runs the ArchUnitNET families declared in `rules/architecture.json` on every `dotnet test`; generated projects and the toolkit currently dog-food the thin-CLI Channel Independence checks:
 
   | family | enforces |
   | --- | --- |
-  | `namespaceDependency` | the library must not depend on the CLI |
-  | `classDependency` | the library must not depend on the System.CommandLine framework |
-  | `inheritanceNaming` | service implementations are named `*Service` |
-  | `classNamespaceContainment` | `*Service` types live in the library namespace |
-  | `attributeAccess` | `[SerializableContract]` DTOs live in the library, not the CLI |
-  | `cycle` | namespaces are free of dependency cycles |
-  | `capabilityConfinement` | the library must not touch process execution, networking, or dynamic code generation (least privilege) |
-  | `outputConfinement` | only the `Agent` host writes to the console (output stays JSON-first) |
   | `cliSurfaceConfinement` | the CLI carries no business-logic types (`*Service`/`*Repository`/…); logic lives in the library (thin adapter) |
+  | `cliDelegation` | command-dispatch types delegate to core/library code instead of carrying business logic |
+
+  Sentrux enforces the path/layer boundary graph and cycle constraints from `.sentrux/rules.toml`; `.NET` analyzers enforce the build-time security rules.
 
 - **Security at the build.** .NET analyzer security rules (CA3xxx/CA5xxx) are errors via `Directory.Build.props` — the build itself is the SAST gate.
 
@@ -170,12 +165,12 @@ The repo that produces all of the above is itself a layered .NET 10 solution (an
 
 ## The doti workflow
 
-doti is the process layer the scaffold installs. It ships as slash-command skills (Claude: `/doti-specify`; the same skills render for Codex). **Always start with `specify` and run them in order** — each stage's proof is a prerequisite for the next, and `doti cycle check` enforces that chain fail-closed.
+doti is the process layer the scaffold installs. It ships as numbered slash-command skills (Claude: `/01-doti-specify`; the same skills render for Codex). **Always start with `01-Specify` and run them in order** — each stage's proof is a prerequisite for the next, and `doti cycle check` enforces that chain fail-closed.
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'fontFamily':'Space Mono, ui-monospace, monospace','lineColor':'#C9A961','primaryTextColor':'#F4F6F9'}}}%%
 flowchart LR
-  S[specify]:::shared --> C[clarify]:::shared --> P[plan]:::shared --> T[tasks]:::shared --> A[analyze]:::shared --> AR[arch-review]:::doti --> I[implement]:::shared --> DR[drift-review]:::doti --> CM[commit]:::doti --> R[release]:::doti
+  S[01 specify]:::shared --> C[02 clarify]:::shared --> P[03 plan]:::shared --> T[04 tasks]:::shared --> A[05 analyze]:::shared --> AR[06 arch-review]:::doti --> I[07 implement]:::shared --> DR[08 drift-review]:::doti --> R[09 release]:::doti
   classDef shared fill:#1A1F4D,stroke:#2D3575,color:#F4F6F9;
   classDef doti fill:#1A1F4D,stroke:#C9A961,color:#C9A961;
 ```
@@ -190,43 +185,40 @@ flowchart LR
 | Commands           | Markdown prompts the agent should follow | Prompts **backed by** deterministic CLI tools      |
 | Quality checks     | Advisory prose                           | Fail-closed gates that block the build / commit    |
 | Process state      | Implicit                                 | Explicit, hash-bound stage proofs + freshness      |
-| Commit             | Up to the agent                          | A chokepoint that refuses unverified work          |
+| Commit             | Up to the agent                          | Owned by coded Doti transition/release paths       |
 | Architecture       | Out of scope                             | First-class, dual-engine, gated on every change    |
 
 We kept what makes Spec Kit good — the spec-first sequence, clarification before planning, cross-artifact analysis — and built the enforcement layer underneath it.
 
 ### The stages
 
-> **Constitution (not a command).** doti keeps project principles in `doti/core/memory/constitution.md`, referenced by the plan and analyze stages. _Spec Kit equivalent:_ `/speckit.constitution` — doti's is a static, version-controlled document instead of a generative command, so the principles are a stable input rather than something regenerated each run.
+> **Constitution (not a command).** doti keeps project principles in `.doti/core/memory/constitution.md`, referenced by the plan and analyze stages. _Spec Kit equivalent:_ `/speckit.constitution` — doti's is a static, version-controlled document instead of a generative command, so the principles are a stable input rather than something regenerated each run.
 
-1. **`/doti-specify`** — Author the numbered feature spec → `docs/specs/{NNN-feature}.md` (for example `docs/specs/001-numbered-specs.md`; use the same full `NNN-feature` slug for cycle state, plan, and tasks).
+1. **`/01-doti-specify`** — Author the numbered feature spec → `docs/specs/{NNN-feature}.md` (for example `docs/specs/001-numbered-specs.md`; use the same full `NNN-feature` slug for cycle state, plan, and tasks).
    _Spec Kit:_ `/speckit.specify`. Same role; doti hash-stamps the stage so later stages can detect if the spec shifted underneath them.
 
-2. **`/doti-clarify`** — Resolve ambiguities by asking blocking questions one at a time, folding each answer into `## Clarifications`.
+2. **`/02-doti-clarify`** — Resolve ambiguities by asking blocking questions one at a time, folding each answer into `## Clarifications`.
    _Spec Kit:_ `/speckit.clarify`. Same intent; doti additionally enforces a fixed **operator-question format** (Context / Why it matters / Options / Recommendation / Assumptions / Confidence) with an evidence requirement.
 
-3. **`/doti-plan`** — Produce the implementation plan → `docs/plans/{feature}-plan.md`.
+3. **`/03-doti-plan`** — Produce the implementation plan → `docs/plans/{feature}-plan.md`.
    _Spec Kit:_ `/speckit.plan`. Same role; the plan is a hash-bound artifact in the cycle.
 
-4. **`/doti-tasks`** — Break the plan into executable tasks → `docs/tasks/{feature}-tasks.md`.
+4. **`/04-doti-tasks`** — Break the plan into executable tasks → `docs/tasks/{feature}-tasks.md`.
    _Spec Kit:_ `/speckit.tasks`. Same role. (No `taskstoissues` equivalent — tasks stay local and gated.)
 
-5. **`/doti-analyze`** — Cross-artifact consistency and coverage review across spec / plan / tasks.
+5. **`/05-doti-analyze`** — Cross-artifact consistency and coverage review across spec / plan / tasks.
    _Spec Kit:_ `/speckit.analyze`. Same intent.
 
-6. **`/doti-arch-review`** — _(doti-only)_ Review the architecture impact and verify the ArchUnitNET + Sentrux configs actually measure the intended boundaries — **before any code is written**.
+6. **`/06-doti-arch-review`** — _(doti-only)_ Review the architecture impact and verify the ArchUnitNET + Sentrux configs actually measure the intended boundaries — **before any code is written**.
    _Spec Kit:_ no equivalent.
 
-7. **`/doti-implement`** — Execute the tasks.
+7. **`/07-doti-implement`** — Execute the tasks.
    _Spec Kit:_ `/speckit.implement`. Same role; doti attaches an explicit engineering-discipline contract (root-cause not symptom, prove every claim, no silenced checks, a 95%-confidence bar).
 
-8. **`/doti-drift-review`** — _(doti-only)_ Compare the actual diff against the approved plan/design and check for drift between source assets and installed files.
+8. **`/08-doti-drift-review`** — _(doti-only)_ Compare the actual diff against the approved plan/design and check for drift between source assets and installed files.
    _Spec Kit:_ loosely related to `/speckit.converge`, but it's a **gate** that catches divergence before you can commit, not a task-appender.
 
-9. **`/doti-commit`** — _(doti-only)_ Make the scoped commit through the sanctioned path. `doti cycle commit` refuses unless a fresh drift-review, a fresh passing `gate run` proof with recomputable affected-test hashes, and a clean staged scope all line up. Direct `dotnet test` transcripts are diagnostic only, not commit proof.
-   _Spec Kit:_ no equivalent.
-
-10. **`/doti-release`** — _(doti-only)_ Run the release gate, produce the command-backed `hx release --major|--minor|--patch` proof, then push and verify the Doti-owned release tag through CI.
+9. **`/09-doti-release`** — _(doti-only)_ Run the release gate, produce the command-backed `hx release --major|--minor|--patch` proof, then push and verify the Doti-owned release tag through CI.
     _Spec Kit:_ no equivalent.
 
 > Spec Kit's `/speckit.checklist` has no dedicated doti command — doti folds completeness / clarity / consistency checking into `/doti-analyze` and the gate.
@@ -251,11 +243,11 @@ The fork is MIT-licensed, released at [heurexai/sentrux/releases](https://github
 
 doti is single-sourced and configurable — adapt it to your team without forking the toolkit:
 
-- **The workflow / skills** — edit `doti/core/skills.json` (stage names, intents, next-stage hints, the operator-question protocol) and re-render with `doti render-skills`. Installed skill files are generated — don't hand-edit them.
-- **The stage model** — `doti/core/workflows/doti/workflow.yml` defines stage order, the artifact each stage `produces`, and prerequisites.
+- **The workflow / skills** — edit `.doti/core/skills.json` (stage names, intents, next-stage hints, the operator-question protocol) and re-render with `doti render-skills`. Installed skill files are generated — don't hand-edit them.
+- **The stage model** — `.doti/core/workflows/doti/workflow.yml` defines stage order, the artifact each stage `produces`, and prerequisites.
 - **Architecture rules** — edit a project's `rules/architecture.json` + its ArchUnitNET tests, and `.sentrux/rules.toml` (layers / boundaries / constraints) for the Sentrux engine.
 - **Gate strictness** — `gate run --profile <auto|advisory|normal|release>` tunes the ladder per context (dev vs release).
-- **Principles** — `doti/core/memory/constitution.md` holds the governing principles the plan/analyze stages read.
+- **Principles** — `.doti/core/memory/constitution.md` holds the governing principles the plan/analyze stages read.
 - **Agents** — `--agents codex,claude` renders the workflow for the agents you actually use.
 
 ---
@@ -266,7 +258,7 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 
 Current release: [**v0.5.0**](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0).
 
-Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) ships a standalone installer per platform — **win-x64** (`.zip`), **linux-x64**, and **osx-arm64** (`.tar.gz`). Download the archive for your platform, extract it, and run the bundled `hx` from any directory:
+Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) now treats Velopack installer/update packages as the product. Download the platform package for your OS, install or update `hx`, and run the bundled executable from the installed location:
 
 ```bash
 # macOS / Linux
@@ -285,10 +277,10 @@ Use the same standalone `hx` to inspect a doti-enabled repository. Product execu
 .\hx.exe version --repo . --json
 
 # repair/reinstall repo-owned Doti workflow assets when needed
-dotnet run --project tools/Hx.Runner.Cli -- doti install --repo . --agents codex,claude --json
+dotnet run --project tools/Hx.Runner.Cli -- doti install --repo <target-repo> --agents codex,claude --json
 ```
 
-The previous repository updater subcommand has been removed. Use the Velopack installer/update channel to update installed `hx`/product executables, and use `doti install --repo <path> --agents codex,claude --json` to install, repair, or migrate repo-owned Doti workflow assets. Live repo configuration and baselines, including `.doti/release.json`, cycle/gate state, prerequisite overrides, and Sentrux state, remain target-owned.
+The previous repository updater subcommand has been removed. Use the Velopack installer/update channel to update installed `hx`/product executables, and use `doti install --repo <path> --agents codex,claude --json` to install, repair, or migrate repo-owned Doti workflow assets. `--repo` is required; the command never defaults to the current directory. Its JSON proof classifies the target as `installed-new-target`, `installed-empty-target`, `installed-non-empty-non-doti-target`, or `upgraded-existing-doti-repo` and reports installed/preserved/removed/skipped/blocked paths with reasons. Live repo configuration and baselines, including `.doti/release.json`, cycle/gate state, prerequisite overrides, and Sentrux state, remain target-owned.
 
 When repairing a repo that already has doti v0.5 installed, project-owned feature docs are not silently renamed. Leave implemented or completed historical specs on their existing filenames. If an open, unimplemented legacy spec is still unnumbered, migrate it before continuing: choose the next `NNN-` prefix, rename the matching `docs/specs`, `docs/plans`, and `docs/tasks` artifacts to the same numbered slug, then re-stamp `specify` with that `NNN-short-name`. All subsequent new specs use the numbered format.
 
@@ -296,26 +288,38 @@ When repairing a repo that already has doti v0.5 installed, project-owned featur
 
 ### Local release output
 
-`hx release` builds Velopack installer/update artifacts plus `release.identity.json` proof from the committed repository state. The target repository declares the product to publish in `.doti/release.json`: product/package name, publish `.csproj`, published executable name, output executable name, and default release-root environment variable. This lets a vendored `hx.exe` release the target repo's own executable without requiring `tools/Hx.Scaffold.Cli` to exist in that repo.
+The current unreleased release train includes `006-task-hash-gated-velopack-completion`, which completes task-hash-gated implementation, Velopack-first release output, executable-local `hx.config.json`, generated starter configuration, and release documentation proof.
+
+`hx release` builds Velopack installer/update artifacts plus `release.identity.json` proof from the committed repository state. Operational `hx` commands require an executable-adjacent `hx.config.json` loaded through Microsoft Configuration before they inspect or mutate a target repo. The target repository declares the product to publish in `.doti/release.json`: product/package name, publish `.csproj`, published executable name, and output executable name. This lets a vendored `hx.exe` release the target repo's own executable without requiring `tools/Hx.Scaffold.Cli` to exist in that repo.
 
 Release tagging is command-backed. `hx release --major|--minor|--patch` validates the requested intent against the GitVersion-calculated version, creates or verifies the local annotated `v<version>` tag, stages vendored assets into the Velopack pack directory, runs `vpk pack`, and reports the tag push command needed for GitHub CI. `hx release` does not push tags.
 
-When a release root is configured, the verified artifact set is copied to:
+When `hx.config.json` enables local release output, the verified artifact set is copied to:
 
 ```text
-<releaseRoot>/<projectName>/<version number>
-<releaseRoot>/<projectName>/latest
+<localReleaseOutput.directory>/<projectName>/<version number>
+<localReleaseOutput.directory>/<projectName>/latest
 ```
 
-By default, `hx release` reads the manifest's default release-root variable, which is `DOTI_RELEASE_ROOT` for speckit-doti and newly scaffolded repos unless the repo declares another value. Use `--release-root <path>` to supply an explicit root for the current run; an explicit root overrides environment lookup. Use `--release-root-env <name>` to read a different variable. Use `--save-release-root` only with `--release-root <path>` to persist that explicit value into the manifest default, or into the variable named by `--release-root-env`.
+The installed `hx.config.json` file lives next to `hx.exe` and is the only supported local-release configuration source. If `localReleaseOutput.enabled` is true, `localReleaseOutput.directory` must be an absolute path or `hx release` fails before reading `.doti/release.json`, calculating a tag, or writing artifacts. If local output is disabled, the command still reports a release result with an explicit skipped-copy reason.
+
+```json
+{
+  "schemaVersion": 1,
+  "localReleaseOutput": {
+    "enabled": true,
+    "directory": "D:\\heurex-releases"
+  }
+}
+```
 
 ```powershell
 .\hx.exe release --repo . --json
-.\hx.exe release --repo . --minor --release-root D:\heurex-releases --json
-.\hx.exe release --repo . --patch --release-root D:\heurex-releases --release-root-env HEUREX_RELEASE_ROOT --save-release-root --json
+.\hx.exe release --repo . --minor --json
+.\hx.exe release --repo . --patch --rid win-x64 --json
 ```
 
-If no explicit root is provided and the selected environment variable is unset, the command reports that the local copy was skipped. Manual or agent-performed file copying is not release proof; use the command's `LocalReleaseResult` envelope.
+Manual or agent-performed file copying is not release proof; use the command's `LocalReleaseResult` envelope, including its config source/path, Velopack artifacts, payload checks, version directory, latest directory, or disabled-copy reason.
 
 Package-manager manifest templates are prepared under `packaging/`; publishing them still requires the released archive hashes and external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
 
@@ -323,7 +327,7 @@ Each release bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` i
 
 ### Build from source
 
-**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/) (10.0.300+), Git, and PowerShell or bash. Vendored tools (Gitleaks, Sentrux, GitVersion) are pinned and SHA-256-verified per their manifests under `tools/`, and fetched operationally — the large binaries are gitignored. The scaffold CLI uses `doti/core/prerequisites.json` as the trusted prerequisite manifest; Windows automatic remediation is available only through `hx prereq install` with release-defined winget package/source metadata and an exact `--confirm-plan` digest.
+**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/) (10.0.300+), Git, and PowerShell or bash. Vendored tools (Gitleaks, Sentrux, GitVersion) are pinned and SHA-256-verified per their manifests under `tools/`, and fetched operationally — the large binaries are gitignored. The scaffold CLI uses `.doti/core/prerequisites.json` as the trusted prerequisite manifest; Windows automatic remediation is available only through `hx prereq install` with release-defined winget package/source metadata and an exact `--confirm-plan` digest.
 
 ```bash
 # 1. build + test the toolkit itself
@@ -346,8 +350,8 @@ dotnet run --project tools/Hx.Runner.Cli -- gate run --repo ./Acme.Widget --prof
 Then drive development with the slash-commands, in order — each stage's proof is a prerequisite for the next:
 
 ```
-/doti-specify → /doti-clarify → /doti-plan → /doti-tasks → /doti-analyze
-→ /doti-arch-review → /doti-implement → /doti-drift-review → /doti-commit → /doti-release
+/01-doti-specify → /02-doti-clarify → /03-doti-plan → /04-doti-tasks → /05-doti-analyze
+→ /06-doti-arch-review → /07-doti-implement → /08-doti-drift-review → /09-doti-release
 ```
 
 ## CLI reference
@@ -358,20 +362,22 @@ Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- 
 | --- | --- |
 | `new` _(Hx.Scaffold.Cli)_ | Generate a new agent-first .NET solution and install doti |
 | `version --repo <path>` _(Hx.Scaffold.Cli)_ | Report running hx identity, target repo scaffold version, and managed Doti modification state |
-| `release [--repo <path>] [--major\|--minor\|--patch] [--release-root <path>] [--release-root-env <name>] [--save-release-root]` _(Hx.Scaffold.Cli)_ | Validate release intent, create/verify the local GitVersion tag, build Velopack artifacts, and copy them to `<package>/<version>` plus `<package>/latest` when a root is configured |
+| `release [--repo <path>] [--major\|--minor\|--patch] [--rid <rid>]` _(Hx.Scaffold.Cli)_ | Validate executable-local `hx.config.json`, validate release intent, create/verify the local GitVersion tag, build Velopack artifacts, and copy them to `<package>/<version>` plus `<package>/latest` when local output is enabled |
 | `prereq check --for <new\|version\|generated-validation>` _(Hx.Scaffold.Cli)_ | Check trusted .NET SDK/Git/directory prerequisites without installing anything |
 | `prereq install --for <new> --confirm-plan <digest>` _(Hx.Scaffold.Cli)_ | Run an explicitly approved Windows winget install plan from trusted manifest metadata, then re-check prerequisites |
-| `gate run --profile <auto\|advisory\|normal\|release>` | Run the full deterministic gate ladder → one fail-closed `GateProof` |
+| `gate run --profile <auto\|advisory\|normal\|release>` | Run the full deterministic gate ladder, including task-completion proof for an active Doti cycle → one fail-closed `GateProof` |
 | `security scan` | Package-vulnerability SCA (`dotnet list package --vulnerable`) + analyzer SAST status |
 | `architecture test` | ArchUnitNET per-family proof |
 | `sentrux verify` / `sentrux check` | Verify the vendored Sentrux binary / run the boundary analysis |
 | `hygiene scan` / `hygiene gitleaks verify` | Working-tree hygiene + secret scanning |
 | `version calculate` | Read-only GitVersion semantic version calculation; release tags are created only by `hx release --major\|--minor\|--patch` |
-| `tools fetch [--rid] [--tool all\|gitleaks\|sentrux\|gitversion]` | Download + SHA-256-verify the vendored tool binaries from their pinned manifests (fail-closed on mismatch) |
+| `tools fetch [--rid] [--tool all\|gitleaks\|sentrux\|gitversion\|velopack]` | Download + SHA-256-verify the vendored tool binaries/packages from their pinned manifests (fail-closed on mismatch) |
 | `plan` _(Hx.Impact.Cli)_ | Affected-test planner (project-graph reverse closure → covering test projects) |
-| `doti cycle stamp \| status \| check \| commit` | Stamp a stage (prereq-checked) / show cycle state / fail-closed prereq check / sanctioned commit |
+| `doti cycle stamp [--release-intent <major\|minor\|patch>] \| status \| check` | Stamp a stage (prereq-checked), including release-stage GitVersion intent signaling / show cycle state / fail-closed prereq check |
+| `doti task-hash stamp [--feature <NNN-slug>]` | Refuse unchecked tasks and stamp canonical `doti-task-hash` markers for checked tasks |
+| `doti payload check --repo <path>` | Verify scaffold-installed Doti payload parity by installing to a temp target and comparing managed `.doti` assets plus rendered skills/entrypoints |
 | `doti question check` | Validate operator-question format compliance |
-| `doti render-skills` / `doti install` / `doti install-hooks` | Re-render skills / install the workflow and auto-arm the hook / repair the pre-commit hook |
+| `doti render-skills` / `doti install --repo <path>` / `doti install-hooks` | Re-render skills / install the workflow into an explicit classified target and auto-arm the hook / repair the pre-commit hook |
 | `describe` | Self-describe the CLI surface as JSON |
 
 ## The deterministic gate
@@ -380,19 +386,21 @@ Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- 
 
 1. **Hygiene** — working-tree / staged scope checks
 2. **Secret scanning** — vendored [Gitleaks](https://github.com/gitleaks/gitleaks)
-3. **Architecture** — [ArchUnitNET](https://github.com/TNG/ArchUnitNET) families + [Sentrux](https://github.com/heurexai/sentrux) boundary analysis
-4. **Affected-test planning** — project-graph reverse closure scopes the `normal`/`advisory` test run; `release` runs the full suite; the gate proof records planner, test-scope, and execution hashes
+3. **Affected-test planning** — project-graph reverse closure scopes the `normal`/`advisory` test run; `release` runs the full suite; the gate proof records planner, test-scope, and execution hashes
+4. **Task completion** — when a Doti cycle is active, the feature task ledger must exist, every required task must be checked, and every checked task must carry a valid canonical `doti-task-hash`
 5. **Build & test**
-6. **Security** — package-vulnerability SCA + build-integrated analyzer SAST (CA3xxx/CA5xxx as errors); enforced at `release`, advisory in dev
-7. **Versioning** — [GitVersion](https://github.com/GitTools/GitVersion)
+6. **Architecture** — [ArchUnitNET](https://github.com/TNG/ArchUnitNET) families + [Sentrux](https://github.com/heurexai/sentrux) boundary analysis
+7. **Doti payload parity** — install Doti into a temp target and compare managed `.doti` source files plus rendered skills/entrypoints
+8. **Security** — package-vulnerability SCA + build-integrated analyzer SAST (CA3xxx/CA5xxx as errors); enforced at `release`, advisory in dev
+9. **Versioning** — [GitVersion](https://github.com/GitTools/GitVersion)
 
-The gate never creates a Sentrux baseline, and persists its proof so `doti cycle commit` can require a _fresh, passing_ one whose affected-test hashes recompute against the current change set.
+The gate never creates a Sentrux baseline, and persists its proof so Doti transition/release paths can require a _fresh, passing_ one whose affected-test hashes recompute against the current change set.
 
 ## Status
 
-Current release: [v0.5.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0). The release workflow publishes win-x64, linux-x64, and osx-arm64 archives with matching `.sha256` files. The deterministic release gate remains command-backed and fail-closed; the local release proof for v0.5.0 passed on win-x64 with full tests, hygiene, version calculation, Sentrux, and security scan.
+Current published release: [v0.5.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0). That older release used legacy platform archives. The next minor release switches the product release surface to Velopack installer/update artifacts with matching checksums and `release.identity.json`; source archives are not accepted as the Doti product. The deterministic release gate remains command-backed and fail-closed.
 
-The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary (including GitVersion and Sentrux `v0.5.11`) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with a working GitVersion plus Gitleaks and Sentrux without a manual step.
+The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary/package (including GitVersion, Sentrux `v0.5.11`, and Velopack CLI `vpk` `1.2.0`) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with the release/gate tools it needs without a manual step.
 
 ## Acknowledgements
 

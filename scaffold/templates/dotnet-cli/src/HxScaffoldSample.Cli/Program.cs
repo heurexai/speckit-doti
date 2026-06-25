@@ -17,10 +17,11 @@ public static class Program
         greet.Options.Add(greetJson);
         greet.SetAction(parseResult => Agent.Run("greet", () =>
         {
+            AppConfiguration configuration = AppConfiguration.LoadRequired(AppContext.BaseDirectory);
             string name = parseResult.GetValue(nameOption) ?? string.Empty;
             IGreetingService service = new GreetingService();
             string greeting = service.Greet(new GreetingRequest(name));
-            return Agent.Ok("greet", greeting, new { greeting, name });
+            return Agent.Ok("greet", greeting, new { greeting, name, configuration = configuration.SourcePath });
         }, forceJson: parseResult.GetValue(greetJson) ? true : null));
         root.Subcommands.Add(greet);
 

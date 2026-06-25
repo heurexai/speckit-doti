@@ -55,7 +55,7 @@ public sealed class CliResultsTests
     [Fact]
     public void Blocked_requires_operator_without_fabricating_a_decision()
     {
-        CliResult r = CliResults.Blocked(Meta, "doti cycle commit", ExitClass.Validation,
+        CliResult r = CliResults.Blocked(Meta, "sample blocked command", ExitClass.Validation,
             [Diag.Of(ErrorCodes.Validation_Failed, "stale gate proof")], "refused");
         Assert.False(r.Ok);
         Assert.Equal(CliOutcome.Blocked, r.Outcome);

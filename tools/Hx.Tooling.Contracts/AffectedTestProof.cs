@@ -10,7 +10,7 @@ public sealed record ExecutedTestProject(
 
 /// <summary>
 /// The gate's affected-test proof. It stores the recomputable planner hash, selected test-scope hash,
-/// and executed test hash so <c>doti cycle commit</c> can reject hand-written test transcripts or direct
+/// and executed test hash so Doti transition/release paths can reject hand-written test transcripts or direct
 /// <c>dotnet test</c> runs that did not come from the gate.
 /// </summary>
 public sealed record AffectedTestProof(

@@ -7,8 +7,13 @@ namespace Hx.Runner.Cli;
 
 public static partial class RunnerCommands
 {
-    public static CliResult DotiInstall(CliMeta meta, string targetRepo, string agentsCsv)
+    public static CliResult DotiInstall(CliMeta meta, string? targetRepo, string agentsCsv, bool force)
     {
+        if (string.IsNullOrWhiteSpace(targetRepo))
+        {
+            return Usage(meta, "doti install", "doti install requires an explicit --repo <target-directory>; it never defaults to the current directory.");
+        }
+
         if (!TryParseAgents(agentsCsv, out List<DotiAgentTarget> agents, out string? error))
         {
             return Usage(meta, "doti install", error!);
@@ -18,10 +23,9 @@ public static partial class RunnerCommands
         string? source = FindDotiSource(Directory.GetCurrentDirectory());
         if (source is null)
         {
-            return Usage(meta, "doti install", "Could not locate doti/core/skills.json above the current directory.");
+            return Usage(meta, "doti install", "Could not locate .doti/core/skills.json above the current directory.");
         }
 
-        string repoName = Path.GetFileName(target.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         DotiHookInspection hookPlan = HookInstaller.Inspect(target);
         if (hookPlan.Verdict == HookInstaller.VerdictExternal)
         {
@@ -37,7 +41,9 @@ public static partial class RunnerCommands
                 ]);
         }
 
-        DotiInstallResult result = DotiInstaller.Install(source, target, agents, repoName);
+        DotiInstallResult result = DotiInstallBootstrapper.Install(
+            source,
+            new DotiInstallBootstrapRequest(target, agents, Force: force));
         if (result.Outcome != StageOutcome.Pass)
         {
             return CliResults.FromStage(meta, "doti install", result.Outcome, $"Doti install into {target}.",
@@ -56,7 +62,9 @@ public static partial class RunnerCommands
         }
 
         string hookSummary = hook is null ? " Hook skipped because the target is not a Git repo." : " Hook armed.";
+        string pathSummary =
+            $" Classification: {result.Classification}; installed={result.Installed.Count}, preserved={result.Preserved.Count}, removed={result.Removed.Count}, skipped={result.Skipped.Count}, blocked={result.Blocked.Count}.";
         return CliResults.FromStage(meta, "doti install", result.Outcome,
-            $"Doti install into {target}.{hookSummary}", new { install = result, hook });
+            $"Doti install into {target}.{hookSummary}{pathSummary}", new { install = result, hook });
     }
 }

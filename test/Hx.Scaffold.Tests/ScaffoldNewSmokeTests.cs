@@ -34,13 +34,17 @@ public sealed class ScaffoldNewSmokeTests
             Assert.Equal(StageOutcome.Pass, proof.Smoke.Outcome);
             Assert.Equal(StageOutcome.Pass, proof.Outcome);
 
-            // Self-hosting shape: doti/ source (so installed skills' doti/core refs resolve), rendered
+            // Self-hosting shape: .doti source (so installed skills' .doti/core refs resolve), rendered
             // skills, vendored runner + tools, and the first-smoke baseline.
-            Assert.True(File.Exists(Path.Combine(output, "doti", "core", "skills.json")), "doti/ source installed");
-            Assert.True(File.Exists(Path.Combine(output, "doti", "core", "templates", "commands", "doti-specify.md")),
-                "command templates installed (skills' doti/core references resolve)");
-            Assert.True(Directory.Exists(Path.Combine(output, ".claude", "skills")), ".claude skills rendered");
-            Assert.True(Directory.Exists(Path.Combine(output, ".agents", "skills")), ".agents skills rendered");
+            Assert.True(File.Exists(Path.Combine(output, ".doti", "core", "skills.json")), ".doti source installed");
+            Assert.True(File.Exists(Path.Combine(output, ".doti", "core", "templates", "commands", "doti-specify.md")),
+                "command templates installed (skills' .doti/core references resolve)");
+            Assert.True(File.Exists(Path.Combine(output, ".claude", "skills", "09-doti-release", "SKILL.md")),
+                ".claude numbered release skill rendered");
+            Assert.True(File.Exists(Path.Combine(output, ".agents", "skills", "01-doti-specify", "SKILL.md")),
+                ".agents numbered specify skill rendered");
+            Assert.Contains("Run `/09-doti-release` to release, or `/01-doti-specify`",
+                File.ReadAllText(Path.Combine(output, ".agents", "skills", "08-doti-drift-review", "SKILL.md")));
             Assert.True(File.Exists(Path.Combine(output, "AGENTS.md")) && File.Exists(Path.Combine(output, "CLAUDE.md")),
                 "root entrypoints rendered");
             Assert.True(File.Exists(Path.Combine(output, ".doti", "integration.json")), "repo-specific Doti metadata");

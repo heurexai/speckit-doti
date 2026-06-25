@@ -19,4 +19,5 @@ public sealed record DotiRenderResult(
     bool CheckMode,
     IReadOnlyList<DotiRenderFileStatus> Files,
     IReadOnlyList<string> Drifted,
-    IReadOnlyList<string> Written);
+    IReadOnlyList<string> Written,
+    DotiPayloadCheckResult? PayloadCheck = null);

@@ -8,7 +8,7 @@ public sealed class SkillMarkdownRendererTests
     private static DotiSkillsManifest Manifest(params DotiSkillEntry[] skills) => new(
         SchemaVersion: 1,
         Maturity: "command-aware-advisory",
-        CommandTemplateDir: "doti/core/templates/commands",
+        CommandTemplateDir: ".doti/core/templates/commands",
         AgentContextRef: ".doti/agent-context.md",
         IntroTemplate: "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
         OperatorQuestionProtocol: null,
@@ -32,9 +32,11 @@ public sealed class SkillMarkdownRendererTests
 
         Assert.DoesNotContain("\r", a);          // LF-only, never CRLF
         Assert.Equal(a, b);                       // idempotent / deterministic
+        Assert.Contains("name: 01-doti-specify", a);
+        Assert.Contains("# 01-doti-specify", a);
         Assert.Contains($"Command availability: {Footnote}", a);
-        Assert.Contains("Next stage: Run `/doti-clarify`", a);
-        Assert.Contains("follow `doti/core/templates/commands/doti-specify.md`", a);
+        Assert.Contains("Next stage: Run `/02-doti-clarify`", a);
+        Assert.Contains("follow `.doti/core/templates/commands/doti-specify.md`", a);
     }
 
     [Fact]
@@ -65,7 +67,7 @@ public sealed class SkillMarkdownRendererTests
         };
         string rendered = SkillMarkdownRenderer.Render(Manifest(withHighlights), withHighlights, DotiAgentTarget.Claude, Footnote);
 
-        int intro = rendered.IndexOf("follow `doti/core", System.StringComparison.Ordinal);
+        int intro = rendered.IndexOf("follow `.doti/core", System.StringComparison.Ordinal);
         int first = rendered.IndexOf("First highlight", System.StringComparison.Ordinal);
         int second = rendered.IndexOf("Second highlight", System.StringComparison.Ordinal);
         int footer = rendered.IndexOf("Command availability:", System.StringComparison.Ordinal);
@@ -83,7 +85,7 @@ public sealed class SkillMarkdownRendererTests
         DotiSkillsManifest m = new(
             SchemaVersion: 1,
             Maturity: "command-aware-advisory",
-            CommandTemplateDir: "doti/core/templates/commands",
+            CommandTemplateDir: ".doti/core/templates/commands",
             AgentContextRef: ".doti/agent-context.md",
             IntroTemplate: "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
             OperatorQuestionProtocol: Protocol,

@@ -21,7 +21,7 @@ public sealed class EnvelopeSchemaConformanceTests
         { "ok+data+next", CliResults.Ok(Meta, "plan", "ok", new { count = 1 }, nextActions: [new CliNextAction("run", "why", "cmd")]) },
         { "fail+diag+data", CliResults.Fail(Meta, "check", ExitClass.Validation, [Diag.Of(ErrorCodes.Validation_Failed, "bad", target: "f.cs")], "failed", new { y = 2 }) },
         { "skipped", CliResults.Skipped(Meta, "security scan", "advisory in dev") },
-        { "blocked+operator", CliResults.Blocked(Meta, "doti cycle commit", ExitClass.Validation, [Diag.Of(ErrorCodes.Validation_Failed, "stale proof")], "refused", nextActions: [new CliNextAction("fix", "why")]) },
+        { "blocked+operator", CliResults.Blocked(Meta, "sample blocked command", ExitClass.Validation, [Diag.Of(ErrorCodes.Validation_Failed, "stale proof")], "refused", nextActions: [new CliNextAction("fix", "why")]) },
         { "ok+effects", CliResults.Ok(Meta, "hygiene gitleaks render-config", "rendered", new { path = "x" }, effects: [new CliEffect("write", "tools/gitleaks/config/gitleaks.toml", "120 chars")]) },
     };
 

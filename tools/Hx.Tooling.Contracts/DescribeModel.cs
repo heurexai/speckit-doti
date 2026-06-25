@@ -15,6 +15,27 @@ public sealed record CliDescribeCommand(
     IReadOnlyList<CliDescribeOption> Options,
     IReadOnlyList<CliDescribeCommand> Subcommands);
 
+public sealed record CliDescribeWorkflow(
+    string Name,
+    IReadOnlyList<CliDescribeWorkflowStage> Stages);
+
+public sealed record CliDescribeWorkflowStage(
+    int Ordinal,
+    string StageId,
+    string CommandName,
+    string SkillId,
+    string DisplayTitle,
+    string StageStatus,
+    IReadOnlyList<string> NextStageIds,
+    IReadOnlyList<CliDescribeWorkflowAlternateAction> AlternateActions,
+    string NextStep);
+
+public sealed record CliDescribeWorkflowAlternateAction(
+    string Id,
+    string Label,
+    string CommandName,
+    bool Optional);
+
 /// <summary>
 /// The machine-readable capability description emitted by <c>describe --json</c> — the full command/option tree plus
 /// the catalogs (the <see cref="ExitClasses"/> set + the error-code registry in <see cref="ErrorCodeCatalog"/>) so an
@@ -27,4 +48,5 @@ public sealed record CliDescribe(
     string Version,
     CliDescribeCommand Root,
     IReadOnlyList<string> ExitClasses,
-    IReadOnlyList<ErrorCodeEntry> ErrorCodeCatalog);
+    IReadOnlyList<ErrorCodeEntry> ErrorCodeCatalog,
+    CliDescribeWorkflow? Workflow = null);

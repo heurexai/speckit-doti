@@ -16,10 +16,10 @@ public sealed record DotiAgentTarget(
     string SkillsGlob)
 {
     public static readonly DotiAgentTarget Claude =
-        new("claude", "claude", ".claude/skills", true, "Claude", "CLAUDE.md", ".claude/skills/doti-*");
+        new("claude", "claude", ".claude/skills", true, "Claude", "CLAUDE.md", ".claude/skills/*doti-*");
 
     public static readonly DotiAgentTarget Codex =
-        new("codex", "codex", ".agents/skills", false, "Codex", "AGENTS.md", ".agents/skills/doti-*");
+        new("codex", "codex", ".agents/skills", false, "Codex", "AGENTS.md", ".agents/skills/*doti-*");
 
     public static IReadOnlyList<DotiAgentTarget> All { get; } = [Claude, Codex];
 

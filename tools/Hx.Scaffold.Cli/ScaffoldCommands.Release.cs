@@ -1,4 +1,5 @@
 using Hx.Cli.Kernel;
+using Hx.Scaffold.Core.Configuration;
 using Hx.Scaffold.Core.Release;
 using Hx.Tooling.Contracts;
 
@@ -10,9 +11,7 @@ public static partial class ScaffoldCommands
         CliMeta meta,
         string repo,
         string rid,
-        string releaseRoot,
-        string releaseRootEnv,
-        bool saveReleaseRoot,
+        HxLocalConfiguration configuration,
         bool major = false,
         bool minor = false,
         bool patch = false)
@@ -25,28 +24,11 @@ public static partial class ScaffoldCommands
                     "Specify at most one release intent: --major, --minor, or --patch. Patch is the default.")]);
         }
 
-        if (!string.IsNullOrWhiteSpace(releaseRootEnv)
-            && !LocalReleaseRootResolver.IsValidEnvironmentVariableName(releaseRootEnv.Trim()))
-        {
-            return CliResults.Fail(meta, "release", ExitClass.Usage,
-                [Diag.Of(ErrorCodes.Usage_InvalidArguments,
-                    $"Invalid release-root environment variable name '{releaseRootEnv}'. Use letters, digits, and underscores; the first character must not be a digit.")]);
-        }
-
-        if (saveReleaseRoot && string.IsNullOrWhiteSpace(releaseRoot))
-        {
-            return CliResults.Fail(meta, "release", ExitClass.Usage,
-                [Diag.Of(ErrorCodes.Usage_InvalidArguments,
-                    "--save-release-root requires an explicit --release-root <path>; environment-discovered roots are not persisted.")]);
-        }
-
         try
         {
             LocalReleaseResult result = LocalReleaseService.Run(new LocalReleaseRequest(
                 repo,
-                string.IsNullOrWhiteSpace(releaseRoot) ? null : releaseRoot,
-                string.IsNullOrWhiteSpace(releaseRootEnv) ? null : releaseRootEnv,
-                saveReleaseRoot,
+                configuration,
                 string.IsNullOrWhiteSpace(rid) ? null : rid,
                 meta.Version,
                 major ? "major" : minor ? "minor" : "patch"));

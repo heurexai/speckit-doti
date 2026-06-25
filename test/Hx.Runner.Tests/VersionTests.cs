@@ -38,6 +38,28 @@ public sealed class VersionTests
         Assert.Contains("gitversion", result.Source, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void ParseOutput_reports_gitversion_source_identity()
+    {
+        VersionResult result = GitVersionTool.ParseOutput(
+            """
+            {
+              "MajorMinorPatch": "1.2.3",
+              "VersionSourceSha": "source-sha",
+              "Sha": "head-sha",
+              "CommitsSinceVersionSource": 4
+            }
+            """,
+            "6.7.0");
+
+        Assert.Equal("1.2.3", result.Version);
+        Assert.Equal("gitversion", result.Increment);
+        Assert.Contains("gitversion 6.7.0", result.Source);
+        Assert.Contains("versionSourceSha=source-sha", result.Source);
+        Assert.Contains("sha=head-sha", result.Source);
+        Assert.Contains("commitsSinceVersionSource=4", result.Source);
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

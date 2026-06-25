@@ -80,7 +80,8 @@ public static class ManagedAssetScanner
 
     public static ManagedAssetManifest CreateBaseline(
         string repoRoot,
-        IReadOnlyList<DotiRenderTarget> generatedTargets)
+        IReadOnlyList<DotiRenderTarget> generatedTargets,
+        IReadOnlyList<ManagedAssetHashEntry>? obsoleteAssets = null)
     {
         List<ManagedAssetHashEntry> entries = [];
         foreach (string path in WorkflowTemplatePaths(repoRoot))
@@ -104,18 +105,26 @@ public static class ManagedAssetScanner
                 .GroupBy(e => e.Path, StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.First())
                 .OrderBy(e => e.Path, StringComparer.Ordinal)
+                .ToArray(),
+            (obsoleteAssets ?? [])
+                .GroupBy(e => e.Path, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(e => e.Path, StringComparer.Ordinal)
                 .ToArray());
     }
 
-    public static void WriteBaseline(string repoRoot, IReadOnlyList<DotiRenderTarget> generatedTargets) =>
-        ManagedAssetManifestStore.Write(repoRoot, CreateBaseline(repoRoot, generatedTargets));
+    public static void WriteBaseline(
+        string repoRoot,
+        IReadOnlyList<DotiRenderTarget> generatedTargets,
+        IReadOnlyList<ManagedAssetHashEntry>? obsoleteAssets = null) =>
+        ManagedAssetManifestStore.Write(repoRoot, CreateBaseline(repoRoot, generatedTargets, obsoleteAssets));
 
     private static IEnumerable<string> WorkflowTemplatePaths(string repoRoot)
     {
         string[] roots =
         [
             Path.Combine(repoRoot, ".doti", "workflows"),
-            Path.Combine(repoRoot, "doti", "core", "templates"),
+            Path.Combine(repoRoot, ".doti", "core", "templates"),
         ];
 
         foreach (string root in roots)
@@ -136,11 +145,12 @@ public static class ManagedAssetScanner
     {
         string[] roots =
         [
-            Path.Combine(repoRoot, "doti", "core"),
-            Path.Combine(repoRoot, "doti", "profiles"),
+            Path.Combine(repoRoot, ".doti", "core"),
+            Path.Combine(repoRoot, ".doti", "profiles"),
             Path.Combine(repoRoot, ".doti", "templates"),
             Path.Combine(repoRoot, ".doti", "memory"),
             Path.Combine(repoRoot, ".doti", "integrations"),
+            Path.Combine(repoRoot, ".doti", "workflows"),
             Path.Combine(repoRoot, "tools", "gitleaks"),
             Path.Combine(repoRoot, "tools", "sentrux"),
             Path.Combine(repoRoot, "tools", "gitversion"),
@@ -156,7 +166,7 @@ public static class ManagedAssetScanner
             foreach (string file in Directory.GetFiles(root, "*", SearchOption.AllDirectories))
             {
                 string relative = Path.GetRelativePath(repoRoot, file).Replace('\\', '/');
-                if (relative.StartsWith("doti/core/templates/", StringComparison.OrdinalIgnoreCase)
+                if (relative.StartsWith(".doti/core/templates/", StringComparison.OrdinalIgnoreCase)
                     || relative.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
                     || relative.Contains("/obj/", StringComparison.OrdinalIgnoreCase))
                 {

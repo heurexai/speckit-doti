@@ -13,17 +13,11 @@ public sealed partial class CycleService
         report = null;
         if (state is not null && TryCompletedClean(state, out CycleCompletionRecord? completion))
         {
-            bool checkingCommit = string.Equals(target.Id, "commit", StringComparison.OrdinalIgnoreCase);
-            report = checkingCommit
-                ? new CycleCheckReport(JsonContractDefaults.SchemaVersion, target.Id, true,
-                    [new StagePrereqResult("commit", "completed", true, $"cycle completed at commit {completion.CommitSha}")],
-                    completion,
-                    recovery)
-                : new CycleCheckReport(JsonContractDefaults.SchemaVersion, target.Id, false,
-                    [new StagePrereqResult("cycle", "completed", false,
-                        $"previous cycle completed at {completion.CommitSha}; stamp specify to start a new cycle")],
-                    completion,
-                    recovery);
+            report = new CycleCheckReport(JsonContractDefaults.SchemaVersion, target.Id, false,
+                [new StagePrereqResult("cycle", "completed", false,
+                    $"previous cycle completed at {completion.CommitSha}; stamp specify to start a new cycle")],
+                completion,
+                recovery);
             return true;
         }
 
@@ -44,35 +38,69 @@ public sealed partial class CycleService
         string prereqId,
         CycleState? state,
         FreshnessEvaluator evaluator,
-        string identity)
+        string identity) =>
+        EvaluatePrerequisite(prereqId, state, evaluator, identity, []);
+
+    private StagePrereqResult EvaluatePrerequisite(
+        string prereqId,
+        CycleState? state,
+        FreshnessEvaluator evaluator,
+        string identity,
+        HashSet<string> evaluating)
     {
+        if (!evaluating.Add(prereqId))
+        {
+            return new StagePrereqResult(prereqId, "invalid", false, "cyclic prerequisite graph");
+        }
+
         CycleStageProof? proof = state?.Stages.FirstOrDefault(
             s => string.Equals(s.Stage, prereqId, StringComparison.OrdinalIgnoreCase));
         if (proof is null || state is null)
         {
+            evaluating.Remove(prereqId);
             return new StagePrereqResult(prereqId, "missing", false, "not stamped");
         }
 
-        StageFreshnessResult freshness = evaluator.Evaluate(proof, state.Feature, identity);
+        StageFreshnessResult freshness = evaluator.Evaluate(
+            proof,
+            state.Feature,
+            identity,
+            RequiresChangeSetIdentity(prereqId));
         if (freshness.Freshness == StageFreshness.Stale)
         {
+            evaluating.Remove(prereqId);
             return new StagePrereqResult(prereqId, "stale", false, freshness.Reason);
         }
 
         string? openMarker = OpenClarificationMarker(prereqId, state.Feature);
         if (openMarker is not null)
         {
+            evaluating.Remove(prereqId);
             return new StagePrereqResult(prereqId, "invalid", false, openMarker);
         }
 
         CycleStage prereqStage = _stageModel.Find(prereqId);
         if (prereqStage.Prereqs.Count == 0)
         {
+            evaluating.Remove(prereqId);
             return new StagePrereqResult(prereqId, "fresh", true, null);
         }
 
+        foreach (string parentId in prereqStage.Prereqs)
+        {
+            StagePrereqResult parent = EvaluatePrerequisite(parentId, state, evaluator, identity, evaluating);
+            if (!parent.Ok)
+            {
+                evaluating.Remove(prereqId);
+                return new StagePrereqResult(prereqId, "stale", false,
+                    $"prerequisite '{parent.Stage}' is {parent.Status}: {parent.Reason}");
+            }
+        }
+
         string? expectedHash = CycleStageProofHasher.HashPrerequisites(state, prereqStage.Prereqs);
-        return ValidatePrerequisiteHash(prereqId, proof, expectedHash);
+        StagePrereqResult result = ValidatePrerequisiteHash(prereqId, proof, expectedHash);
+        evaluating.Remove(prereqId);
+        return result;
     }
 
     private static StagePrereqResult ValidatePrerequisiteHash(
@@ -115,6 +143,19 @@ public sealed partial class CycleService
         }
 
         return _stageModel.Stages.Select(s => s.Id).Where(seen.Contains).ToList();
+    }
+
+    private bool RequiresChangeSetIdentity(string stageId)
+    {
+        CycleStage stage = _stageModel.Find(stageId);
+        if (string.Equals(stage.Kind, "diff", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return ResolveTransitivePrerequisites(stage)
+            .Select(id => _stageModel.Find(id))
+            .Any(prereq => string.Equals(prereq.Kind, "diff", StringComparison.OrdinalIgnoreCase));
     }
 
     // A doc stage's artifact must not still carry an open [NEEDS CLARIFICATION] marker (output discipline).

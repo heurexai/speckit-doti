@@ -17,16 +17,20 @@ public sealed partial class CycleService
                 .Select(proof => new StageFreshnessResult(proof.Stage, StageFreshness.Completed,
                     $"cycle completed at commit {completion.CommitSha}"))
                 .ToList();
-            return new CycleStatusReport(JsonContractDefaults.SchemaVersion, state, completed, completion, recovery.Report);
+            return new CycleStatusReport(JsonContractDefaults.SchemaVersion, state, completed, completion, recovery.Report, BuildReleaseTrain(state));
         }
 
         string identity = ChangeSetIdentity.Of(_repositoryRoot, state.BaseRef, "HEAD");
         var evaluator = new FreshnessEvaluator(_repositoryRoot, _stageModel);
         List<StageFreshnessResult> freshness = state.Stages
-            .Select(proof => evaluator.Evaluate(proof, state.Feature, identity))
+            .Select(proof => evaluator.Evaluate(
+                proof,
+                state.Feature,
+                identity,
+                RequiresChangeSetIdentity(proof.Stage)))
             .ToList();
 
-        return new CycleStatusReport(JsonContractDefaults.SchemaVersion, state, freshness, state.Completion, recovery.Report);
+        return new CycleStatusReport(JsonContractDefaults.SchemaVersion, state, freshness, state.Completion, recovery.Report, BuildReleaseTrain(state));
     }
 
     /// <summary>Fail-closed chokepoint: every transitive prerequisite of <paramref name="stageId"/> must be
@@ -60,8 +64,21 @@ public sealed partial class CycleService
             results.Add(EvaluatePrerequisite(prereqId, state, evaluator, identity));
         }
 
+        CycleReleaseTrain? releaseTrain = null;
+        if (string.Equals(target.Id, "release", StringComparison.OrdinalIgnoreCase) && state is not null)
+        {
+            releaseTrain = BuildReleaseTrain(state);
+            if (!releaseTrain.Valid)
+            {
+                foreach (string blocker in releaseTrain.Blockers)
+                {
+                    results.Add(new StagePrereqResult("release-train", "invalid", false, blocker));
+                }
+            }
+        }
+
         bool passed = results.All(r => r.Ok);
-        return new CycleCheckReport(JsonContractDefaults.SchemaVersion, target.Id, passed, results, state?.Completion, recovery.Report);
+        return new CycleCheckReport(JsonContractDefaults.SchemaVersion, target.Id, passed, results, state?.Completion, recovery.Report, releaseTrain);
     }
 
 }

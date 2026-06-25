@@ -33,7 +33,7 @@ public static partial class RunnerCommands
         DirectoryInfo? dir = new(Path.GetFullPath(start));
         while (dir is not null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "doti", "core", "skills.json")))
+            if (File.Exists(Path.Combine(dir.FullName, ".doti", "core", "skills.json")))
             {
                 return dir.FullName;
             }

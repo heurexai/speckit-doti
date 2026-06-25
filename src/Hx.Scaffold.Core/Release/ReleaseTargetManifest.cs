@@ -69,6 +69,23 @@ public static class ReleaseTargetManifest
         string publishProject,
         string publishedExecutableName,
         string executableName,
+        string defaultReleaseRootEnvironmentVariable) =>
+        WriteDefault(
+            repositoryRoot,
+            productName,
+            SafeName(productName, "packageName"),
+            publishProject,
+            publishedExecutableName,
+            executableName,
+            defaultReleaseRootEnvironmentVariable);
+
+    public static void WriteDefault(
+        string repositoryRoot,
+        string productName,
+        string packageName,
+        string publishProject,
+        string publishedExecutableName,
+        string executableName,
         string defaultReleaseRootEnvironmentVariable)
     {
         string repo = Path.GetFullPath(repositoryRoot);
@@ -78,7 +95,7 @@ public static class ReleaseTargetManifest
         {
             SchemaVersion = 1,
             ProductName = productName,
-            PackageName = SafeName(productName, "packageName"),
+            PackageName = SafeName(packageName, "packageName"),
             PublishProject = publishProject.Replace('\\', '/'),
             PublishedExecutableName = SafeName(publishedExecutableName, "publishedExecutableName"),
             ExecutableName = SafeName(executableName, "executableName"),

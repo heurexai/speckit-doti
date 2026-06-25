@@ -6,5 +6,5 @@
     "claude"
   ],
   "maturity": "command-aware-advisory",
-  "source": "doti/profiles/dotnet-cli/profile.json"
+  "source": ".doti/profiles/dotnet-cli/profile.json"
 }

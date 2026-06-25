@@ -157,6 +157,19 @@ public sealed class TemplateGoldenTests
     }
 
     [Fact]
+    public void Template_does_not_ship_legacy_root_doti_payload_and_ignores_doti_runtime_state()
+    {
+        Assert.False(Directory.Exists(Path.Combine(TemplateRepo.TemplateDir, "doti")),
+            "Doti payload is installed by the scaffold finisher into .doti, not baked into the static template root.");
+        Assert.False(Directory.Exists(Path.Combine(TemplateRepo.TemplateDir, ".doti")),
+            "Doti payload is installed by the scaffold finisher so the generated repo receives the current numbered workflow payload.");
+
+        string ignore = File.ReadAllText(TemplateRepo.GitIgnore);
+        Assert.Contains(".doti/cycle-state.json", ignore);
+        Assert.Contains(".doti/gate-proof.json", ignore);
+    }
+
+    [Fact]
     public void Template_cli_is_agent_first_and_declares_the_envelope_contract()
     {
         // Always-on guard: the generated CLI renders through the Agent host (returns CliResult,
@@ -182,6 +195,28 @@ public sealed class TemplateGoldenTests
         {
             Assert.Contains(field, agent);
         }
+    }
+
+    [Fact]
+    public void Template_cli_uses_executable_adjacent_microsoft_configuration()
+    {
+        string cliDir = Path.Combine(TemplateRepo.TemplateDir, "src", "HxScaffoldSample.Cli");
+        string packages = File.ReadAllText(Path.Combine(TemplateRepo.TemplateDir, "Directory.Packages.props"));
+        string project = File.ReadAllText(Path.Combine(cliDir, "HxScaffoldSample.Cli.csproj"));
+        string program = File.ReadAllText(Path.Combine(cliDir, "Program.cs"));
+        string configuration = File.ReadAllText(Path.Combine(cliDir, "AppConfiguration.cs"));
+
+        Assert.True(File.Exists(Path.Combine(cliDir, "HxScaffoldSample.Cli.config.json")));
+        Assert.Contains("Microsoft.Extensions.Configuration", packages);
+        Assert.Contains("Microsoft.Extensions.Configuration.Json", packages);
+        Assert.Contains("PackageReference Include=\"Microsoft.Extensions.Configuration\"", project);
+        Assert.Contains("PackageReference Include=\"Microsoft.Extensions.Configuration.Json\"", project);
+        Assert.Contains("CopyToOutputDirectory=\"PreserveNewest\"", project);
+        Assert.Contains("CopyToPublishDirectory=\"Always\"", project);
+        Assert.Contains("AppConfiguration.LoadRequired(AppContext.BaseDirectory)", program);
+        Assert.Contains("ConfigurationBuilder", configuration);
+        Assert.Contains("AddJsonFile(FileName", configuration);
+        Assert.Contains("Required application configuration file was not found next to the executable", configuration);
     }
 
     private static int CountOccurrences(string haystack, string needle)

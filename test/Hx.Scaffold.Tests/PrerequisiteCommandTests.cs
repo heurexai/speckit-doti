@@ -129,12 +129,12 @@ public sealed partial class ScaffoldCommandsTests
         string sourceRoot = NewTempDir("hx-prereq-manifest-");
         try
         {
-            string manifestDir = Path.Combine(sourceRoot, "doti", "core");
+            string manifestDir = Path.Combine(sourceRoot, ".doti", "core");
             Directory.CreateDirectory(manifestDir);
             string manifestPath = Path.Combine(manifestDir, "prerequisites.json");
             string original = File.ReadAllText(Path.Combine(
                 ScaffoldRoot.Resolve(Directory.GetCurrentDirectory()),
-                "doti",
+                ".doti",
                 "core",
                 "prerequisites.json"));
             File.WriteAllText(manifestPath, original);

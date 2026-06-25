@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Hx.Cli.Kernel;
+using Hx.Doti.Core.Workflow;
 
 namespace Hx.Runner.Cli;
 
@@ -19,7 +20,7 @@ internal static partial class RunnerCommandFactory
         AddSecurity(rootCommand, meta);
         AddTools(rootCommand, meta);
         AddErrorCodes(rootCommand, meta);
-        CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
+        CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All, DotiWorkflowDescribe.Build());
         return rootCommand;
     }
 }

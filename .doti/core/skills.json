@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "maturity": "command-aware-advisory",
+  "commandTemplateDir": ".doti/core/templates/commands",
+  "agentContextRef": ".doti/agent-context.md",
+  "introTemplate": "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
+  "operatorQuestionProtocol": "## Asking the operator a question (required format)\n\nAny operator-facing question — at any stage, for Claude or Codex — uses this fixed format, presented immediately before the question:\n\n- **Context** — the full background. Assume the operator has not re-read the material; restate what is unclear and the relevant facts.\n- **Why it matters** — the concrete impact and why it needs a decision now.\n- **Options** — for each option: **Pros**, **Cons**, and **Consequence** (what becomes true downstream if chosen).\n- **Recommendation** — the option you recommend and the reasoning; list it first and label it \"(Recommended)\".\n- **Assumptions** — the assumptions behind the recommendation.\n- **Confidence** — High / Medium / Low, with a one-line reason.\n\nEvidence requirement: every question, option, recommendation, and assumption must rest on verified facts. Verify each premise first (read the code, run the tool, observe the output) and cite that evidence; never present options whose premises you have not confirmed. An assumption is allowed only when the fact cannot be obtained from this environment — then label it UNVERIFIED, state why it cannot be verified and what would verify it. Prove claims (reproduce/RCA); never assert them. Do not use \"assume\" to defer work you could do — an unproven premise is a defect that can ruin the design.",
+  "skills": [
+    {
+      "name": "doti-specify",
+      "description": "Create or refine a scaffold-dotnet specification in command-aware-advisory mode.",
+      "argumentHint": "[feature or goal]",
+      "highlights": [],
+      "nextStage": "Run `/02-doti-clarify` to resolve ambiguities, or `/03-doti-plan` when no clarification is needed."
+    },
+    {
+      "name": "doti-clarify",
+      "description": "Clarify scaffold-dotnet requirements while preserving command availability boundaries.",
+      "argumentHint": "[question or request]",
+      "highlights": [
+        "Clarify specifics: ask blocking questions one at a time via the `AskUserQuestion` tool, fold each answer into the spec's `## Clarifications` before asking the next, and let the operator stop at any point. Use the shared operator-question format above (Context / Why it matters / Options / Recommendation / Assumptions / Confidence + the evidence requirement) for every question."
+      ],
+      "nextStage": "Run `/03-doti-plan` to author the implementation plan."
+    },
+    {
+      "name": "doti-plan",
+      "description": "Plan scaffold-dotnet work with phase, gate, and advisory-gap awareness.",
+      "argumentHint": "[implementation goal]",
+      "highlights": [],
+      "nextStage": "Run `/04-doti-tasks` to break the plan into executable tasks."
+    },
+    {
+      "name": "doti-tasks",
+      "description": "Convert scaffold-dotnet plans into executable tasks without hiding missing gates.",
+      "argumentHint": "[plan or scope]",
+      "highlights": [],
+      "nextStage": "Run `/05-doti-analyze` for a cross-artifact consistency review."
+    },
+    {
+      "name": "doti-analyze",
+      "description": "Analyze scaffold-dotnet source, installed assets, docs, and advisory gaps.",
+      "argumentHint": "[files or topic]",
+      "highlights": [],
+      "nextStage": "Run `/06-doti-arch-review` to review architecture impacts and rule coverage."
+    },
+    {
+      "name": "doti-arch-review",
+      "description": "Review scaffold-dotnet architecture impacts and ArchUnitNET gate coverage.",
+      "argumentHint": "[architecture change]",
+      "highlights": [
+        "Validate that the ArchUnitNET config (`rules/architecture.json`) and `architecture test --json` agree on declared family ids (currently the thin-CLI `cliSurfaceConfinement` and `cliDelegation` families in speckit-doti), and that the Sentrux config (`.sentrux/rules.toml` layers/boundaries/constraints, baseline, `rules/sentrux.json` mapping) measures the intended path/layer/cycle boundaries. The command template seeds the specific items to check so they are not re-derived each run. The architecture gate (`architecture test` per-family proof) and the Sentrux gate are command-backed; this cross-engine consistency review is an advisory judgment."
+      ],
+      "nextStage": "Run `/07-doti-implement` to implement the tasks."
+    },
+    {
+      "name": "doti-implement",
+      "description": "Implement scoped scaffold-dotnet tasks with advisory-gap handoff.",
+      "argumentHint": "[task]",
+      "highlights": [
+        "Engineering discipline (required): RCA root causes — don't patch symptoms; validate every assumption by reading the code, running the command, or observing the output (never assume; prove claims with evidence); take no shortcuts (don't silence checks, hard-code around problems, or declare done without proof); hold a 95%-confidence bar — if not ≥95% confident the solution and code are correct, keep finding better approaches or validating until you are; if truly blocked, surface it with what you tried rather than guess; report honestly (what was validated, what remains, deferrals with rationale)."
+      ],
+      "nextStage": "Run `/08-doti-drift-review` to check the diff against the approved design."
+    },
+    {
+      "name": "doti-drift-review",
+      "description": "Review drift between scaffold-dotnet source assets and installed bootstrap files.",
+      "argumentHint": "[optional scope]",
+      "highlights": [],
+      "nextStage": "Run `/09-doti-release` to release, or `/01-doti-specify` to add another feature to this release train."
+    },
+    {
+      "name": "doti-release",
+      "description": "Run scaffold-dotnet release proof and command-backed local release output.",
+      "argumentHint": "[release intent]",
+      "highlights": [],
+      "nextStage": "Cycle complete. Start the next feature with `/01-doti-specify`."
+    }
+  ]
+}

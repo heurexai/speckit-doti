@@ -1,9 +1,7 @@
 name: Release
 
-# On a v* tag: build the standalone installer for each supported RID (win-x64 / linux-x64 / osx-arm64)
-# on its native runner — a self-contained single-file hx + the bundled scaffold payload (template, doti,
-# source, manifests, vendored grammars) + that RID's fetched tool binaries — and attach each archive
-# (zip on Windows, tar.gz on linux/macOS) to a single GitHub Release.
+# On a v* tag: build hx for each supported RID, package it with Velopack, and attach only
+# Velopack installer/update artifacts plus checksums/identity metadata to the GitHub Release.
 on:
   push:
     tags: [ 'v*' ]
@@ -32,9 +30,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, rid: win-x64,  ext: zip,    exe: hx.exe }
-          - { os: ubuntu-latest,  rid: linux-x64, ext: tar.gz, exe: hx }
-          - { os: macos-latest,   rid: osx-arm64, ext: tar.gz, exe: hx }
+          - { os: windows-latest, rid: win-x64,  channel: win, exe: hx.exe }
+          - { os: ubuntu-latest,  rid: linux-x64, channel: linux, exe: hx }
+          - { os: macos-latest,   rid: osx-arm64, channel: osx, exe: hx }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -48,13 +46,13 @@ jobs:
         run: dotnet build scaffold-dotnet.slnx -c Release
 
       - name: Fetch vendored tool binaries for ${{ matrix.rid }}
-        run: dotnet run --project tools/Hx.Runner.Cli -c Release --no-build -- tools fetch --repo . --json
+        run: dotnet run --project tools/Hx.Runner.Cli -c Release --no-build -- tools fetch --repo . --rid ${{ matrix.rid }} --json
 
       - name: Publish hx (self-contained, single file)
         run: dotnet publish tools/Hx.Scaffold.Cli -c Release -r ${{ matrix.rid }} --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
       - name: Verify hx version matches release tag (Windows)
-        if: matrix.ext == 'zip'
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $expected = "${{ github.ref_name }}".TrimStart("v")
@@ -64,7 +62,7 @@ jobs:
           }
 
       - name: Verify hx version matches release tag (Unix)
-        if: matrix.ext == 'tar.gz'
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euo pipefail
@@ -75,38 +73,81 @@ jobs:
             exit 1
           fi
 
-      - name: Assemble installer (Windows zip)
-        if: matrix.ext == 'zip'
+      - name: Stage Velopack payload (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $name = "speckit-doti-$($env:GITHUB_REF_NAME)-${{ matrix.rid }}"
-          New-Item -ItemType Directory -Force $name | Out-Null
-          git archive --format=tar HEAD | tar -x -C $name
-          foreach ($t in 'gitleaks','sentrux','gitversion') { if (Test-Path "tools/$t/bin") { Copy-Item -Recurse -Force "tools/$t/bin" "$name/tools/$t/bin" } }
-          Copy-Item "publish/Hx.Scaffold.Cli.exe" "$name/${{ matrix.exe }}"
-          Compress-Archive -Path "$name/*" -DestinationPath "$name.${{ matrix.ext }}" -Force
-          $hash = (Get-FileHash "$name.${{ matrix.ext }}" -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $name.${{ matrix.ext }}" | Out-File -Encoding ascii -NoNewline "$name.${{ matrix.ext }}.sha256"
-          "ASSET=$name.${{ matrix.ext }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "CHECKSUM=$name.${{ matrix.ext }}.sha256" | Out-File -FilePath $env:GITHUB_ENV -Append
+          New-Item -ItemType Directory -Force vpk-payload | Out-Null
+          Copy-Item "publish/Hx.Scaffold.Cli.exe" "vpk-payload/${{ matrix.exe }}"
+          Copy-Item -Recurse -Force ".doti" "vpk-payload/.doti"
+          foreach ($t in 'gitleaks','sentrux','gitversion') {
+            if (Test-Path "tools/$t/bin/${{ matrix.rid }}") {
+              New-Item -ItemType Directory -Force "vpk-payload/tools/$t/bin" | Out-Null
+              Copy-Item -Recurse -Force "tools/$t/bin/${{ matrix.rid }}" "vpk-payload/tools/$t/bin/${{ matrix.rid }}"
+            }
+          }
 
-      - name: Assemble installer (tar.gz)
-        if: matrix.ext == 'tar.gz'
+      - name: Stage Velopack payload (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          name="speckit-doti-${GITHUB_REF_NAME}-${{ matrix.rid }}"
-          mkdir -p "$name"
-          git archive --format=tar HEAD | tar -x -C "$name"
-          for t in gitleaks sentrux gitversion; do [ -d "tools/$t/bin" ] && cp -R "tools/$t/bin" "$name/tools/$t/bin"; done
-          cp "publish/Hx.Scaffold.Cli" "$name/${{ matrix.exe }}"
-          chmod +x "$name/${{ matrix.exe }}"
-          tar czf "$name.${{ matrix.ext }}" -C "$name" .
-          sha256sum "$name.${{ matrix.ext }}" > "$name.${{ matrix.ext }}.sha256"
-          echo "ASSET=$name.${{ matrix.ext }}" >> "$GITHUB_ENV"
-          echo "CHECKSUM=$name.${{ matrix.ext }}.sha256" >> "$GITHUB_ENV"
+          mkdir -p vpk-payload
+          cp "publish/Hx.Scaffold.Cli" "vpk-payload/${{ matrix.exe }}"
+          chmod +x "vpk-payload/${{ matrix.exe }}"
+          cp -R ".doti" "vpk-payload/.doti"
+          for t in gitleaks sentrux gitversion; do
+            if [ -d "tools/$t/bin/${{ matrix.rid }}" ]; then
+              mkdir -p "vpk-payload/tools/$t/bin"
+              cp -R "tools/$t/bin/${{ matrix.rid }}" "vpk-payload/tools/$t/bin/${{ matrix.rid }}"
+            fi
+          done
 
-      - name: Upload ${{ matrix.rid }} archive to the Release
+      - name: Package Velopack artifacts
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $vpkPackage = Get-ChildItem -LiteralPath "tools/velopack/bin/${{ matrix.rid }}" -Filter "vpk*.nupkg" | Select-Object -First 1
+          if (-not $vpkPackage) { throw "Pinned Velopack CLI package missing for ${{ matrix.rid }}." }
+          $extract = Join-Path $env:RUNNER_TEMP "vpk-${{ matrix.rid }}"
+          New-Item -ItemType Directory -Force $extract | Out-Null
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::ExtractToDirectory($vpkPackage.FullName, $extract, $true)
+          $vpkDll = Get-ChildItem -LiteralPath $extract -Recurse -Filter vpk.dll | Select-Object -First 1
+          if (-not $vpkDll) { throw "Pinned Velopack CLI package did not contain vpk.dll." }
+          New-Item -ItemType Directory -Force "release-artifacts" | Out-Null
+          dotnet $vpkDll.FullName pack `
+            --packId speckit-doti `
+            --packVersion $version `
+            --packDir vpk-payload `
+            --mainExe "${{ matrix.exe }}" `
+            --packTitle "speckit-doti" `
+            --channel "${{ matrix.channel }}" `
+            --runtime "${{ matrix.rid }}" `
+            --outputDir release-artifacts
+          $files = Get-ChildItem -LiteralPath release-artifacts -File
+          if (-not $files) { throw "Velopack produced no release artifacts." }
+          $identity = [ordered]@{
+            schemaVersion = 1
+            projectName = "speckit-doti"
+            version = $version
+            runtimeIdentifier = "${{ matrix.rid }}"
+            channel = "${{ matrix.channel }}"
+            sourceCommit = "${{ github.sha }}"
+            releaseProduct = "velopack"
+            sourceArchiveExcluded = $true
+            artifacts = @(Get-ChildItem -LiteralPath release-artifacts -File | ForEach-Object {
+              [ordered]@{ name = $_.Name; sha256 = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = $_.Length }
+            })
+          }
+          $identity | ConvertTo-Json -Depth 6 | Out-File -Encoding utf8 "release-artifacts/release.identity.${{ matrix.rid }}.json"
+          foreach ($file in Get-ChildItem -LiteralPath release-artifacts -File | Where-Object { $_.Name -notlike "*.sha256" }) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)" | Out-File -Encoding ascii -NoNewline "$($file.FullName).sha256"
+          }
+
+      - name: Upload ${{ matrix.rid }} Velopack artifacts to the Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.ref_name }}" "${{ env.ASSET }}" "${{ env.CHECKSUM }}" --repo "${{ github.repository }}" --clobber
+        shell: pwsh
+        run: gh release upload "${{ github.ref_name }}" (Get-ChildItem -LiteralPath release-artifacts -File | ForEach-Object { $_.FullName }) --repo "${{ github.repository }}" --clobber

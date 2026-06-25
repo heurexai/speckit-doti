@@ -1,4 +1,5 @@
 using System.Text;
+using Hx.Doti.Core.Workflow;
 
 namespace Hx.Doti.Core;
 
@@ -15,20 +16,26 @@ public static class SkillMarkdownRenderer
     public static string Render(
         DotiSkillsManifest manifest, DotiSkillEntry skill, DotiAgentTarget agent, string availabilityFootnote)
     {
-        string commandTemplate = $"{manifest.CommandTemplateDir}/{skill.Name}.md";
+        DotiWorkflowStage stage = DotiWorkflowRegistry.FindByCommandName(skill.Name);
+        string commandTemplate = $"{manifest.CommandTemplateDir}/{stage.CommandName}.md";
         var sb = new StringBuilder();
 
-        AppendFrontmatter(sb, manifest, skill, agent, commandTemplate);
-        AppendBody(sb, manifest, skill, commandTemplate, availabilityFootnote);
+        AppendFrontmatter(sb, manifest, skill, stage, agent, commandTemplate);
+        AppendBody(sb, manifest, skill, stage, commandTemplate, availabilityFootnote);
 
         return sb.ToString();
     }
 
     private static void AppendFrontmatter(
-        StringBuilder sb, DotiSkillsManifest manifest, DotiSkillEntry skill, DotiAgentTarget agent, string commandTemplate)
+        StringBuilder sb,
+        DotiSkillsManifest manifest,
+        DotiSkillEntry skill,
+        DotiWorkflowStage stage,
+        DotiAgentTarget agent,
+        string commandTemplate)
     {
         Line(sb, "---");
-        Line(sb, $"name: {skill.Name}");
+        Line(sb, $"name: {stage.SkillId}");
         Line(sb, $"description: {skill.Description}");
         Line(sb, "compatibility:");
         Line(sb, $"  - {agent.Compatibility}");
@@ -46,9 +53,14 @@ public static class SkillMarkdownRenderer
     }
 
     private static void AppendBody(
-        StringBuilder sb, DotiSkillsManifest manifest, DotiSkillEntry skill, string commandTemplate, string availabilityFootnote)
+        StringBuilder sb,
+        DotiSkillsManifest manifest,
+        DotiSkillEntry skill,
+        DotiWorkflowStage stage,
+        string commandTemplate,
+        string availabilityFootnote)
     {
-        Line(sb, $"# {skill.Name}");
+        Line(sb, $"# {stage.SkillId}");
         Line(sb, "");
         Line(sb, manifest.IntroTemplate
             .Replace("{agentContextRef}", manifest.AgentContextRef)
@@ -71,7 +83,7 @@ public static class SkillMarkdownRenderer
 
         Line(sb, $"Command availability: {availabilityFootnote}");
         Line(sb, "");
-        Line(sb, $"Next stage: {skill.NextStage}");
+        Line(sb, $"Next stage: {stage.NextStep}");
     }
 
     private static void Line(StringBuilder sb, string text) => sb.Append(text).Append(Lf);

@@ -1,4 +1,7 @@
 using Hx.Doti.Core;
+using Hx.Cycle.Core;
+using Hx.Cycle.Core.Documentation;
+using Hx.Cycle.Core.Tasks;
 using Hx.Impact.Core;
 using Hx.Impact.Core.Domain;
 using Hx.Impact.Core.Graph;
@@ -33,15 +36,34 @@ public static class GateRunner
         Emit(SentruxVerifyStep(repositoryRoot));
         AffectedGatePlan affected = AffectedChangeStep(repositoryRoot);
         Emit(affected.Step);
+        TaskCompletionProof taskCompletionProof = DotiTaskCompletion.CreateActiveFeatureProof(repositoryRoot);
+        Emit(TaskCompletionStep(taskCompletionProof));
         BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, affected.Plan);
         Emit(buildAndTest.Step);
         Emit(ArchitectureStep(repositoryRoot));
         Emit(SkillDriftStep(repositoryRoot));
+        Emit(DotiPayloadStep(repositoryRoot));
         Emit(SentruxCheckStep(repositoryRoot));
         Emit(VersionStep(repositoryRoot, lane));
         Emit(SecurityStep(repositoryRoot, lane));
+        ReleaseDocumentationProof? documentationProof = null;
+        if (lane == Lane.Release)
+        {
+            documentationProof = ReleaseDocumentationInspector.Inspect(
+                repositoryRoot,
+                new CycleService(repositoryRoot).GetReleaseTrain());
+            Emit(ReleaseDocumentationStep(documentationProof));
+        }
+
         AffectedTestProof affectedProof = CreateAffectedProof(affected, buildAndTest);
-        return new GateProof(JsonContractDefaults.SchemaVersion, Aggregate(steps), steps, [], affectedProof);
+        return new GateProof(
+            JsonContractDefaults.SchemaVersion,
+            Aggregate(steps),
+            steps,
+            [],
+            affectedProof,
+            taskCompletionProof,
+            documentationProof);
     }
 
     private static void EmitStep(List<GateStep> steps, Action<GateStep>? onStep, GateStep step)
@@ -81,11 +103,52 @@ public static class GateRunner
             drift.Outcome == StageOutcome.Pass ? "no drift" : "drifted: " + string.Join(", ", drift.Drifted));
     }
 
+    private static GateStep DotiPayloadStep(string repositoryRoot)
+    {
+        DotiPayloadCheckResult result = DotiPayloadParityChecker.Check(repositoryRoot);
+        return new GateStep("doti-payload", result.Outcome,
+            result.Outcome == StageOutcome.Pass
+                ? [new GateEvidence("doti-payload", $"{result.CheckedCount} managed payload file(s) match")]
+                : result.Drifted.Select(path => new GateEvidence("doti-payload.drift", path, path)).ToArray());
+    }
+
     private static GateStep SentruxCheckStep(string repositoryRoot)
     {
         SentruxCheckResult sentruxCheck = SentruxChecker.Check(repositoryRoot);
         return Step("sentrux-check", sentruxCheck.Outcome,
             $"signal={sentruxCheck.QualitySignal}; regression={sentruxCheck.RegressionOutcome}");
+    }
+
+    private static GateStep TaskCompletionStep(TaskCompletionProof proof)
+    {
+        IReadOnlyList<GateEvidence> evidence = proof.Diagnostics.Count == 0
+            ? [new GateEvidence(DotiTaskCompletion.EvidenceKind, TaskCompletionSummary(proof), proof.TaskFile)]
+            : proof.Diagnostics
+                .Select(d => new GateEvidence($"{DotiTaskCompletion.EvidenceKind}.{d.Reason}", ToEvidenceMessage(d), d.Path))
+                .ToArray();
+        return new GateStep(DotiTaskCompletion.StepName, proof.Outcome, evidence);
+    }
+
+    public static GateStep ReleaseDocumentationStep(ReleaseDocumentationProof proof)
+    {
+        IReadOnlyList<GateEvidence> evidence = proof.Blockers.Count == 0
+            ? [new GateEvidence(ReleaseDocumentationInspector.StepName, $"documentation proof passed for {proof.Documents.Count} inspected document(s)")]
+            : proof.Blockers
+                .Select(blocker => new GateEvidence(ReleaseDocumentationInspector.StepName, blocker))
+                .ToArray();
+        return new GateStep(ReleaseDocumentationInspector.StepName, proof.Outcome, evidence);
+    }
+
+    private static string TaskCompletionSummary(TaskCompletionProof proof) =>
+        proof.Outcome == StageOutcome.Skipped
+            ? "No active Doti cycle state found."
+            : $"{proof.TaskCount} checked task(s) hash-valid for {proof.Feature}.";
+
+    private static string ToEvidenceMessage(TaskCompletionProofDiagnostic diagnostic)
+    {
+        string location = diagnostic.LineNumber > 0 ? $"{diagnostic.Path}:{diagnostic.LineNumber}" : diagnostic.Path;
+        string task = string.IsNullOrWhiteSpace(diagnostic.TaskId) ? "" : $" {diagnostic.TaskId}";
+        return $"{location}{task}: {diagnostic.Reason} - {diagnostic.Message}";
     }
 
     /// <summary>The gate fails closed: any Fail or Blocked step fails the whole gate; Skipped advisory
@@ -104,7 +167,7 @@ public static class GateRunner
         }
 
         // normal = changed-file hygiene over the STAGED blobs (the established semantic, matching
-        // doti-commit); release = full scan (HygieneScope.All ignores the source). HygieneSource.Staged
+        // Doti transition path); release = full scan (HygieneScope.All ignores the source). HygieneSource.Staged
         // for the changed scan — not WorkingTree, which is only partially wired in the scanner.
         HygieneScanRequest request = lane == Lane.Release
             ? new HygieneScanRequest(repositoryRoot, HygieneScope.All, HygieneSource.WorkingTree)

@@ -35,7 +35,7 @@ public static partial class RunnerCommands
         string note = "";
         if (proof.Outcome == StageOutcome.Pass)
         {
-            // Persist a change-set-bound proof so `doti cycle commit` can verify it is fresh and passing.
+            // Persist a change-set-bound proof so Doti transition/release paths can verify it is fresh and passing.
             try { GateProofStore.Persist(repo, lane.Lane, proof); }
             catch (Exception ex) { note = " (warning: proof not persisted: " + ex.Message + ")"; }
         }
