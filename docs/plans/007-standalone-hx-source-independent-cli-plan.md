@@ -1,6 +1,6 @@
 # Plan: Standalone, Source-Free Hx CLI and Distribution
 
-Spec: `docs/specs/007-standalone-hx-source-independent-cli.md`. Scope (operator-narrowed hotfix): two channels — a public NuGet.org .NET global tool (primary, all OS) and a Microsoft Store MSIX (Windows) — a source-free installed CLI, removal of Velopack, single-renderer hardening, the two update planes, and a fail-closed no-source-in-release gate. Self-contained GitHub app archives are deferred.
+Spec: `docs/specs/007-standalone-hx-source-independent-cli.md`. Distribution core: two channels — a public NuGet.org .NET global tool `Heurex.SpeckitDoti` (primary, all OS) and a Microsoft Store MSIX (Windows) — a source-free installed CLI, removal of Velopack, single-renderer hardening, the two update planes, and a fail-closed no-source-in-release gate. Self-contained GitHub app archives are deferred. **Expanded scope (007 program):** beyond the distribution core, 007 now also covers the enforcement substrate (Living-Spec evolution, ordered-task enforcement), profile-driven tiered/structure-agnostic gates, scaffold/doti separation + binary-fetch, and the Spec Kit workflow absorptions — built in 8 sequential phases per `docs/tasks/007-…-tasks.md` (decisions R8–R12 below).
 
 ## Technical Context
 
@@ -36,7 +36,7 @@ PASS.
 - **Alternatives rejected:** keep walking for `scaffold-dotnet.slnx` (the defect); cwd-first walk (breaks the moment `hx` runs outside a checkout); `Assembly.Location` (unreliable under single-file).
 
 ### R3 — Global-tool packaging + vendored-binary delivery
-- **Decision:** Package `hx` as a **RID-specific self-contained .NET global tool** (`PackAsTool`) per declared RID (win-x64, linux-x64, osx-arm64/x64), bundling that RID's vendored tool binaries (`gitleaks`/`sentrux`/`gitversion`) + pinned manifests + templates + `.doti` as payload content beside the entry assembly (resolved by `PayloadRoot`). The MSIX bundles the win-x64 payload. Cross-RID provisioning for *generated* repos continues to use the existing hash-verified `ToolFetcher` (fetch-if-missing).
+- **Decision:** Package `hx` as a **RID-specific self-contained .NET global tool** (`PackAsTool`) per declared RID (win-x64, linux-x64, osx-arm64/x64), bundling the **pre-built `Hx.Scaffold.Templates` template nupkg** + pinned manifests + grammars + `.doti` as payload content beside the entry assembly (resolved by `PayloadRoot`). **Per-RID tool binaries (`gitleaks`/`sentrux`/`gitversion`) are NOT bundled — they are fetched + hash-verified on demand via `ToolFetcher` per R11/FR-033** (this supersedes the earlier bundle-the-bins wording). The MSIX bundles the same manifests+grammars payload.
 - **Rationale:** keeps in-scope installed commands (new/version/prereq/doti install) working from the bundled payload; avoids bloating each package with all RIDs. (This session's fact-checked review confirmed .NET 10 RID-specific self-contained tools carry native payloads.)
 - **Alternatives rejected:** bundle every RID (package bloat); fetch all binaries on first run (network dependency for the core install path).
 - **Availability:** the `dotnet pack`/`PackAsTool` + content-layout wiring is **planned/advisory** until implemented; exact RID-tool packaging invocation confirmed at implement.
@@ -53,7 +53,7 @@ PASS.
 - **Alternatives rejected:** blind overwrite (current behavior; destroys operator edits); full three-way merge (out of scope for the hotfix).
 
 ### R6 — No-source-in-release gate (FR-005/006)
-- **Decision:** At packaging time (global-tool pack and MSIX layout assembly), enumerate the staged payload and fail closed if any source marker is present (`*.slnx`, `*.csproj`, `src/`, `scaffold/`, or a full source-tree archive). Replace `store-release.yml`'s `git archive --format=tar HEAD` with curated staging (published exe + `.doti` + win-x64 tool bins + `hx.config.json` + `payload.manifest.json`). Mirror the assertion in `LocalReleaseService` and a unit test.
+- **Decision:** At packaging time (global-tool pack and MSIX layout assembly), enumerate the staged payload and fail closed if the **tool's own build tree** is present (`scaffold-dotnet.slnx`, `src/Hx.*`, the tool's `tools/*.csproj`, or a `git archive HEAD` tree) — while ALLOWING the template NuGet pack + manifest/grammar payload (product payload, not the tool's source). Replace `store-release.yml`'s `git archive --format=tar HEAD` with curated staging (published exe + `.doti` + win-x64 tool bins + `hx.config.json` + `payload.manifest.json`). Mirror the assertion in `LocalReleaseService` and a unit test.
 - **Rationale:** structurally enforces the operator's #1 constraint; manual review is not proof.
 - **Alternatives rejected:** rely on staging discipline (the current `git archive HEAD` shows discipline already failed).
 
@@ -61,6 +61,27 @@ PASS.
 - **Decision:** `store-release.yml` stages the curated payload and an `AppxManifest.xml` with a console `uap5:AppExecutionAlias` exposing `hx` on PATH; no in-app self-update path (Velopack already removed). `makeappx`/Store submission remain CI-only.
 - **Rationale:** Store-delivered updates, PATH alias, source-free; `makeappx`/Windows SDK + Store credentials are not assumed on a developer machine.
 - **Availability:** MSIX build/submission is **CI-only/advisory**; local proof is the global-tool install smoke + a source-free MSIX-layout check.
+
+### R8 — Living-Spec evolution model (FR-027)
+- **Decision:** Adopt a Living-Spec model: the spec is the contract, plan/tasks regenerate. A mid-cycle spec edit re-stamps specify/clarify and triggers re-clarify + re-analyze of dependents instead of the forward-only cascade blocking transitions; encode the relaxation in `Hx.Cycle.Core` doc-stage transition rules.
+- **Rationale:** the forward-only cycle makes normal spec evolution (this very revision) painful; a defined model removes the friction without losing proof binding.
+
+### R9 — Ordered task-completion enforcement (FR-028)
+- **Decision:** Extend `DotiTaskCompletion` + the gate's task-completion step to verify completed tasks form a valid phase/predecessor prefix; an out-of-order check fails closed. Pairs with R12's scoped/resumable implement.
+- **Rationale:** turns the "phases are sequential" directive into a machine gate so agents cannot cherry-pick.
+
+### R10 — Profile-driven, structure-agnostic, bypass-safe gate layering (FR-029–031)
+- **Decision:** The repo's declared profile (`.doti/integration.json` → `.doti/profiles/<name>/profile.json`) owns the gate ladder; `GateRunner` reads it instead of hardcoding. Opinionated gates run only when the profile enables them; declared-enforced-but-missing-config = **Fail** (no delete bypass); not-enabled = Skip advisory. `GateProof` records profile + coverage. Profiles compose via overrides→profile→core with prepend/append/wrap. Curated: `workflow-only` (T1), `dotnet-lib` (T2), `dotnet-cli-heurex` (T3).
+- **Rationale:** lets doti install into existing repos as the enforcement layer without imposing the Heurex structure, while keeping enforcement non-bypassable.
+
+### R11 — Scaffold/doti separation + vendored-binary fetch (FR-032–033)
+- **Decision:** Ship the template as a standalone `dotnet new` NuGet pack (`Hx.Scaffold.Templates`); `hx new` = instantiate pack + `hx doti install --repo` + smoke. The doti/tool payload ships manifests + grammars only; per-RID binaries (Sentrux/Gitleaks/GitVersion) are fetched + hash-verified via the existing `ToolFetcher` (the fork binaries already live on the `heurexai/sentrux` releases the manifest points to).
+- **Rationale:** cleanly separates the no-source rule (tool build tree forbidden) from required payload (template pack + manifests/grammars); shrinks the tool package; unifies "new repo" and "add doti" on the `hx doti install` path.
+
+### R12 — Spec Kit workflow absorptions (FR-034–040)
+- **Decision:** Absorb Spec Kit's structure/methodology while keeping doti's enforcement: the assess→fix→test bug mini-cycle; the URL trust policy; context-budget/resumable implement; user-story-priority + MVP-first templates; one-source→many-agent transpilation; `converge`; and the "unit tests for English" checklist bar — each landed as proof-bound doti behavior, not honor-system prose.
+- **Rationale:** Spec Kit (reviewed at `D:\temp\spec-kit`) is honor-system with no enforcement; its methodology is valuable but its gates are not — doti adds the teeth.
+- **Availability:** Phase-6 planned work; advisory until built.
 
 ## Design
 
@@ -81,12 +102,12 @@ PASS.
 - README / CHANGELOG / `.doti/agent-context.md` / `.doti/core/skills.json` (re-render) — install/update via the two channels; drop Velopack/`vpk`/`release.json`-Velopack wording.
 
 ### Architecture delta
-- **No new ArchUnitNET family and no Sentrux layer/boundary change.** All new logic lands in `*.Core` and the CLI delta is wiring-only, so the existing `cliSurfaceConfinement` / `cliDelegation` families already hold; removing the `Velopack` dependency only *shrinks* the Sentrux graph. `rules/architecture.json` and `.sentrux/rules.toml` are unchanged except for removing any Velopack-specific allowances if present.
+- **No new ArchUnitNET family and no Sentrux layer/boundary change.** All new logic lands in `*.Core` and the CLI delta is wiring-only, so the existing `cliSurfaceConfinement` / `cliDelegation` families already hold; removing the `Velopack` dependency only *shrinks* the Sentrux graph. `rules/architecture.json` and `.sentrux/rules.toml` are unchanged except for removing any Velopack-specific allowances if present. **(Distribution scope R1–R7 only — the expanded scope R8–R12 DOES add new commands/core types; its architecture delta is in the [Expanded-Scope Design](#expanded-scope-design-r8r12) section below.)**
 - The design intent is instead encoded as **new deterministic gate checks** wired into `gate run` (R4/R6) and a kernel test (R4) — fail-closed, not advisory. `/06-doti-arch-review` validates the two engines still encode the same (unchanged) structural intent.
 
 ## CLI surface & error contract
 
-Changed commands (no new top-level command; `doti install` gains an `--repo update/migrate` semantic and an optional `doti update --repo` alias):
+Changed commands (no new top-level command; `doti install` gains install/repair/migrate/update reconciliation in a `--repo` target — no separate `doti update` alias, per FR-016):
 
 - **Error codes** (registered in `errorcodes/registry.json`, append-only via `errorcodes check`):
   - `Integrity_PayloadRootMissing` — installed payload descriptor (`payload.manifest.json`) absent beside `hx`. Exit class **Integrity**.
@@ -122,7 +143,31 @@ PASS. The design keeps logic in `*.Core` (Channel Independence), adds determinis
 
 ## Complexity Tracking
 
-(none)
+| Violation | Why needed | Simpler alternative rejected because |
+| --- | --- | --- |
+| Living-Spec (R8) relaxes the forward-only doc-stage transition rule | The forward-only cycle blocks normal spec evolution on uncommitted upstream edits (hit repeatedly this session) | A strict forward-only cycle forces throwaway re-work / out-of-band commits for any post-specify spec change; Living-Spec keeps diff-bound proof binding while permitting re-clarify/re-analyze on a spec edit |
+
+## Expanded-Scope Design (R8–R12)
+
+The Design / CLI-surface / Command-Availability / Architecture-delta / Constitution-Check sections above cover the distribution scope (R1–R7). The expanded scope adds:
+
+### Files likely to change (R8–R12)
+- **R8 Living-Spec / R9 ordered-task enforcement:** `tools/Hx.Cycle.Core/` (doc-stage transition relaxation; `Tasks/DotiTaskCompletion.cs` order check), `tools/Hx.Gate.Core/GateRunner.cs` (task-completion step).
+- **R10 profile layering / structure-agnostic / composition:** `tools/Hx.Gate.Core/GateRunner.cs`, `.doti/profiles/*/profile.json`, `.doti/integration.json`, `tools/Hx.Tooling.Contracts/` (GateProof profile+coverage).
+- **R11 scaffold/doti separation + fetch:** `src/Hx.Scaffold.Core/TemplateGenerator.cs`, `ScaffoldNewRunner.cs`, `scaffold/Hx.Scaffold.Templates.csproj`, `tools/Hx.Doti.Core/`.
+- **R12 absorptions:** new `*.Core` services + commands/skills for the bug mini-cycle (assess/fix/test), `converge`, the shared URL trust policy, context-budget/resumable implement, template methodology, multi-agent transpilation (skill renderer), checklist depth — across `tools/Hx.Doti.Core`, `tools/Hx.Runner.Cli`, `.doti/core/skills.json`, `.doti/core/templates/`.
+
+### CLI surface & error contract (R8–R12)
+New/changed surface: `doti bug assess|fix|test`, `doti converge`, the `/doti-upgrade` skill, the gate's task-completion + profile steps. New error codes (registry, append-only): `Validation_TaskOutOfOrder` (R9), `Validation_ProfileGateMissingConfig` (R10 enforced-but-missing-config = Fail), `Validation_UrlBlocked` (R12 trust policy), plus bug-cycle / converge validation codes. Each new command stays thin (parse → `*.Core` → `CliResult`) and gains a `describe` entry; exit classes unchanged.
+
+### Command Availability (R8–R12) — all **planned/advisory** until built
+profile-driven gate ladder; ordered-task enforcement; Living-Spec evolution; bug mini-cycle; `converge`; multi-agent transpilation.
+
+### Architecture delta (R8–R12) — corrects the distribution-scope claim
+The expanded scope **does** add CLI surface + core types (new commands + services). They MUST stay confined to `*.Core` (CLI = wiring-only) so the existing `cliSurfaceConfinement`/`cliDelegation` families cover them; **no new ArchUnitNET family is expected, but the new command surface must be enrolled in those families** and the new core types placed within existing Sentrux layers without introducing cycles. The profile-driven gate ladder makes the gate config-driven (not hardcoded) — a behavior change, not a layer change. `/06-doti-arch-review` MUST validate: new commands confined to `*.Core`; the bug-cycle / `converge` / profile model introduce no new layer cycle.
+
+### Constitution re-check (R8–R12)
+PASS with one justified deviation (Complexity Tracking): the absorptions land as proof-bound `*.Core` behavior (Channel Independence); ordered-task + profile enforcement are deterministic fail-closed gates (Bootstrap Honesty, Codified Cycle); no shell runners (Cross-Platform); transpilation stays single-source render. The Living-Spec model (R8) relaxes the forward-only cycle — justified, not a dilution: it preserves diff-bound proofs and only permits re-clarify/re-analyze on a spec edit instead of blocking.
 
 ## Risks
 

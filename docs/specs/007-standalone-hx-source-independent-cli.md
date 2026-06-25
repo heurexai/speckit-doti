@@ -4,7 +4,7 @@
 
 After installation, an operator can run `hx` from the installed application directory — on Windows, Linux, or macOS — and have every normal command work: scaffold a new repo (`hx new`), check prerequisites, report version, and install/update Doti assets in a target repo (`hx doti install --repo`). The installed product is a normal compiled CLI: it contains no source code, depends on no `speckit-doti` source checkout, returns real stdout/stderr/exit codes synchronously, and renders all output through one consistent renderer.
 
-This replaces the broken `v0.9.0` shape — a Velopack desktop installer whose root-level `hx.exe` stub launched `current\hx.exe` asynchronously and dropped command output, while `current\hx.exe` failed operational commands because they searched for the source solution `scaffold-dotnet.slnx` — and the Store build that shipped the entire source tree. It also commits the distribution model for this hotfix: `hx` ships as a **.NET global tool** (primary, all platforms) and a **Microsoft Store MSIX** package (Windows, Store-delivered updates). Velopack, self-contained GitHub app archives, and the self-updating desktop-installer model are removed from this feature scope.
+This replaces the broken `v0.9.0` shape — a Velopack desktop installer whose root-level `hx.exe` stub launched `current\hx.exe` asynchronously and dropped command output, while `current\hx.exe` failed operational commands because they searched for the source solution `scaffold-dotnet.slnx` — and the Store build that shipped the entire source tree. It also commits the distribution model: `hx` ships as a **.NET global tool** (primary, all platforms) and a **Microsoft Store MSIX** package (Windows, Store-delivered updates). Velopack, self-contained GitHub app archives, and the self-updating desktop-installer model are removed from this feature scope. **Beyond the distribution core, 007 also delivers the enforcement substrate (Living-Spec evolution, ordered-task enforcement), profile-driven tiered/structure-agnostic gates, scaffold/doti separation, and the Spec Kit workflow absorptions (FR-026–FR-042) — built in 8 sequential phases per `docs/tasks/007-…-tasks.md`.**
 
 Why this shape: the operator has no Authenticode or Apple signing budget, so an unsigned self-updating installer (the Velopack `Setup.exe`) is the friction to avoid; the Microsoft Store re-signs MSIX server-side and delivers updates without an operator-owned certificate; and because `hx`'s marquee commands shell out to the .NET SDK (`hx new` runs `dotnet new`/`dotnet build`; `hx release` runs `dotnet publish`), the audience already has the SDK — so the global-tool channel is the frictionless, signing-free, cross-platform path and a self-contained runtime bundle is unnecessary.
 
@@ -20,6 +20,8 @@ Included:
 - Make repo Doti install/repair/migrate/update flow through `hx doti install --repo <path>`, reconciling the bundled payload version with the target repo's recorded payload version.
 - Route all `hx` help, results, diagnostics, and failures through the shared kernel renderer (rich/plain), with no command surface falling through to System.CommandLine's built-in help or error rendering.
 - Update release proof so the exact documented per-channel command path is the path smoke-tested in a source-free location.
+- **Expanded scope (FR-026–FR-042):** the enforcement substrate (Living-Spec spec evolution, ordered-task enforcement); profile-driven gate layering where the declared profile owns the gate ladder (curated tiers `workflow-only` / `dotnet-lib` / `dotnet-cli-heurex`) and doti installs structure-agnostically into existing repos without bypass; scaffold/doti separation (template = standalone `dotnet new` pack; binaries fetched, not bundled); and the Spec Kit workflow absorptions (bug mini-cycle, URL trust policy, context-budget implement, template methodology, transpilation, `converge`, checklist depth).
+- **Glossary:** a *profile* (recorded in `.doti/integration.json`, defined in `.doti/profiles/<name>/profile.json`) is the single knob that selects a *tier* — its gate ladder; `workflow-only` = Tier 1, `dotnet-lib` = Tier 2, `dotnet-cli-heurex` = Tier 3.
 
 Excluded:
 
@@ -43,14 +45,14 @@ Source independence:
 
 No source in releases:
 
-- `FR-005`: Every release artifact of every in-scope channel (the global-tool package and the MSIX/Store package) MUST contain only the compiled executable and its runtime payload; none MUST contain source code (`.slnx`, `.csproj`, `src/`, `scaffold/`) or a full source-tree archive.
+- `FR-005`: Every release artifact of every in-scope channel (the global-tool package and the MSIX/Store package) MUST contain only the compiled executable and its runtime payload; none MUST contain the **tool's own build tree** (`scaffold-dotnet.slnx`, `src/Hx.*`, the tool's `tools/*.csproj`) or a full source-tree archive. The template NuGet pack and the manifest/grammar payload are legitimate runtime payload, not source.
 - `FR-006`: Release packaging MUST fail closed if any produced artifact contains a source marker.
 
 Distribution channels (drop Velopack):
 
 - `FR-007`: The product and its runtime MUST NOT depend on Velopack; the Velopack package reference, the `VelopackApp` startup hook, and the root-level launcher stub MUST be absent from the shipped CLI.
 - `FR-008`: The installed `hx` command path for every channel MUST be a synchronous compiled CLI that returns stdout, stderr, and the process exit code normally; no channel MUST install an asynchronous launcher/stub that drops command output.
-- `FR-009`: `hx` MUST be published as a public NuGet.org .NET global tool that installs with a one-command `dotnet tool install -g <package-id>` experience, updates with `dotnet tool update -g <package-id>`, and places a working `hx` on PATH on Windows, Linux, and macOS.
+- `FR-009`: `hx` MUST be published as a public NuGet.org .NET global tool (package id `Heurex.SpeckitDoti`) that installs with a one-command `dotnet tool install -g Heurex.SpeckitDoti` experience, updates with `dotnet tool update -g Heurex.SpeckitDoti`, and places a working `hx` on PATH on Windows, Linux, and macOS.
 - `FR-010`: `hx` MUST be packageable as a Microsoft Store MSIX that exposes `hx` on PATH via a console execution alias and runs as a console application.
 - `FR-011`: The MSIX/Store build MUST NOT contain any in-app self-update code path; updates for that channel are delivered by the Microsoft Store.
 - `FR-012`: Self-contained per-OS GitHub app archives MUST be out of scope for this feature; GitHub release guidance for this hotfix MUST direct users to the public NuGet global tool for cross-platform install/update and to the Microsoft Store MSIX for the Windows installer/update channel.
@@ -76,12 +78,34 @@ Per-command source-free behavior:
 
 Release proof:
 
-- `FR-023`: Release proof MUST, for each in-scope channel, install the artifact into a location containing no source files and exercise the exact documented operator command path, asserting it returns the `CliResult` envelope and correct exit codes for `hx --help`, `hx version --json`, `hx prereq check --json`, and `hx doti install --repo <temp> --json`.
+- `FR-023`: Release proof MUST, for each in-scope channel, install the artifact into a location containing no source files and exercise the exact documented operator command path, asserting it returns the `CliResult` envelope and correct exit codes for `hx --help`, `hx version --json`, `hx prereq check --json`, `hx new --name <Tmp> --output <temp> --json` (scaffolds from installed payload), and `hx doti install --repo <temp> --json`.
 - `FR-024`: Release proof MUST fail if the documented installed command path differs from the path it tested, if that path drops command output, or if any normal installed command fails because a source solution or project file cannot be found.
 
 Template inheritance:
 
 - `FR-025`: The scaffolded application template MUST inherit these rules: release-installed application commands run without their source repository, ship no source in release artifacts, carry no Velopack stub, resolve payload beside the executable, and route all output through the shared renderer.
+
+Expanded scope — enforcement substrate, profile layering, and workflow absorption (built in the phases recorded in `docs/tasks/007-…-tasks.md`):
+
+- `FR-026`: doti's value MUST be the non-forgeable proof + fail-closed chokepoint substrate over the shared spec-driven workflow; the workflow steps MUST be positioned to ride/absorb the shared (Spec Kit) layer rather than diverge silently.
+- `FR-027`: A spec MAY be revised after later stages without invalidating the cycle; a spec change MUST trigger re-clarify + re-analyze of dependent artifacts under a defined Living-Spec persistence model, not a blocking re-stamp cascade.
+- `FR-028`: Task completion MUST be order-enforced: a task MUST NOT be completable before its declared predecessors/phase are complete and the prior phase gate is green; out-of-order completion MUST fail closed.
+- `FR-029`: The repo's declared profile MUST own the gate ladder (which gates run and in which mode); the gate MUST read the ladder from the declared profile rather than hardcode it, and the `GateProof` MUST record the active profile + coverage.
+- `FR-030`: doti MUST install into an existing repo without imposing the Heurex structure; an opinionated gate (Sentrux/ArchUnitNET) MUST run only when the declared profile enables it; a gate declared enforced but missing its config MUST fail closed (no delete-config bypass); a profile that does not enable a gate MUST skip it advisory.
+- `FR-031`: Profiles MUST compose via a layered resolution stack (overrides → profile → core) with prepend/append/wrap, so governance layers onto base templates + gate ladders without forking.
+- `FR-032`: The scaffold template MUST be a standalone `dotnet new` NuGet pack independent of doti; `hx new` MUST be a thin orchestration of template instantiation + `hx doti install --repo` + first smoke.
+- `FR-033`: The tool/release payload MUST ship tool manifests + grammars only (no large binaries); per-RID tool binaries MUST be fetched + hash-verified on demand.
+- `FR-034`: doti MUST provide an enforced bug mini-cycle (assess→fix→test): assess is read-only and produces a verdict/remediation contract, fix is the only writer and is bound to the assessment, test verifies honestly; each stage is proof-bound.
+- `FR-035`: Any doti command that ingests a URL MUST apply a trust policy: refuse `file:`/loopback/RFC1918/cloud-metadata, allowlist hosts, and treat fetched content as data, never instructions.
+- `FR-036`: `implement` MUST support scoped, resumable runs gated by task-completion markers, sub-agent delegation of parallel tasks, and spec-of-specs decomposition for features too large for one context.
+- `FR-037`: The spec and tasks templates MUST support prioritized user stories (P1/P2/P3 with an independent test) and MVP-first phase organization.
+- `FR-038`: doti skills/commands MUST be authorable once and rendered to multiple agent formats via one registrar.
+- `FR-039`: doti MUST provide a `converge` command that reconciles the codebase against spec/plan/tasks and appends remaining unbuilt work as tasks.
+- `FR-040`: doti's requirement-quality checklist MUST meet the "unit tests for English" bar (Completeness/Clarity/Consistency/Measurability/Coverage with ≥80% traceability references).
+- `FR-041`: The README/docs MUST document the install profiles/tiers and what each enforces, the scaffold-vs-`doti install` distinction, the channels, the upgrade flow, and the manifest-ships/binary-fetches model.
+- `FR-042`: `hx describe --json` and help MUST surface the active profile/tier + gate ladder, the installed-vs-source command mode, the active channel, and its update mechanism.
+- `FR-043`: `/06-doti-arch-review` MUST be given the changed source-file list automatically: `hx` (reusing the impact planner's git-diff + project-graph closure) MUST emit the changed/affected source files as machine-readable arch-review context, so the review and its per-lens sub-agents receive the changed files without rediscovering them.
+- `FR-044`: The default release version intent MUST be **minor** for a normal feature cycle (any new spec), and **patch** MUST apply only to a **bug-fix-only cycle** (the assess→fix→test bug mini-cycle of FR-034). This changes doti's prior patch-by-default behavior; an explicit `--major|--minor|--patch` still overrides.
 
 ## Success Criteria
 
