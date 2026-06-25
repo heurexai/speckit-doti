@@ -1,10 +1,33 @@
 # Specification Template
 
-> WHAT and WHY only — defer mechanism (projects, APIs, code) to the plan. Name new and open/unimplemented legacy specs with a Spec Kit-style numbered feature slug (`docs/specs/NNN-short-name.md`, e.g. `docs/specs/001-numbered-specs.md`) so specs sort in workflow order; use that same full slug for the cycle `--feature`. Leave implemented/completed legacy specs on their existing historical filenames. Requirements use stable `FR-###` / `SC-###` IDs so `/doti-analyze` can map them to tasks. Omit an inapplicable section entirely (no "N/A"). Flag genuine unknowns inline with a `[NEEDS CLARIFICATION]` marker (state the specific question after the colon) — at most 3, prioritised scope > security/privacy > UX > technical.
+> WHAT and WHY only — defer mechanism (projects, APIs, code) to the plan. Name new and open/unimplemented legacy specs with a Spec Kit-style numbered feature slug (`docs/specs/NNN-short-name.md`, e.g. `docs/specs/001-numbered-specs.md`) so specs sort in workflow order; use that same full slug for the cycle `--feature`. Leave implemented/completed legacy specs on their existing historical filenames. Requirements use stable `FR-###` / `SC-###` IDs so `/doti-analyze` can map them to tasks; user stories (`US1`, `US2`, …) give them MVP-first traceability. Omit an inapplicable section entirely (no "N/A"). Flag genuine unknowns inline with a `[NEEDS CLARIFICATION]` marker (state the specific question after the colon) — at most 3, prioritised scope > security/privacy > UX > technical.
 
 ## Goal
 
 State the user-facing outcome and why it matters.
+
+## User Scenarios & Testing
+
+Prioritised user stories — journeys ordered by importance. **Each story MUST be INDEPENDENTLY TESTABLE**: implementing just one yields a viable MVP slice that delivers value. Assign priorities `P1` (most critical), `P2`, `P3`, …; the tasks build order follows these priorities (P1 = MVP).
+
+### User Story 1 — [title] (Priority: P1)
+
+[The journey in plain language.]
+
+- **Why this priority:** [the value and why it ranks here]
+- **Independent Test:** [how this story is verified on its own and the specific value it delivers]
+- **Acceptance Scenarios:**
+  1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+  2. **Given** [initial state], **When** [action], **Then** [expected outcome]
+
+### User Story 2 — [title] (Priority: P2)
+
+[Same shape; add P3+ stories as needed, each independently testable.]
+
+### Edge Cases
+
+- What happens when [boundary condition]?
+- How does the system handle [error / failure / partial / re-run scenario]?
 
 ## Scope
 
@@ -12,8 +35,10 @@ Included behavior, and explicitly excluded behavior.
 
 ## Functional Requirements
 
-- `FR-001`: System MUST … (testable, unambiguous)
-- `FR-002`: Users MUST be able to …
+Testable, unambiguous; map each to the user story it serves so coverage is traceable.
+
+- `FR-001`: System MUST … `[US1]`
+- `FR-002`: Users MUST be able to … `[US1]`
 
 ## Success Criteria
 

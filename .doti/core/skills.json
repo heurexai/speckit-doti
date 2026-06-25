@@ -41,14 +41,14 @@
       "description": "Analyze scaffold-dotnet source, installed assets, docs, and advisory gaps.",
       "argumentHint": "[files or topic]",
       "highlights": [],
-      "nextStage": "Run `/06-doti-arch-review` to review architecture impacts and rule coverage."
+      "nextStage": "Run `/06-doti-arch-review` for a multi-lens design review of the spec against the current code."
     },
     {
       "name": "doti-arch-review",
-      "description": "Review scaffold-dotnet architecture impacts and ArchUnitNET gate coverage.",
+      "description": "Review scaffold-dotnet design via a multi-lens panel — only the lenses the change touches — against the spec + current code (not a Sentrux/ArchUnitNET pass).",
       "argumentHint": "[architecture change]",
       "highlights": [
-        "Validate that the ArchUnitNET config (`rules/architecture.json`) and `architecture test --json` agree on declared family ids (currently the thin-CLI `cliSurfaceConfinement` and `cliDelegation` families in speckit-doti), and that the Sentrux config (`.sentrux/rules.toml` layers/boundaries/constraints, baseline, `rules/sentrux.json` mapping) measures the intended path/layer/cycle boundaries. The command template seeds the specific items to check so they are not re-derived each run. The architecture gate (`architecture test` per-family proof) and the Sentrux gate are command-backed; this cross-engine consistency review is an advisory judgment."
+        "A multi-lens DESIGN review before implementation: TRIAGE the change first, then activate ONLY the lenses it actually touches — a lens whose concern the change does not touch EXITS 'not applicable' and spawns no sub-agent (e.g. a templates/docs-only change skips the architecture-fit, blast-radius, edge-case/failure-mode, security, and testability lenses: 'code is not changing'). Run the applicable lenses (design-soundness, edge-case/failure-mode, data-contract, security, blast-radius, simpler-alternative, testability, fit-with-current-architecture) — each carries a pre-canned 'look for' checklist; if you are capable of sub-agents, run one clean-context sub-agent per lens IN PARALLEL — against the spec/plan/tasks + current code, with the changed-files diff fetched ONCE (the `hx`/Impact planner command, or `git diff` fallback) and injected into every lens so none waste tokens rediscovering scope; each finding carries severity (BLOCKER/HIGH/MEDIUM/LOW) + evidence (`file:line` or spec/plan ref) + a fix. Sentrux/ArchUnitNET are NOT run here — they measure implemented code and are enforced by `gate run` at `/07`. An open BLOCKER in an applicable lens, or a missing applicable lens, blocks `/07-doti-implement`; a correctly-skipped lens does not."
       ],
       "nextStage": "Run `/07-doti-implement` to implement the tasks."
     },

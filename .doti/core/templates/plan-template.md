@@ -2,6 +2,10 @@
 
 > Resolve unknowns and decide the design before code. The Constitution Check is a gate (before AND after design). Name the architecture rule deltas so the design is enforced, not just described.
 
+## Summary
+
+Primary requirement extracted from the spec + the technical approach (from research), in one paragraph.
+
 ## Technical Context
 
 Approach, stack, dependencies, and constraints relevant to scaffold-dotnet. Mark anything undecided `[NEEDS CLARIFICATION]` and resolve it in Research — do not plan on an unproven premise.
