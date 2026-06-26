@@ -16,7 +16,25 @@ public static partial class RunnerCommandFactory
         AddDotiInstallHooks(dotiCommand, meta);
         AddDotiQuestion(dotiCommand, meta);
         AddDotiBug(dotiCommand, meta);
+        AddDotiConverge(dotiCommand, meta);
         rootCommand.Subcommands.Add(dotiCommand);
+    }
+
+    // 007 T038 (FR-039): brownfield/drift reconciliation — report the requirement coverage gap.
+    private static void AddDotiConverge(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("converge",
+            "Brownfield/drift reconciliation: report the spec requirements (FR/SC) not covered by any task.");
+        Option<string> spec = new("--spec") { Description = "Path to the feature spec markdown.", DefaultValueFactory = _ => "" };
+        Option<string> tasks = new("--tasks") { Description = "Path to the feature tasks markdown.", DefaultValueFactory = _ => "" };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(spec);
+        command.Options.Add(tasks);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti converge",
+            () => RunnerCommands.Converge(meta, parseResult.GetValue(spec)!, parseResult.GetValue(tasks)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
     }
 
     // 007 T033 (FR-034): the enforced bug mini-cycle as thin CLI over BugCycleService.
