@@ -60,6 +60,7 @@ Full setup (build the toolkit, install hooks, run the gate) is in [Get started](
 - [The doti workflow](#the-doti-workflow)
 - [Sentrux — our fork](#sentrux--our-fork)
 - [Customise it to your process](#customise-it-to-your-process)
+- [Install profiles & tiers](#install-profiles--tiers)
 - [Get started](#get-started)
 - [CLI reference](#cli-reference)
 - [The deterministic gate](#the-deterministic-gate)
@@ -236,7 +237,7 @@ doti's architecture gate runs on **two** independent engines: [ArchUnitNET](http
 - **Cycle edge diagnostics** — per-cycle edge chains pinpoint the exact imports forming each dependency cycle.
 - **Fork build identity** — an embedded Windows version resource; the gate verifies the binary reports `Heurex fork`.
 
-The fork is MIT-licensed, released at [heurexai/sentrux/releases](https://github.com/heurexai/sentrux/releases), and **vendored here pinned + SHA-256-verified** (currently `v0.5.11` for declared RIDs with matching C# grammars; binaries are fetched operationally and gitignored to keep the repo lean). `sentrux verify` checks the manifest, hash, grammar, and fork identity before the gate runs.
+The fork is MIT-licensed, released at [heurexai/sentrux/releases](https://github.com/heurexai/sentrux/releases). doti ships the **manifest, not the binary**: the pinned `tools/sentrux/*.version.json` and the C# grammars travel in the package/repo, while the platform binary is **fetched on demand and SHA-256-verified against that manifest** (`hx tools fetch`; currently `v0.5.11` for declared RIDs). The same manifest-ships/binary-fetches model covers Gitleaks and GitVersion, so the distribution stays lean (no ~100 MB of binaries) and every fetch is hash-gated. `sentrux verify` re-checks the manifest, hash, grammar, and fork identity before every gate run; a RID with no matching asset fails closed.
 
 ---
 
@@ -250,6 +251,36 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 - **Gate strictness** — `gate run --profile <auto|advisory|normal|release>` tunes the ladder per context (dev vs release).
 - **Principles** — `.doti/core/memory/constitution.md` holds the governing principles the plan/analyze stages read.
 - **Agents** — `--agents codex,claude` renders the workflow for the agents you actually use.
+
+---
+
+## Install profiles & tiers
+
+doti has **two entry points** and **three enforcement tiers**, so a repo adopts exactly as much governance as it's ready for.
+
+### Two ways in
+
+- **`hx new` (scaffold)** — generates a *new* repo: a compiling .NET 10 solution (pure library + agent-first CLI + tests) wired for the full Heurex structure, with doti installed. The Tier 3 starting point.
+- **`hx doti install --repo <path>` (install)** — installs the doti workflow into an *existing* repo. It never touches your source; it lays down the `.doti` payload, renders the agent skills, and arms the insurance hook. Choose the tier that fits the repo.
+
+### Three tiers — what each gate-enforces
+
+A tier sets which steps of the gate ladder are **enforced** vs **skipped**. The cycle proofs + chokepoints are always on; the structural gates scale up:
+
+| Tier | For | Adds on top of the baseline | Sentrux + ArchUnitNET |
+| --- | --- | --- | --- |
+| **`workflow-only`** | any repo, any language | nothing — just the spec → ship cycle | skipped |
+| **`dotnet-lib`** | an existing .NET library/repo | the standard .NET gates (restore/build/test, security, version) | skipped |
+| **`dotnet-cli-heurex`** | the Heurex structure (what `hx new` generates) | the standard .NET gates **+** the opinionated Sentrux + ArchUnitNET structural gates | **enforced** |
+
+The **baseline** every tier enforces: the `specify…release` stage proofs, ordered-task completion, task-hash binding, hygiene, and the commit chokepoints. `hx describe --json` reports the active tier and its exact ladder. (`dotnet-cli` is the legacy alias of `dotnet-cli-heurex`.)
+
+### Staying current — `/doti-upgrade`
+
+`/doti-upgrade` drives **both** update planes in one operator action:
+
+- **The `hx` tool** — `dotnet tool update -g Heurex.SpeckitDoti` (NuGet global tool), or the Microsoft Store (MSIX).
+- **This repo's `.doti`** — `hx doti install --repo .` reconciles the payload *version-aware*: an operator-modified managed file is kept (the bundled version is staged as a `.new` sidecar to merge), an operator-*deleted* asset is not resurrected without `--force`, and a repo whose payload is *ahead* of the bundled one is refused. It reports the tool vX→vY transition and the per-file install/migrate/preserve/block result.
 
 ---
 
