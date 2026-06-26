@@ -11,7 +11,7 @@ metadata:
 
 Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/doti-clarify.md`.
 
-Clarify specifics: ask blocking questions one at a time via the `AskUserQuestion` tool, fold each answer into the spec's `## Clarifications` before asking the next, and let the operator stop at any point. Use the shared operator-question format above (Context / Why it matters / Options / Recommendation / Assumptions / Confidence + the evidence requirement) for every question.
+Clarify specifics: ask blocking questions one at a time as PLAIN PROSE (one question per message — NOT a multiple-choice dialog/widget like AskUserQuestion; render the full protocol in the message so the operator reads the reasoning and replies in their own words), fold each answer into the spec's `## Clarifications` before asking the next, and let the operator stop at any point. Use the shared operator-question format above (Context / Why it matters / Options / Recommendation / Assumptions / Confidence + the evidence requirement) for every question.
 
 ## Asking the operator a question (required format)
 

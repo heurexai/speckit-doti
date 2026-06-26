@@ -6,9 +6,9 @@ Purpose: resolve unclear requirements before planning or implementation — one 
 
 Use the shared **Operator-Question Protocol** (rendered in this skill's `SKILL.md` and `.doti/agent-context.md`: Context / Why it matters / Options[Pros·Cons·Consequence] / Recommendation / Assumptions / Confidence, plus the evidence requirement — verify every premise first, cite it, and never ask on an unproven premise) for the **format and evidence rules** of every question. This stage adds only:
 
-- Ask blocking questions **one at a time** via the `AskUserQuestion` tool — a **single** question per call; never bundle.
+- Ask blocking questions **one at a time as plain prose** — a **single** question per message; never bundle, and **do NOT use a multiple-choice dialog/widget** (e.g. `AskUserQuestion`). Render the full Operator-Question Protocol in the message — the rich format (per-option pros/cons/consequence + recommendation + confidence) does not fit a clickable option list, and the operator should read the reasoning and reply in their own words, not pick a chip.
 - After each answer, fold it into the spec's `## Clarifications` section (dated) **before** asking the next, so the operator can stop at any point with the spec already updated.
-- Put concise per-option pros/cons/consequence into each `AskUserQuestion` choice description; list the recommended option first and label it "(Recommended)".
+- Lay each option's pros/cons/consequence out in the prose (per the Operator-Question Protocol above); list the recommended option first and label it "(Recommended)".
 - **Make the QUALITY stakes concrete in every question — this is where operators most often get too little.** The *Why it matters* and each option's *Consequence* must show the real downstream impact, with a concrete example: for a code spec, the **software-quality** cost (maintainability, consistency with existing patterns, correctness, testability, drift); for a docs/Doti-prose spec, the **documentation-quality** cost (clarity, consistency, accuracy). Think each alternative through to that impact. **Never on effort** — that an option is more work is never a reason it matters or a reason to reject it. A vague "this affects scope" with no per-option quality cost is a defect the operator can't decide from.
 
 ## Rules
