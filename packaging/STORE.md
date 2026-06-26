@@ -2,8 +2,9 @@
 
 The Store signs the submitted MSIX with a Microsoft-trusted certificate, so a Store-installed
 `speckit-doti` runs **with no SmartScreen warning** — without buying an Authenticode cert. It also
-surfaces via `winget` (the `msstore` source). This covers **Windows** only; Linux/macOS use the
-release archives. The Store signs the **MSIX**, not the standalone GitHub `.zip`.
+surfaces via `winget` (the `msstore` source). This covers **Windows** only; Linux/macOS install the
+cross-platform .NET global tool via `dotnet tool install Heurex.SpeckitDoti` from NuGet.org. The Store
+signs the **MSIX**, not the NuGet tool package.
 
 ## Reserved product identity (Partner Center → Product identity)
 
@@ -62,5 +63,5 @@ on the first automated run.
 - The `Assets/*.png` tile logos are the **Heurex primary mark** on the navy brand background. The Store
   *listing* images (screenshots, promotional art) are uploaded separately in Partner Center.
 - Certification/review is Microsoft-side and not instant.
-- None of this is *required* to ship — the GitHub Release archives already work unsigned; the Store path
-  is the warning-free Windows install.
+- None of this is *required* to ship — the cross-platform NuGet global tool (`dotnet tool install
+  Heurex.SpeckitDoti`) is the unsigned baseline install; the Store path is the warning-free Windows install.

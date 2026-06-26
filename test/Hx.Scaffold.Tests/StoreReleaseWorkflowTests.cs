@@ -54,8 +54,9 @@ public sealed class StoreReleaseWorkflowTests
         Assert.DoesNotContain("contents: write", workflow);
         Assert.DoesNotContain("gh release", workflow);
 
-        // H10: action-SHA-pinning is documented as required operator prep.
-        Assert.Contains("pin to a full commit SHA", workflow);
+        // H10: every action is pinned to a full 40-char commit SHA — a pin is present, no floating @vN tag remains.
+        Assert.Matches(@"uses:\s*[^\s@]+@[0-9a-f]{40}", workflow);
+        Assert.DoesNotMatch(@"uses:\s*[^\s@]+@v\d", workflow);
     }
 
     private static int Occurrences(string haystack, string needle)

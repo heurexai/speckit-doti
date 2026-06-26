@@ -5,7 +5,7 @@ namespace Hx.Scaffold.Tests;
 /// <summary>
 /// 007 T024: the release workflow publishes the framework-dependent global tool <c>Heurex.SpeckitDoti</c> to
 /// NuGet.org via Trusted Publishing (GitHub OIDC — no stored key), runs the source-free install smoke before
-/// publishing, and is H10-hardened (OIDC on the publish job only, behind the protected <c>release</c> Environment).
+/// publishing, and is H10-hardened (OIDC on the publish job only, behind the protected <c>production</c> Environment).
 /// Velopack/vpk packaging is gone. Structural assertion — the workflow itself only runs in GitHub Actions.
 /// </summary>
 public sealed class GitHubReleaseWorkflowTests
@@ -18,8 +18,9 @@ public sealed class GitHubReleaseWorkflowTests
     {
         string workflow = Workflow();
 
-        // Pack + push the framework-dependent global tool to public NuGet.org.
-        Assert.Contains("dotnet pack tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj", workflow);
+        // Pack + push the framework-dependent global tool to public NuGet.org. FR-003: pack via the two-phase
+        // PackAnchoredTool target (embeds the payload-manifest anchor), never a plain `dotnet pack`.
+        Assert.Contains("build tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -c Release -t:PackAnchoredTool", workflow);
         Assert.Contains("dotnet nuget push", workflow);
         Assert.Contains("https://api.nuget.org/v3/index.json", workflow);
 
@@ -51,11 +52,13 @@ public sealed class GitHubReleaseWorkflowTests
         Assert.Contains("id-token: write", workflow);
         Assert.DoesNotContain("contents: write", workflow);
 
-        // H10: publish behind the protected `release` Environment (required reviewer gates OIDC issuance).
-        Assert.Contains("environment: release", workflow);
+        // H10: publish behind the protected `production` Environment — its name matches the NuGet Trusted
+        // Publishing policy's Environment field; a required reviewer gates OIDC issuance.
+        Assert.Contains("environment: production", workflow);
 
-        // H10: action-SHA-pinning is documented as required operator prep.
-        Assert.Contains("pin to a full commit SHA", workflow);
+        // H10: every action is pinned to a full 40-char commit SHA — a pin is present, no floating @vN tag remains.
+        Assert.Matches(@"uses:\s*[^\s@]+@[0-9a-f]{40}", workflow);
+        Assert.DoesNotMatch(@"uses:\s*[^\s@]+@v\d", workflow);
     }
 
     private static string FindRepoRoot()

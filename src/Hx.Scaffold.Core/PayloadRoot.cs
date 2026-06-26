@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -43,7 +44,36 @@ public sealed record PayloadResolution(
 /// </summary>
 public static class PayloadTrustAnchor
 {
-    public static string? ExpectedManifestSha256 => null;
+    /// <summary>The <c>[AssemblyMetadata]</c> key the two-phase pack (Hx.Scaffold.Cli.csproj) embeds the
+    /// per-version payload-manifest digest under.</summary>
+    public const string MetadataKey = "HxPayloadManifestSha256";
+
+    /// <summary>The expected <c>payload.manifest.json</c> digest this executable was packed with, read from its
+    /// own embedded <c>[AssemblyMetadata("HxPayloadManifestSha256")]</c>. Non-null only in a packed global-tool /
+    /// MSIX build (the pack step embeds it); null in a source/dev build and in non-entry hosts (e.g. unit tests),
+    /// where there is no packed payload to anchor.</summary>
+    public static string? ExpectedManifestSha256 { get; } = ReadEmbeddedAnchor();
+
+    private static string? ReadEmbeddedAnchor()
+    {
+        // The anchor binds the payload to THIS executable, so read the entry assembly (hx), not this library.
+        Assembly? entry = Assembly.GetEntryAssembly();
+        if (entry is null)
+        {
+            return null;
+        }
+
+        foreach (AssemblyMetadataAttribute attribute in entry.GetCustomAttributes<AssemblyMetadataAttribute>())
+        {
+            if (string.Equals(attribute.Key, MetadataKey, StringComparison.Ordinal)
+                && !string.IsNullOrWhiteSpace(attribute.Value))
+            {
+                return attribute.Value;
+            }
+        }
+
+        return null;
+    }
 }
 
 /// <summary>

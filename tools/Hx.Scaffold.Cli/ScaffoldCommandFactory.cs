@@ -190,12 +190,14 @@ public static class ScaffoldCommandFactory
         Option<string> toolVersion = new("--tool-version") { Description = "Tool version stamped into the descriptor.", DefaultValueFactory = _ => "0.0.0" };
         Option<string> channel = new("--channel") { Description = "Distribution channel id.", DefaultValueFactory = _ => DistributionChannelId.GlobalTool };
         Option<string> mode = new("--mode") { Description = "Command mode.", DefaultValueFactory = _ => CommandMode.Installed };
+        Option<string> digestOut = new("--digest-out") { Description = "Optional path to write the manifest's anti-substitution digest (FR-003 anchor) so the pack step can embed it in the executable.", DefaultValueFactory = _ => "" };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(root);
         command.Options.Add(payloadVersion);
         command.Options.Add(toolVersion);
         command.Options.Add(channel);
         command.Options.Add(mode);
+        command.Options.Add(digestOut);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti payload-manifest",
             () => ScaffoldCommands.PayloadManifest(
@@ -204,7 +206,8 @@ public static class ScaffoldCommandFactory
                 parseResult.GetValue(payloadVersion)!,
                 parseResult.GetValue(toolVersion)!,
                 parseResult.GetValue(channel)!,
-                parseResult.GetValue(mode)!),
+                parseResult.GetValue(mode)!,
+                parseResult.GetValue(digestOut)!),
             forceJson: CliApp.ForceJson(parseResult, json)));
         group.Subcommands.Add(command);
     }

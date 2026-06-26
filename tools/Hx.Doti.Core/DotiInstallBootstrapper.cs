@@ -9,7 +9,7 @@ public sealed record DotiInstallBootstrapRequest(
     bool Force = false);
 
 /// <summary>
-/// Explicit-target bootstrap entrypoint for installer hosts. CLI and future Velopack hosts call this
+/// Explicit-target bootstrap entrypoint for installer hosts. CLI and channel installer hosts call this
 /// instead of guessing a current directory.
 /// </summary>
 public static class DotiInstallBootstrapper

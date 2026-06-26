@@ -6,17 +6,17 @@ name: Release
 #
 # H10 hardening implemented here:
 #   * `id-token: write` is on the PUBLISH job ONLY (this workflow declares no workflow-level write permission).
-#   * The publish job runs in the protected `release` Environment — a required reviewer gates OIDC issuance, so a
+#   * The publish job runs in the protected `production` Environment (matching the NuGet policy's Environment
+#     field) — a required reviewer gates OIDC issuance, so a
 #     token is never minted on just any collaborator's tag push.
 #   * Trusted Publishing is the ONLY credential path — there is no fallback stored NUGET_API_KEY anywhere.
 #
 # H10 + T024 OPERATOR PREP (one-time, before the first publish):
 #   1. NuGet.org: create a Trusted Publishing policy (owner `heurexai`, repo `speckit-doti`, workflow `release.yml`).
 #   2. Add the `NUGET_USER` repo secret = the nuget.org username (NOT the email).
-#   3. Configure the `release` Environment with a required reviewer.
-#   4. PIN EVERY ACTION TO A FULL COMMIT SHA (not the floating major tag below): actions/checkout@v4,
-#      actions/setup-dotnet@v4, actions/upload-artifact@v4, actions/download-artifact@v4, NuGet/login@v1.
-#      (Authored offline — the SHAs cannot be resolved here; pin them from each action's verified release.)
+#   3. Configure the `production` Environment with a required reviewer (its name MUST equal the policy's Environment field).
+#   4. Actions below are pinned to full commit SHAs (resolved 2026-06-27 via the GitHub API). The trailing
+#      `# vN` comment records the floating tag each SHA was resolved from; re-pin when bumping a version.
 on:
   push:
     tags: [ 'v*' ]
@@ -31,15 +31,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4   # H10: pin to a full commit SHA before first publish
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4 (pinned 2026-06-27)
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4   # H10: pin to a full commit SHA before first publish
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9   # v4 (pinned 2026-06-27)
         with:
           global-json-file: global.json
 
       - name: Pack Heurex.SpeckitDoti (framework-dependent global tool)
-        run: dotnet pack tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -c Release -o artifacts/nuget --nologo
+        run: dotnet build tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -c Release -t:PackAnchoredTool -p:PackageOutputPath=artifacts/nuget --nologo
 
       - name: Source-free install smoke (installed hx; no source checkout on PATH)
         shell: bash
@@ -61,7 +61,7 @@ jobs:
           ! test -d "$gen/tools/Hx.Runner.Cli" || { echo "generated repo vendored the runner CLI source"; exit 1; }
 
       - name: Upload the tool package
-        uses: actions/upload-artifact@v4   # H10: pin to a full commit SHA before first publish
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4 (pinned 2026-06-27)
         with:
           name: nuget
           path: artifacts/nuget/*.nupkg
@@ -71,22 +71,22 @@ jobs:
     name: Publish to NuGet.org (Trusted Publishing)
     needs: pack-and-smoke
     runs-on: ubuntu-latest
-    environment: release        # protected: required reviewer gates OIDC issuance (H10)
+    environment: production     # MUST match the NuGet Trusted Publishing policy's Environment field; add a required reviewer to gate OIDC issuance (H10)
     permissions:
       id-token: write           # OIDC — ONLY on this job
       contents: read
     steps:
-      - uses: actions/download-artifact@v4   # H10: pin to a full commit SHA before first publish
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093   # v4 (pinned 2026-06-27)
         with:
           name: nuget
           path: artifacts/nuget
-      - uses: actions/setup-dotnet@v4   # H10: pin to a full commit SHA before first publish
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9   # v4 (pinned 2026-06-27)
         with:
           global-json-file: global.json
 
       - name: NuGet login (OIDC -> short-lived API key)
         id: login
-        uses: NuGet/login@v1   # H10: pin to a full commit SHA before first publish
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841   # v1 (pinned 2026-06-27)
         with:
           user: ${{ secrets.NUGET_USER }}
 

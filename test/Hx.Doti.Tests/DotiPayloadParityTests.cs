@@ -27,6 +27,25 @@ public sealed class DotiPayloadParityTests
         Assert.Contains("hx.config.json", File.ReadAllText(Path.Combine(repo, ".doti", "agent-context.md")));
     }
 
+    [Fact]
+    public void Install_templates_mirror_core_templates_byte_for_byte()
+    {
+        string repo = FindRepoRoot();
+        string coreRoot = Path.Combine(repo, ".doti", "core", "templates");
+        string installRoot = Path.Combine(repo, ".doti", "templates");
+
+        string[] coreFiles = RelativeFiles(coreRoot);
+        string[] installFiles = RelativeFiles(installRoot);
+
+        Assert.Equal(coreFiles, installFiles);
+        foreach (string relative in coreFiles)
+        {
+            string coreFile = Path.Combine(coreRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+            string installFile = Path.Combine(installRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+            Assert.Equal(File.ReadAllBytes(coreFile), File.ReadAllBytes(installFile));
+        }
+    }
+
     private static string FindRepoRoot()
     {
         DirectoryInfo? dir = new(Directory.GetCurrentDirectory());
@@ -42,4 +61,10 @@ public sealed class DotiPayloadParityTests
 
         throw new DirectoryNotFoundException("Could not find repository root with .doti/core/skills.json.");
     }
+
+    private static string[] RelativeFiles(string root) =>
+        Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
 }

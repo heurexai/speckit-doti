@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using Hx.Scaffold.Core;
 using Hx.Tooling.Contracts;
 using Xunit;
 
@@ -38,12 +40,18 @@ public sealed class InstallLocationSmokeTests
             Directory.CreateDirectory(packOut);
             string csproj = Path.Combine(repoRoot, "tools", "Hx.Scaffold.Cli", "Hx.Scaffold.Cli.csproj");
 
-            // 1. Pack the framework-dependent global tool.
-            (int ExitCode, string Output) pack = Run("dotnet", $"pack \"{csproj}\" -c Release -o \"{packOut}\" --nologo", repoRoot, env);
-            Assert.True(pack.ExitCode == 0, $"dotnet pack failed:\n{Tail(pack.Output)}");
+            // 1. Pack the framework-dependent global tool via the two-phase anchored pack (FR-003): stages the
+            //    payload, computes its manifest digest, and re-emits hx with the digest embedded as the anchor.
+            (int ExitCode, string Output) pack = Run("dotnet", $"build \"{csproj}\" -c Release -t:PackAnchoredTool -p:PackageOutputPath=\"{packOut}\" --nologo", repoRoot, env);
+            Assert.True(pack.ExitCode == 0, $"PackAnchoredTool failed:\n{Tail(pack.Output)}");
 
             string nupkg = Directory.EnumerateFiles(packOut, "Heurex.SpeckitDoti.*.nupkg").Single();
             string version = Path.GetFileName(nupkg)["Heurex.SpeckitDoti.".Length..^".nupkg".Length];
+
+            // FR-003/C2: the packed executable MUST carry the payload-manifest digest as its anti-substitution
+            // anchor (never null), and that embedded value MUST equal the shipped descriptor's digest — otherwise
+            // HX_PAYLOAD_ROOT could redirect resolution to a self-consistent but unanchored payload.
+            AssertPackedToolIsAnchored(nupkg);
 
             // 2. Install into a NO-SOURCE sandbox from the local feed (offline; framework-dependent).
             (int ExitCode, string Output) install = Run("dotnet",
@@ -86,6 +94,29 @@ public sealed class InstallLocationSmokeTests
         Assert.True(r.ExitCode == 0, $"hx {command} exited {r.ExitCode}:\n{Tail(r.Output)}");
         Assert.Contains($"\"command\":\"{command}\"", r.Output);   // the CliResult envelope was emitted
         return r.Output;
+    }
+
+    /// <summary>FR-003/C2: assert the packed tool assembly carries the payload-manifest digest as its embedded
+    /// anti-substitution anchor, and that the embedded digest equals the shipped descriptor's digest.</summary>
+    private static void AssertPackedToolIsAnchored(string nupkg)
+    {
+        using ZipArchive archive = ZipFile.OpenRead(nupkg);
+        ZipArchiveEntry manifestEntry = archive.Entries.First(e => e.Name == "payload.manifest.json");
+        ZipArchiveEntry dllEntry = archive.Entries.First(
+            e => e.Name == "Hx.Scaffold.Cli.dll" && e.FullName.Replace('\\', '/').Contains("/any/"));
+
+        using StreamReader manifestReader = new(manifestEntry.Open());
+        string expectedAnchor = PayloadRoot.Sha256OfText(manifestReader.ReadToEnd());
+
+        using MemoryStream dllBytes = new();
+        using (Stream dllStream = dllEntry.Open())
+        {
+            dllStream.CopyTo(dllBytes);
+        }
+
+        string dllText = System.Text.Encoding.Latin1.GetString(dllBytes.ToArray());
+        Assert.Contains(PayloadTrustAnchor.MetadataKey, dllText);   // the [AssemblyMetadata] key is embedded...
+        Assert.Contains(expectedAnchor, dllText);                   // ...with the shipped descriptor's digest as its value
     }
 
     /// <summary>Recursive text search over a scaffolded repo's SOURCE (skips bin/obj/.git and binary files), so a

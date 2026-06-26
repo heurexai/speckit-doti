@@ -389,13 +389,13 @@ Then drive development with the slash-commands, in order — each stage's proof 
 
 ## CLI reference
 
-Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, and `Hx.Scaffold.Cli` for `new`, `version`, `release`, and `prereq`). Add `--json` for the machine envelope. Human `--help` is rich by default on capable terminals and supports `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR` for ANSI-free output.
+From an installed build these run source-free as `hx <command>` (the unified surface). From a source checkout, run `dotnet run --project tools/Hx.Runner.Cli -- <command>` (use `Hx.Impact.Cli` for `plan`, and `Hx.Scaffold.Cli` for `new`, `version`, `release`, and `prereq`). Add `--json` for the machine envelope. Human `--help` is rich by default on capable terminals and supports `--help-mode plain`, `--plain-help`, `HX_HELP_MODE=plain`, and `NO_COLOR` for ANSI-free output.
 
 | Command | What it does |
 | --- | --- |
 | `new` _(Hx.Scaffold.Cli)_ | Generate a new agent-first .NET solution and install doti |
 | `version --repo <path>` _(Hx.Scaffold.Cli)_ | Report running hx identity, target repo scaffold version, and managed Doti modification state |
-| `release [--repo <path>] [--major\|--minor\|--patch] [--rid <rid>]` _(Hx.Scaffold.Cli)_ | Validate executable-local `hx.config.json`, validate release intent, create/verify the local GitVersion tag, build Velopack artifacts, and copy them to `<package>/<version>` plus `<package>/latest` when local output is enabled |
+| `release [--repo <path>] [--major\|--minor\|--patch] [--rid <rid>]` _(Hx.Scaffold.Cli)_ | Validate executable-local `hx.config.json`, validate release intent, create/verify the local GitVersion tag, pack the declared product as a framework-dependent .NET global tool (`dotnet pack`) with a source-free install smoke, record the Microsoft Store MSIX channel proof, and copy the verified artifacts to `<package>/<version>` plus `<package>/latest` when local output is enabled |
 | `prereq check --for <new\|version\|generated-validation>` _(Hx.Scaffold.Cli)_ | Check trusted .NET SDK/Git/directory prerequisites without installing anything |
 | `prereq install --for <new> --confirm-plan <digest>` _(Hx.Scaffold.Cli)_ | Run an explicitly approved Windows winget install plan from trusted manifest metadata, then re-check prerequisites |
 | `gate run --profile <auto\|advisory\|normal\|release>` | Run the full deterministic gate ladder, including task-completion proof for an active Doti cycle → one fail-closed `GateProof` |
@@ -404,7 +404,7 @@ Most deterministic commands run as `dotnet run --project tools/Hx.Runner.Cli -- 
 | `sentrux verify` / `sentrux check` | Verify the vendored Sentrux binary / run the boundary analysis |
 | `hygiene scan` / `hygiene gitleaks verify` | Working-tree hygiene + secret scanning |
 | `version calculate` | Read-only GitVersion semantic version calculation; release tags are created only by `hx release --major\|--minor\|--patch` |
-| `tools fetch [--rid] [--tool all\|gitleaks\|sentrux\|gitversion\|velopack]` | Download + SHA-256-verify the vendored tool binaries/packages from their pinned manifests (fail-closed on mismatch) |
+| `tools fetch [--rid] [--tool all\|gitleaks\|sentrux\|gitversion]` | Download + SHA-256-verify the vendored tool binaries/packages from their pinned manifests (fail-closed on mismatch) |
 | `plan` _(Hx.Impact.Cli)_ | Affected-test planner (project-graph reverse closure → covering test projects) |
 | `doti cycle stamp [--release-intent <major\|minor\|patch>] \| status \| check` | Stamp a stage (prereq-checked), including release-stage GitVersion intent signaling / show cycle state / fail-closed prereq check |
 | `doti task-hash stamp [--feature <NNN-slug>]` | Refuse unchecked tasks and stamp canonical `doti-task-hash` markers for checked tasks |
@@ -431,9 +431,9 @@ The gate never creates a Sentrux baseline, and persists its proof so Doti transi
 
 ## Status
 
-Current published release: [v0.5.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0). That older release used legacy platform archives. The next minor release switches the product release surface to Velopack installer/update artifacts with matching checksums and `release.identity.json`; source archives are not accepted as the Doti product. The deterministic release gate remains command-backed and fail-closed.
+Current published release: [v0.5.0](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0). That older release used legacy platform archives. The product release surface is now the framework-dependent .NET global tool `Heurex.SpeckitDoti` on NuGet.org (Trusted Publishing) plus the Microsoft Store MSIX channel — there is no Velopack installer, and no source archive is accepted as the Doti product; `release.identity.json` records the per-channel proofs. The deterministic release gate remains command-backed and fail-closed.
 
-The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary/package (including GitVersion, Sentrux `v0.5.11`, and Velopack CLI `vpk` `1.2.0`) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with the release/gate tools it needs without a manual step.
+The vendored tools self-provision: `tools fetch` downloads + SHA-256-verifies each tool binary/package (including GitVersion and Sentrux `v0.5.11`) from its pinned manifest, fail-closed on mismatch, and `new` runs it best-effort so a generated project ends up with the release/gate tools it needs without a manual step.
 
 ## Acknowledgements
 

@@ -15,7 +15,8 @@ name: Store release
 #   * The produced unsigned MSIX is a Store-submission INPUT ONLY — uploaded as a workflow artifact for
 #     `submit`, and NEVER attached to a GitHub release (the Store signs it on submission; an unsigned
 #     local/CI MSIX must not ship as a release asset — this mirrors the no-source release gate).
-#   * Minimal `permissions: contents: read`; pin every action to a full commit SHA before first use.
+#   * Minimal `permissions: contents: read`; actions below are pinned to full commit SHAs (resolved
+#     2026-06-27 via the GitHub API; trailing `# vN` = the floating tag each SHA was resolved from).
 #
 # OPERATOR PREP (one-time): see packaging/STORE.md — reserve the product identity, complete the listing +
 # age rating + the FIRST manual submission in Partner Center, link the Azure AD app, add the STORE_*
@@ -37,10 +38,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7   # H10: pin to a full commit SHA before first use
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0   # v7 (pinned 2026-06-27)
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5   # H10: pin to a full commit SHA before first use
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1   # v5 (pinned 2026-06-27)
         with:
           global-json-file: global.json
 
@@ -111,7 +112,7 @@ jobs:
       # The unsigned MSIX is a Store-submission INPUT ONLY — it is handed to `submit` as a workflow artifact
       # and is NEVER attached to a GitHub release (the Store signs it; shipping an unsigned MSIX is forbidden).
       - name: Upload the unsigned MSIX (Store-submission input only)
-        uses: actions/upload-artifact@v4   # H10: pin to a full commit SHA before first use
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4 (pinned 2026-06-27)
         with:
           name: msix
           path: speckit-doti-${{ inputs.version }}.msix
@@ -126,7 +127,7 @@ jobs:
       contents: read
     steps:
       - name: Download the unsigned MSIX
-        uses: actions/download-artifact@v4   # H10: pin to a full commit SHA before first use
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093   # v4 (pinned 2026-06-27)
         with:
           name: msix
 
@@ -135,7 +136,7 @@ jobs:
       # installed via the official setup action below. Verify the exact `publish` invocation on the first
       # automated run: https://aka.ms/msstoredevcli
       - name: Setup Microsoft Store Developer CLI
-        uses: microsoft/microsoft-store-apppublisher@v1.1   # H10: pin to a full commit SHA before first use
+        uses: microsoft/microsoft-store-apppublisher@15abd1c50fcc164b19cb240fb04ef3c49bf715a2   # v1.1 (pinned 2026-06-27)
 
       - name: Submit to the Microsoft Store
         shell: pwsh

@@ -51,9 +51,20 @@
     <ProjectReference Include="..\Hx.Impact.Cli\Hx.Impact.Cli.csproj" />
   </ItemGroup>
 
-  <!-- 007 T023: stage the source-free payload + generate its descriptor. Runs after the tool is built (Pack depends
-       on Build), so the just-built hx generates payload.manifest.json over the staged tree. -->
-  <Target Name="StageHxPayload" DependsOnTargets="Build">
+  <!-- 007 FR-003/C2 — the anti-substitution anchor. The two-phase pack (EmbedPayloadAnchor, below) computes the
+       staged payload.manifest.json digest and re-emits this assembly with it embedded here as [AssemblyMetadata];
+       PayloadTrustAnchor reads it back from the entry assembly at runtime, so HX_PAYLOAD_ROOT cannot redirect
+       resolution to a self-consistent but unanchored payload. Empty (absent) in a plain build → null anchor. -->
+  <ItemGroup Condition="'$(HxPayloadManifestSha256)' != ''">
+    <AssemblyMetadata Include="HxPayloadManifestSha256" Value="$(HxPayloadManifestSha256)" />
+  </ItemGroup>
+
+  <!-- 007 T023/FR-003: stage the source-free payload, generate its descriptor, and write the descriptor's digest.
+       The just-built hx generates payload.manifest.json over the staged tree. INCREMENTAL on the digest sidecar so
+       PackAnchoredTool's Phase 2 reuses Phase 1's manifest (does not regenerate) — the templates .nupkg is not
+       byte-deterministic, so a second generation would drift the digest away from the embedded anchor. -->
+  <Target Name="StageHxPayload" DependsOnTargets="Build"
+          Inputs="$(MSBuildProjectFullPath)" Outputs="$(IntermediateOutputPath)hx-payload-digest.txt">
     <!-- Resolve the staging path HERE (not in the top-level PropertyGroup): IntermediateOutputPath (obj/) is only
          set once the SDK props have run, so a top-level evaluation would be empty and leak into the project dir. -->
     <PropertyGroup>
@@ -87,13 +98,47 @@
       <_HxPayloadVersion Condition="'$(_HxPayloadVersion)' == ''">$(Version)</_HxPayloadVersion>
       <_HxPayloadVersion Condition="'$(_HxPayloadVersion)' == ''">0.0.0</_HxPayloadVersion>
     </PropertyGroup>
-    <Exec Command="dotnet &quot;$(TargetDir)Hx.Scaffold.Cli.dll&quot; doti payload-manifest --root &quot;$(HxPayloadStaging)&quot; --payload-version $(_HxPayloadVersion) --tool-version $(_HxPayloadVersion) --channel global-tool --mode installed" />
+    <Exec Command="dotnet &quot;$(TargetDir)Hx.Scaffold.Cli.dll&quot; doti payload-manifest --root &quot;$(HxPayloadStaging)&quot; --payload-version $(_HxPayloadVersion) --tool-version $(_HxPayloadVersion) --channel global-tool --mode installed --digest-out &quot;$(IntermediateOutputPath)hx-payload-digest.txt&quot;" />
+  </Target>
+
+  <!-- 007 FR-003/C2 — the ONLY supported way to pack the anchored global tool. The payload digest can only be known
+       AFTER hx is built (hx generates payload.manifest.json over the staged payload), yet the executable must CARRY
+       that digest — so packing is two-phase:
+         Phase 1 — build hx, stage the payload, generate the manifest, write its digest (StageHxPayload).
+         Phase 2 — pack, passing HxPayloadManifestSha256 so the compile re-emits hx with the digest as
+                   [AssemblyMetadata]; StageHxPayload incremental-skips (its digest Output is newer than the csproj),
+                   so the SAME Phase-1 manifest ships and the embedded anchor matches the shipped descriptor exactly.
+       Callers: dotnet build tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -t:PackAnchoredTool -c Release -p:PackageOutputPath=<dir> -->
+  <Target Name="PackAnchoredTool">
+    <!-- Phase 0: clear stale staging so Phase 1 regenerates fresh; Phase 2 then reuses it. -->
+    <RemoveDir Directories="$(IntermediateOutputPath)hx-payload" />
+    <Delete Files="$(IntermediateOutputPath)hx-payload-digest.txt" />
+    <!-- Phase 1: build + stage + manifest + digest. -->
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="StageHxPayload" Properties="Configuration=$(Configuration)" />
+    <ReadLinesFromFile File="$(IntermediateOutputPath)hx-payload-digest.txt">
+      <Output TaskParameter="Lines" ItemName="_HxPayloadDigestLines" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <_HxPayloadDigest>@(_HxPayloadDigestLines)</_HxPayloadDigest>
+    </PropertyGroup>
+    <Error Condition="'$(_HxPayloadDigest)' == ''"
+           Text="FR-003: StageHxPayload did not produce a payload manifest digest; refusing to pack an unanchored tool." />
+    <Message Importance="high" Text="FR-003: payload anchor $(_HxPayloadDigest) — packing the anchored tool." />
+    <!-- Phase 2: pack with the digest embedded; StageHxPayload incremental-skips, so the Phase-1 manifest ships. -->
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Pack"
+             Properties="Configuration=$(Configuration);PackageOutputPath=$(PackageOutputPath);HxPayloadManifestSha256=$(_HxPayloadDigest)" />
+  </Target>
+
+  <!-- 007 FR-003 fail-closed: a plain `dotnet pack` (no anchor digest) must NEVER silently ship an unanchored tool. -->
+  <Target Name="_GuardPayloadAnchor" BeforeTargets="GenerateNuspec">
+    <Error Condition="'$(HxPayloadManifestSha256)' == ''"
+           Text="FR-003: refusing to pack Heurex.SpeckitDoti without an embedded payload anchor. Pack via: dotnet build tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -t:PackAnchoredTool -c Release -p:PackageOutputPath=&lt;dir&gt;" />
   </Target>
 
   <Target Name="AddHxPayloadToPackage" DependsOnTargets="StageHxPayload">
     <ItemGroup>
       <!-- hx.config.json is excluded here — it already ships in the tool's publish output (avoids a duplicate). -->
-      <TfmSpecificPackageFile Include="$(HxPayloadStaging)**/*" Exclude="$(HxPayloadStaging)hx.config.json">
+      <TfmSpecificPackageFile Include="$(IntermediateOutputPath)hx-payload/**/*" Exclude="$(IntermediateOutputPath)hx-payload/hx.config.json">
         <PackagePath>tools/$(TargetFramework)/any/%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
       </TfmSpecificPackageFile>
     </ItemGroup>

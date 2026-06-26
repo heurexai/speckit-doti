@@ -381,7 +381,10 @@ public static class LocalReleaseService
     internal static GlobalToolChannelResult BuildGlobalToolChannel(string repo, LocalReleaseTarget target, string tempRoot)
     {
         string publishProject = target.PublishProject.Replace('/', Path.DirectorySeparatorChar);
-        Dotnet(repo, $"pack {Quote(publishProject)} -c Release -o {Quote(tempRoot)} --nologo");
+        // FR-003/C2: pack via the two-phase PackAnchoredTool target (stages the payload, computes its manifest
+        // digest, re-emits hx with the digest embedded as the anti-substitution anchor), NOT a plain `dotnet pack`
+        // (which the csproj's _GuardPayloadAnchor refuses, since it would ship an unanchored tool).
+        Dotnet(repo, $"build {Quote(publishProject)} -c Release -t:PackAnchoredTool -p:PackageOutputPath={Quote(tempRoot)} --nologo");
 
         // pack writes the package(s) at the tempRoot top level; the tool package (it bundles the payload) is the
         // largest .nupkg. Filter on the real extension so a symbol .snupkg is never selected.
