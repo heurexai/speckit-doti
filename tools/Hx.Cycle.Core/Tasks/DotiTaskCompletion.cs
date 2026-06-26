@@ -10,6 +10,34 @@ public static partial class DotiTaskCompletion
     public const string StepName = "task-completion";
     public const string EvidenceKind = "task-completion";
     public const string HashMarkerName = "doti-task-hash";
+    public const string OutOfOrderReason = "out-of-order";
+
+    /// <summary>
+    /// Ordered-task enforcement (FR-028): completed tasks MUST form a contiguous prefix in document order —
+    /// a checked task that follows ANY unchecked earlier task is out-of-order (cherry-picking). Phases are
+    /// contiguous task-number ranges in the tasks file, so the prefix rule also enforces phase order (a
+    /// later-phase task cannot be checked while an earlier-phase task is unchecked). Keyed on the parsed
+    /// document order; the diagnostic carries each task's id so a pure renumber is reported by id, not line.
+    /// </summary>
+    public static IReadOnlyList<TaskCompletionDiagnostic> OrderViolations(IReadOnlyList<DotiTaskRecord> tasks)
+    {
+        var violations = new List<TaskCompletionDiagnostic>();
+        string? firstUnchecked = null;
+        foreach (DotiTaskRecord task in tasks)
+        {
+            if (!task.Checked)
+            {
+                firstUnchecked ??= task.TaskId;
+            }
+            else if (firstUnchecked is not null)
+            {
+                violations.Add(task.Diagnostic(OutOfOrderReason,
+                    $"Task is checked but an earlier task ({firstUnchecked}) is not — complete tasks in order (FR-028)."));
+            }
+        }
+
+        return violations;
+    }
 
     public static TaskCompletionResult ValidateActiveFeature(string repositoryRoot)
     {
@@ -106,6 +134,8 @@ public static partial class DotiTaskCompletion
             diagnostics.Add(new TaskCompletionDiagnostic(relativePath, 0, null, "no-tasks", "Active task file contains no required Markdown tasks."));
         }
 
+        diagnostics.AddRange(OrderViolations(tasks));
+
         return diagnostics.Count == 0
             ? TaskCompletionResult.Pass(feature, relativePath, tasks.Count)
             : TaskCompletionResult.Fail(feature, relativePath, diagnostics);
@@ -148,7 +178,11 @@ public static partial class DotiTaskCompletion
             diagnostics.Add(new TaskCompletionDiagnostic(relativePath, 0, null, "no-tasks", "Active task file contains no required Markdown tasks."));
         }
 
-        if (diagnostics.Any(d => d.Reason is "duplicate-task-id" or "no-tasks"))
+        diagnostics.AddRange(OrderViolations(tasks));
+
+        // Fail closed before writing any completion hash when an out-of-order check exists (FR-028): the
+        // operator must fix the order first, so cherry-picked completion can never be recorded as proof.
+        if (diagnostics.Any(d => d.Reason is "duplicate-task-id" or "no-tasks" or OutOfOrderReason))
         {
             return TaskHashStampResult.Fail(resolvedFeature, relativePath, tasks.Count, 0, 0, diagnostics);
         }
@@ -277,7 +311,10 @@ public static partial class DotiTaskCompletion
         return state.Feature;
     }
 
-    [GeneratedRegex(@"^- \[(?<checked>[ xX])\]\s+`(?<id>T[0-9A-Za-z]+)`(?<body>.*)$")]
+    // The task id may be backtick-wrapped (`T001`, the historical doti format used by 001-006) or bare
+    // (T001, the absorbed Spec-Kit template format). Both are accepted — the captured id and body are
+    // identical either way, so a task's completion hash is independent of the backtick styling.
+    [GeneratedRegex(@"^- \[(?<checked>[ xX])\]\s+`?(?<id>T[0-9A-Za-z]+)`?(?<body>.*)$")]
     private static partial Regex TaskLineRegex();
 
     [GeneratedRegex(@"<!--\s*doti-task-hash:\s*(?<hash>[a-fA-F0-9]{64})\s*-->")]

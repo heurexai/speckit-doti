@@ -44,7 +44,7 @@ public sealed class FreshnessEvaluator
         CycleStage stage = _stageModel.Find(proof.Stage);
         if (stage.Produces is { } pattern)
         {
-            string artifactPath = ResolveProduces(pattern, feature);
+            string artifactPath = StageModel.ResolveProduces(pattern, feature);
             string full = Path.GetFullPath(Path.Combine(_repositoryRoot, artifactPath.Replace('/', Path.DirectorySeparatorChar)));
             string current = File.Exists(full) ? CanonicalArtifactHasher.CanonicalHashOfFile(full) : "absent";
             if (proof.ArtifactHashes.Count == 0 || !proof.ArtifactHashes.Contains(current))
@@ -77,7 +77,4 @@ public sealed class FreshnessEvaluator
 
         return new StageFreshnessResult(proof.Stage, StageFreshness.Fresh, null);
     }
-
-    public static string ResolveProduces(string producesPattern, string feature) =>
-        producesPattern.Replace("{feature}", feature);
 }

@@ -60,6 +60,12 @@ public sealed class StageModel
         return Stages.Where(s => seen.Contains(s.Id)).ToList();
     }
 
+    /// <summary>Resolve a stage's <c>produces</c> path pattern for a feature (substitutes <c>{feature}</c>).
+    /// Lives on the dependency-leaf <see cref="StageModel"/> so both <see cref="FreshnessEvaluator"/> and
+    /// <see cref="CanonicalArtifactHasher"/> can use it without a type cycle.</summary>
+    public static string ResolveProduces(string producesPattern, string feature) =>
+        producesPattern.Replace("{feature}", feature);
+
     // YAML binding shapes (private; unmatched properties — name/maturity/rules/etc. — are ignored).
     private sealed class WorkflowDoc
     {

@@ -175,7 +175,7 @@ public sealed partial class CycleService
             return [];
         }
 
-        string artifactPath = FreshnessEvaluator.ResolveProduces(pattern, resolvedFeature);
+        string artifactPath = StageModel.ResolveProduces(pattern, resolvedFeature);
         string full = Path.GetFullPath(Path.Combine(_repositoryRoot, artifactPath.Replace('/', Path.DirectorySeparatorChar)));
         // Canonical (FR-027): EOL/checkbox/hash-marker-insensitive, so checking task boxes during
         // /07-implement does not stale the doc stage that produced the tasks file.

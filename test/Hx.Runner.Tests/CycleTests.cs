@@ -1,4 +1,5 @@
 using Hx.Cycle.Core;
+using Hx.Cycle.Core.Tasks;
 using Hx.Runner.Core.Io;
 using Hx.Tooling.Contracts;
 using Xunit;
@@ -145,7 +146,7 @@ public sealed class CycleTests
                 IReadOnlyList<string> own = produces is null
                     ? []
                     : [CanonicalArtifactHasher.CanonicalHashOfFile(Path.Combine(
-                        dir, FreshnessEvaluator.ResolveProduces(produces, feature).Replace('/', Path.DirectorySeparatorChar)))];
+                        dir, StageModel.ResolveProduces(produces, feature).Replace('/', Path.DirectorySeparatorChar)))];
                 return new CycleStageProof(stage, CycleStageOutcome.Stamped, "ID", own, "commit",
                     null, CanonicalArtifactHasher.PrerequisiteArtifactHashes(dir, model, stage, feature));
             }
@@ -180,6 +181,72 @@ public sealed class CycleTests
             File.WriteAllText(tasksPath, "# tasks\n- [x] `T001` build X <!-- doti-task-hash: " + new string('b', 64) + " -->\n");
             Assert.Equal(StageFreshness.Fresh, Eval(tasksProof));
             Assert.Equal(StageFreshness.Fresh, Eval(analyzeProof));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TaskParsing_AcceptsBacktickAndBareTaskIds_WithEquivalentHash()
+    {
+        string dir = NewTempDir();
+        try
+        {
+            const string rel = "docs/tasks/001-x-tasks.md";
+            string full = Path.Combine(dir, "docs", "tasks", "001-x-tasks.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+
+            // Bare id (the absorbed Spec-Kit template format — what 007 uses).
+            File.WriteAllText(full, "# tasks\n- [ ] T001 — build the thing — `src/x.cs`\n");
+            IReadOnlyList<DotiTaskRecord> bare = DotiTaskCompletion.Parse(dir, rel, "001-x");
+            Assert.Single(bare);
+            Assert.Equal("T001", bare[0].TaskId);
+
+            // Backtick id (the historical doti format — what 001-006 use) parses to the same id and the same
+            // completion hash, so the two formats are interchangeable and 001-006 are unaffected.
+            File.WriteAllText(full, "# tasks\n- [ ] `T001` — build the thing — `src/x.cs`\n");
+            IReadOnlyList<DotiTaskRecord> ticked = DotiTaskCompletion.Parse(dir, rel, "001-x");
+            Assert.Single(ticked);
+            Assert.Equal("T001", ticked[0].TaskId);
+            Assert.Equal(DotiTaskCompletion.ComputeHash(bare[0]), DotiTaskCompletion.ComputeHash(ticked[0]));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void OrderedTasks_OutOfOrderCompletion_IsFlaggedAndRefused_FR028()
+    {
+        string dir = NewTempDir();
+        try
+        {
+            const string rel = "docs/tasks/001-x-tasks.md";
+            string full = Path.Combine(dir, "docs", "tasks", "001-x-tasks.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+
+            // A contiguous prefix (T001 done, the rest not) is in order — no violation.
+            File.WriteAllText(full, "# tasks\n\n## Phase 0\n- [x] `T001` a\n- [ ] `T002` b\n- [ ] `T003` c\n");
+            Assert.Empty(DotiTaskCompletion.OrderViolations(DotiTaskCompletion.Parse(dir, rel, "001-x")));
+
+            // Cherry-picking (T003 checked while T002 is not) is out-of-order; the violation names the id and
+            // the earliest unchecked predecessor.
+            File.WriteAllText(full, "# tasks\n\n## Phase 0\n- [x] `T001` a\n- [ ] `T002` b\n- [x] `T003` c\n");
+            IReadOnlyList<TaskCompletionDiagnostic> violations =
+                DotiTaskCompletion.OrderViolations(DotiTaskCompletion.Parse(dir, rel, "001-x"));
+            Assert.Single(violations);
+            Assert.Equal(DotiTaskCompletion.OutOfOrderReason, violations[0].Reason);
+            Assert.Equal("T003", violations[0].TaskId);
+            Assert.Contains("T002", violations[0].Message);
+
+            // task-hash stamp fails closed and records NO completion hash while the order is violated.
+            TaskHashStampResult stamp = DotiTaskCompletion.StampFeature(dir, "001-x");
+            Assert.Equal(StageOutcome.Fail, stamp.Outcome);
+            Assert.Contains(stamp.Diagnostics, d => d.Reason == DotiTaskCompletion.OutOfOrderReason);
+            Assert.DoesNotContain(DotiTaskCompletion.HashMarkerName, File.ReadAllText(full));
         }
         finally
         {

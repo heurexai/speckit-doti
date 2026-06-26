@@ -52,7 +52,7 @@ public static partial class CanonicalArtifactHasher
                 continue;
             }
 
-            string relativePath = FreshnessEvaluator.ResolveProduces(pattern, feature);
+            string relativePath = StageModel.ResolveProduces(pattern, feature);
             if (byPath.ContainsKey(relativePath))
             {
                 continue; // specify + clarify both produce the spec; bind the artifact once
@@ -69,6 +69,6 @@ public static partial class CanonicalArtifactHasher
     [GeneratedRegex(@"\s*<!--\s*doti-task-hash:\s*[a-fA-F0-9]{64}\s*-->")]
     private static partial Regex TaskHashMarkerRegex();
 
-    [GeneratedRegex(@"(?m)^(?<prefix>- \[)[ xX](?<suffix>\]\s+`T[0-9A-Za-z]+`)")]
+    [GeneratedRegex(@"(?m)^(?<prefix>- \[)[ xX](?<suffix>\]\s+`?T[0-9A-Za-z]+`?)")]
     private static partial Regex TaskCheckboxRegex();
 }

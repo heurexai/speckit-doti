@@ -150,7 +150,7 @@ public sealed partial class CycleService
             return null;
         }
 
-        string artifactPath = FreshnessEvaluator.ResolveProduces(pattern, feature);
+        string artifactPath = StageModel.ResolveProduces(pattern, feature);
         string full = Path.GetFullPath(Path.Combine(_repositoryRoot, artifactPath.Replace('/', Path.DirectorySeparatorChar)));
         if (!File.Exists(full))
         {

@@ -73,7 +73,7 @@ public sealed partial class CycleService
             return [];
         }
 
-        string expected = FreshnessEvaluator.ResolveProduces(produces, _store.Read()?.Feature ?? string.Empty)
+        string expected = StageModel.ResolveProduces(produces, _store.Read()?.Feature ?? string.Empty)
             .Replace('\\', '/');
         return scope.StagedPaths
             .Where(path => !string.Equals(path, expected, StringComparison.Ordinal))
