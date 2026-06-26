@@ -1,6 +1,6 @@
 # Specification Template
 
-> WHAT and WHY only — defer mechanism (projects, APIs, code) to the plan. Name new and open/unimplemented legacy specs with a Spec Kit-style numbered feature slug (`docs/specs/NNN-short-name.md`, e.g. `docs/specs/001-numbered-specs.md`) so specs sort in workflow order; use that same full slug for the cycle `--feature`. Leave implemented/completed legacy specs on their existing historical filenames. Requirements use stable `FR-###` / `SC-###` IDs so `/doti-analyze` can map them to tasks; user stories (`US1`, `US2`, …) give them MVP-first traceability. Omit an inapplicable section entirely (no "N/A"). Flag genuine unknowns inline with a `[NEEDS CLARIFICATION]` marker (state the specific question after the colon) — at most 3, prioritised scope > security/privacy > UX > technical.
+> WHAT and WHY only — defer mechanism (projects, APIs, code) to the plan. Name new and open/unimplemented legacy specs with a Spec Kit-style numbered feature slug (`docs/specs/NNN-short-name.md`, e.g. `docs/specs/001-numbered-specs.md`) so specs sort in workflow order; use that same full slug for the cycle `--feature`. Leave implemented/completed legacy specs on their existing historical filenames. Requirements use stable `FR-###` / `SC-###` IDs so `/doti-analyze` can map them to tasks; user stories (`US1`, `US2`, …) give them MVP-first traceability. Omit an inapplicable section entirely (no "N/A"). Flag genuine unknowns inline with a `[NEEDS CLARIFICATION]` marker (state the specific question after the colon) — at most 7, prioritised scope > security/privacy > UX > technical; if more than 7 genuinely block, record the overflow as a scope risk and recommend splitting the feature.
 
 ## Goal
 
@@ -8,7 +8,9 @@ State the user-facing outcome and why it matters.
 
 ## User Scenarios & Testing
 
-Prioritised user stories — journeys ordered by importance. **Each story MUST be INDEPENDENTLY TESTABLE**: implementing just one yields a viable MVP slice that delivers value. Assign priorities `P1` (most critical), `P2`, `P3`, …; the tasks build order follows these priorities (P1 = MVP).
+**Priority Mode** — declare which fits this change (`/04-doti-tasks` orders the build by it): *code / generated-code* → independently testable user-value slices (the user stories below); *docs / Doti-prose* → authoritative-truth correctness → source-of-truth / rendered-asset drift prevention → operator readability → polish; *workflow / tooling* → fail-closed safety + deterministic proof before ergonomics; *mixed* → declare the **dominant** mode + note exceptions. For a non-code mode, replace the user-story scaffold below with prioritised work items in that mode's order.
+
+Prioritised user stories (code mode) — journeys ordered by importance. **Each story MUST be INDEPENDENTLY TESTABLE**: implementing just one yields a viable MVP slice that delivers value. Assign priorities `P1` (most critical), `P2`, `P3`, …; the tasks build order follows these priorities (P1 = MVP).
 
 ### User Story 1 — [title] (Priority: P1)
 

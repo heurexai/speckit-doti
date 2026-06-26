@@ -11,7 +11,7 @@ metadata:
 
 Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/converge.md`.
 
-Find the requirement coverage gap deterministically with `hx doti converge --spec docs/specs/<NNN-slug>.md --tasks docs/tasks/<NNN-slug>-tasks.md` — it reports every FR-###/SC-### the spec defines that NO task covers (fails closed `converge-input` if a file is missing). For each uncovered requirement, ASSESS it against the codebase (genuinely unbuilt vs already-built-but-unmapped — read/reproduce, don't assume), then append the genuinely-missing work as new tasks in the right MVP-first phase, mapped `[covers FR-/SC-]`. converge never rewrites the ledger for you; you append and the ordered-task gate keeps the order honest. Ties to `/08-doti-drift-review` (spec->tasks gap vs source->installed gap).
+Find the requirement coverage gap deterministically with `hx doti converge --spec docs/specs/<NNN-slug>.md --tasks docs/tasks/<NNN-slug>-tasks.md` — it reports every FR-###/SC-### the spec defines that NO task covers (fails closed `converge-input` if a file is missing). For each uncovered requirement, ASSESS it against the codebase (genuinely unbuilt vs already-built-but-unmapped — read/reproduce, don't assume), then append the genuinely-missing work as new tasks in the right phase (the spec's declared Priority Mode order — MVP-first for code, truth-first for docs, safety-first for workflow), mapped `[covers FR-/SC-]`. converge never rewrites the ledger for you; you append and the ordered-task gate keeps the order honest. Ties to `/08-doti-drift-review` (spec->tasks gap vs source->installed gap).
 
 ## Asking the operator a question (required format)
 

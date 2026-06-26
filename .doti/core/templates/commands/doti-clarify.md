@@ -13,7 +13,7 @@ Use the shared **Operator-Question Protocol** (rendered in this skill's `SKILL.m
 ## Rules
 
 1. Read `.doti/agent-context.md` and the active spec first.
-2. Ask only blocking questions (at most 5 total). For anything non-blocking, make a conservative assumption aligned with the plan and record it instead of asking.
+2. Ask only blocking questions (at most 7 total; if more than 7 genuinely block, the feature is likely too large — say so and recommend splitting rather than running a long interrogation). For anything non-blocking, make a conservative assumption **aligned with the spec intent + agent context** (the plan does not exist yet — that is `/03`'s job; the assumption is verified or revised there) and record it instead of asking.
 3. Separate product intent from implementation mechanism.
 4. State whether each affected check is command-backed or advisory; never imply a planned command is implemented.
 5. After each answer, write it into the spec `## Clarifications` (dated) and reflect any scope change before the next question.
