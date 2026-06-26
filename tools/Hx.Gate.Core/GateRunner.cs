@@ -9,6 +9,7 @@ using Hx.Impact.Core.Planning;
 using Hx.Runner.Core.ArchitectureGate;
 using Hx.Runner.Core.Gitleaks;
 using Hx.Runner.Core.Hygiene;
+using Hx.Runner.Core.Packaging;
 using Hx.Runner.Core.Platform;
 using Hx.Runner.Core.Process;
 using Hx.Security.Core;
@@ -53,6 +54,7 @@ public static class GateRunner
         Emit(buildAndTest.Step);
         Emit(ApplyTier(ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
         Emit(NoVelopackStep(repositoryRoot)); // FR-007/SC-005: always enforced — a hard product invariant, not tier-downgradable
+        Emit(NoSourceStep(repositoryRoot)); // FR-006/SC-004: no tool build tree in the staged release layout
         Emit(SkillDriftStep(repositoryRoot));
         Emit(DotiPayloadStep(repositoryRoot));
         Emit(ApplyTier(ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
@@ -135,6 +137,22 @@ public static class GateRunner
         ArchitectureTestResult arch = ArchitectureTestRunner.Run(repositoryRoot);
         return Step("architecture-test", arch.Outcome,
             $"{arch.PassedCount}/{arch.TestCount} passed; {arch.Families.Count} families");
+    }
+
+    // Scan the conventional local release-staging dir (artifacts/) for the tool's build tree. Absent in CI / a fresh
+    // clone → Pass (vacuous); the authoritative fail-closed check is in LocalReleaseService at packaging time.
+    private static GateStep NoSourceStep(string repositoryRoot)
+    {
+        ReleaseSourceScanResult result = ReleaseSourceInspector.Scan(Path.Combine(repositoryRoot, "artifacts"));
+        return result.Outcome == StageOutcome.Pass
+            ? Step("no-source", StageOutcome.Pass,
+                result.ScannedEntryCount == 0
+                    ? "no staged release layout to scan (artifacts/ absent)"
+                    : $"{result.ScannedEntryCount} staged entr(ies) scanned; no tool build tree (FR-006)")
+            : new GateStep("no-source", StageOutcome.Fail,
+                result.Findings.Take(20)
+                    .Select(f => new GateEvidence($"no-source.{f.Marker}", $"{f.Artifact}!{f.Entry}", f.Artifact))
+                    .ToArray());
     }
 
     private static GateStep NoVelopackStep(string repositoryRoot)

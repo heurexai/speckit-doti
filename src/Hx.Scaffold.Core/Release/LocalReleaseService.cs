@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Hx.Cycle.Core;
 using Hx.Cycle.Core.Documentation;
+using Hx.Runner.Core.Packaging;
 using Hx.Runner.Core.Platform;
 using Hx.Scaffold.Core.Configuration;
 using Hx.Tooling.Contracts;
@@ -307,6 +308,16 @@ public static class LocalReleaseService
         }
 
         IReadOnlyList<LocalReleasePayloadCheck> payloadChecks = InspectPayload(publish);
+
+        // 007 T020 (FR-006/SC-004): packaging fails closed if the staged release layout carries the tool's own build
+        // tree — recursively, including inside any bundled .nupkg. The legitimate template pack + payload pass.
+        ReleaseSourceScanResult sourceScan = ReleaseSourceInspector.Scan(publish);
+        if (sourceScan.Outcome != StageOutcome.Pass)
+        {
+            throw new InvalidOperationException(
+                $"{ReleaseSourceInspector.ViolationCode}: release staging carries the tool's build tree (FR-006): " +
+                string.Join("; ", sourceScan.Findings.Take(5).Select(f => $"{f.Artifact}!{f.Entry} ({f.Marker})")));
+        }
 
         // 007 T016: Velopack removed. The interim release records the payload identity (full payload hash manifest)
         // but produces no installer/package and runs no install-location smoke. T028 retargets this to emit the
