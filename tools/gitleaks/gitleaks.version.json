@@ -12,6 +12,11 @@
   "configSha256": "68ccdbec96a34fec751e798bda1eae5a1c22485401892ad8414b8c150fc30ab2",
   "vendoredAt": "2026-06-17",
   "updateChannel": "stable",
+  "hashProvenance": {
+    "capturedToolVersion": "8.30.1",
+    "capturedBy": ".github/workflows/compute-tool-hashes.yml",
+    "verification": "upstream-checksum"
+  },
   "assets": [
     {
       "rid": "win-x64",

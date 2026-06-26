@@ -48,7 +48,7 @@ public sealed partial class ToolFetcherTests
     }
 
     [Fact]
-    public void DownloadFailureFailsClosedWithoutThrowing()
+    public void NetworkConditionDegradesToAdvisoryWithoutThrowing()
     {
         byte[] exeBytes = Encoding.UTF8.GetBytes("fake-binary");
         string manifest = WriteManifest("sentrux", "tools/sentrux/sentrux.version.json",
@@ -58,7 +58,26 @@ public sealed partial class ToolFetcherTests
             executableSha256: Sha256(exeBytes),
             executableName: "sentrux.exe");
 
+        // 007 T022 offline split: a genuine network condition (HttpRequestException) degrades to advisory, not fail-closed.
         ToolFetchOutcome outcome = ToolFetcher.Fetch(manifest, Rid, _ => throw new HttpRequestException("offline"), _root);
+
+        Assert.Equal(ToolFetchStatus.Degraded, outcome.Status);
+        Assert.Equal(ToolFetchFailureKind.Network, outcome.FailureKind);
+    }
+
+    [Fact]
+    public void NonNetworkDownloadFailureFailsClosedWithoutThrowing()
+    {
+        byte[] exeBytes = Encoding.UTF8.GetBytes("fake-binary");
+        string manifest = WriteManifest("sentrux", "tools/sentrux/sentrux.version.json",
+            downloadUrl: "https://github.com/heurexai/speckit-doti/releases/download/v1.0.0/sentrux.exe",
+            archiveSha256: null,
+            executablePath: "tools/sentrux/bin/win-x64/sentrux.exe",
+            executableSha256: Sha256(exeBytes),
+            executableName: "sentrux.exe");
+
+        // A non-network fault (not DNS/timeout/unreachable) stays fail-closed — never advisory (T022).
+        ToolFetchOutcome outcome = ToolFetcher.Fetch(manifest, Rid, _ => throw new InvalidOperationException("corrupt"), _root);
 
         Assert.Equal(ToolFetchStatus.Failed, outcome.Status);
         Assert.Equal(ToolFetchFailureKind.DownloadFailed, outcome.FailureKind);

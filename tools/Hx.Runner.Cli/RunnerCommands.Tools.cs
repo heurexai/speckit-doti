@@ -84,6 +84,8 @@ public static partial class RunnerCommands
         ToolFetchFailureKind.AssetUnavailable => ErrorCodes.Validation_ToolAssetUnavailable,
         ToolFetchFailureKind.ArchiveHashMismatch => ErrorCodes.Integrity_ToolArchiveHashMismatch,
         ToolFetchFailureKind.ExecutableHashMismatch => ErrorCodes.Integrity_ToolExecutableHashMismatch,
+        ToolFetchFailureKind.ProvenanceMismatch => ErrorCodes.Integrity_ToolExecutableHashMismatch, // 007 T022
+        ToolFetchFailureKind.Network => ErrorCodes.Validation_ToolAssetUnavailable,                 // 007 T022 (advisory-able)
         _ => ErrorCodes.Internal_ToolDownloadFailed,
     };
 }

@@ -9,8 +9,13 @@ public enum ToolFetchStatus
     /// <summary>No asset is mapped for the host RID — reported cleanly, not a failure to install (fail-closed for that RID).</summary>
     Skipped,
 
-    /// <summary>The fetch failed closed: a hash mismatch, a download/extraction error, or no asset for the RID when fetching was required.</summary>
+    /// <summary>The fetch failed closed: a hash/provenance mismatch, a malformed manifest, an invalid URL, or an
+    /// extraction/write error. Never degraded to advisory (007 T022 / FR-033).</summary>
     Failed,
+
+    /// <summary>A genuine network condition (DNS failure, timeout, unreachable host) prevented the download. The
+    /// core path (hx new first smoke) MAY degrade this to advisory; every other failure stays fail-closed (T022).</summary>
+    Degraded,
 }
 
 /// <summary>
@@ -31,8 +36,16 @@ public enum ToolFetchFailureKind
     /// <summary>The resolved executable's SHA-256 did not match the manifest's <c>executableSha256</c>.</summary>
     ExecutableHashMismatch,
 
-    /// <summary>The download or archive extraction failed (network / IO / corrupt archive).</summary>
+    /// <summary>The archive extraction or executable write failed (corrupt archive / IO). Fail-closed.</summary>
     DownloadFailed,
+
+    /// <summary>A genuine network condition (DNS/timeout/unreachable). Pairs with <see cref="ToolFetchStatus.Degraded"/>;
+    /// the only condition the core path may treat as advisory (T022 offline split / FR-033).</summary>
+    Network,
+
+    /// <summary>The manifest hash did not match the upstream-published checksum it claims as provenance (007 T022
+    /// trust hardening): the manifest's recorded hash is not what the publisher's independent checksum says.</summary>
+    ProvenanceMismatch,
 }
 
 /// <summary>The outcome of fetching one tool's executable for the host RID.</summary>

@@ -8,6 +8,11 @@
   "distributionIdentity": "Heurex fork",
   "updateChannel": "stable",
   "vendoredAt": "2026-06-24",
+  "hashProvenance": {
+    "capturedToolVersion": "v0.5.11",
+    "capturedBy": ".github/workflows/compute-tool-hashes.yml",
+    "verification": "version-pinned"
+  },
   "assets": [
     {
       "rid": "win-x64",

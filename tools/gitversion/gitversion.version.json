@@ -8,6 +8,11 @@
   "releasePublishedAt": null,
   "vendoredAt": "2026-06-19",
   "updateChannel": "stable",
+  "hashProvenance": {
+    "capturedToolVersion": "6.7.0",
+    "capturedBy": ".github/workflows/compute-tool-hashes.yml",
+    "verification": "version-pinned"
+  },
   "assets": [
     {
       "rid": "win-x64",

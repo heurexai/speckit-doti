@@ -62,6 +62,7 @@ public static partial class ToolFetcher
 
             byte[] downloaded = DownloadOrThrow(tool, rid, asset, fetchBytes);
             byte[] executableBytes = BuildExecutableBytesOrThrow(tool, rid, asset, downloaded);
+            VerifyUpstreamProvenanceOrThrow(tool, rid, manifest, asset, fetchBytes); // 007 T022: cross-check the manifest hash vs the upstream-published checksum
             EnsureExecutableHash(tool, rid, asset, executableBytes);
             return WriteExecutable(tool, rid, asset, exeFullPath, executableBytes);
         }
@@ -75,9 +76,10 @@ public static partial class ToolFetcher
     private static ToolFetchResult Aggregate(string rid, IReadOnlyList<ToolFetchOutcome> outcomes)
     {
         StageOutcome outcome =
-            outcomes.Any(o => o.Status == ToolFetchStatus.Failed) ? StageOutcome.Fail :
+            outcomes.Any(o => o.Status == ToolFetchStatus.Failed) ? StageOutcome.Fail :        // fail-closed always wins
+            outcomes.Any(o => o.Status == ToolFetchStatus.Degraded) ? StageOutcome.Blocked :   // 007 T022: network → advisory-able
             outcomes.All(o => o.Status == ToolFetchStatus.Fetched) ? StageOutcome.Pass :
-            StageOutcome.Blocked;
+            StageOutcome.Blocked;                                                                // skipped RID
         return new ToolFetchResult(JsonContractDefaults.SchemaVersion, outcome, rid, outcomes);
     }
 
@@ -93,13 +95,17 @@ public static partial class ToolFetcher
         return Path.GetDirectoryName(toolsDir)!;                                      // repo root
     }
 
-    /// <summary>Minimal manifest projection — only the asset shape the fetch needs; extra fields are ignored.</summary>
+    /// <summary>Minimal manifest projection — only the asset shape the fetch needs; extra fields are ignored.
+    /// <c>checksumUrl</c> (007 T022) is the publisher's independently-published checksums file used to cross-verify
+    /// the manifest's recorded hash (the trust upgrade from TOFU).</summary>
     private sealed record ToolManifestDto(
         [property: JsonPropertyName("tool")] string? Tool,
+        [property: JsonPropertyName("checksumUrl")] string? ChecksumUrl,
         [property: JsonPropertyName("assets")] IReadOnlyList<ToolAssetDto>? Assets);
 
     private sealed record ToolAssetDto(
         [property: JsonPropertyName("rid")] string Rid,
+        [property: JsonPropertyName("assetName")] string? AssetName,
         [property: JsonPropertyName("downloadUrl")] string DownloadUrl,
         [property: JsonPropertyName("archiveSha256")] string? ArchiveSha256,
         [property: JsonPropertyName("executablePath")] string ExecutablePath,
