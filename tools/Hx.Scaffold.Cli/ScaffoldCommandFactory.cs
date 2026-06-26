@@ -8,7 +8,11 @@ namespace Hx.Scaffold.Cli;
 
 public static class ScaffoldCommandFactory
 {
-    public static RootCommand Create(CliMeta meta, string? executableDirectory = null)
+    public static RootCommand Create(
+        CliMeta meta,
+        string? executableDirectory = null,
+        DistributionChannelInfo? channel = null,
+        CliDescribeTier? tier = null)
     {
         string configurationDirectory = string.IsNullOrWhiteSpace(executableDirectory)
             ? AppContext.BaseDirectory
@@ -21,7 +25,11 @@ public static class ScaffoldCommandFactory
         AddPrereq(rootCommand, meta, configurationDirectory);
         AddDoti(rootCommand, meta, configurationDirectory);
         ComposeWorkflowSurface(rootCommand, meta); // FR-045
-        CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All, channel: InstalledPayload.ResolveChannel());
+        // 007 T045 (FR-022/FR-042): describe surfaces the active channel + tier/gate-ladder. Resolved by the caller
+        // (Program.cs) so the same values feed the human help header; fall back to a fresh resolve for direct callers.
+        CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All,
+            channel: channel ?? InstalledPayload.ResolveChannel(),
+            tier: tier ?? InstalledPayload.ResolveTier(Directory.GetCurrentDirectory()));
         return rootCommand;
     }
 
@@ -130,7 +138,7 @@ public static class ScaffoldCommandFactory
     private static void AddRelease(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
     {
         Command command = new("release",
-            "Build the manifest-declared target release, create/verify the local GitVersion tag, and copy Velopack artifacts when configured.");
+            "Build the manifest-declared target release, create/verify the local GitVersion tag, and copy the channel package artifacts when configured.");
         Option<string> repo = new("--repo") { Description = "Repository root to release.", DefaultValueFactory = _ => "." };
         Option<string> rid = new("--rid") { Description = "Runtime identifier to publish (defaults to the current host RID).", DefaultValueFactory = _ => "" };
         Option<bool> major = new("--major") { Description = "Require GitVersion to calculate a major release before tagging.", DefaultValueFactory = _ => false };

@@ -1,3 +1,4 @@
+using Hx.Cycle.Core;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Scaffold.Core;
@@ -52,6 +53,29 @@ public static class InstalledPayload
             : new DistributionChannelInfo(
                 DistributionChannelId.Source, CommandMode.SourceDeveloper,
                 InstallCommand: null, UpdateCommand: null, UpdateAuthority: "source checkout (self-host/dev build)");
+
+    /// <summary>
+    /// The active repo tier + its gate ladder (FR-022/FR-042), resolved from the repo's declared profile —
+    /// defaulting to <c>workflow-only</c> when none is declared. Null only when a declared profile fails closed
+    /// (its <c>profile.json</c> is missing or malformed), matching the gate's fail-closed tier resolution.
+    /// </summary>
+    public static CliDescribeTier? ResolveTier(string repositoryRoot) =>
+        GateLadderResolver.Resolve(repositoryRoot).Ladder is { } ladder
+            ? new CliDescribeTier(ladder.Tier, ladder.Coverage())
+            : null;
+
+    /// <summary>
+    /// A one-line human-help context (FR-042): the active tier + channel + how the channel updates, for the help
+    /// header. Pure — the tier/channel are resolved by the caller so help rendering never does I/O on the hot path.
+    /// </summary>
+    public static string FormatHelpContext(CliDescribeTier? tier, DistributionChannelInfo channel)
+    {
+        string tierText = "tier: " + (tier?.Tier ?? "unresolved");
+        string channelText = channel.UpdateCommand is { } update
+            ? $"channel: {channel.Channel} (update: {update})"
+            : $"channel: {channel.Channel} ({channel.Mode})";
+        return $"{tierText}  ·  {channelText}";
+    }
 
     private static DistributionChannelInfo ChannelInfoFor(string channel, string mode) => channel switch
     {

@@ -167,4 +167,40 @@ public sealed class PayloadRootTests
         Assert.Equal(DistributionChannelId.Source, src.Channel);
         Assert.Equal(CommandMode.SourceDeveloper, src.Mode);
     }
+
+    [Fact]
+    public void ResolveTier_DefaultsToWorkflowOnly_WhenNoProfileDeclared() // T045, FR-022/FR-042
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "hx-tier-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            CliDescribeTier? tier = InstalledPayload.ResolveTier(dir);
+
+            // A repo that declares no profile gets the non-imposing Tier 1 — the opinionated structural gates skip.
+            Assert.NotNull(tier);
+            Assert.Equal("workflow-only", tier!.Tier);
+            Assert.Contains(tier.Ladder, e => e.Step == "architecture-test" && e.Mode == "skip");
+            Assert.Contains(tier.Ladder, e => e.Step == "sentrux-verify" && e.Mode == "skip");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void FormatHelpContext_ShowsTierAndChannelUpdate() // T045, FR-042
+    {
+        var tier = new CliDescribeTier("dotnet-cli-heurex", []);
+        DistributionChannelInfo channel = InstalledPayload.ResolveChannel(PayloadResolution.Success("root",
+            new PayloadDescriptor(PayloadDescriptor.CurrentSchemaVersion, "8", "0.9.1",
+                DistributionChannelId.GlobalTool, CommandMode.Installed, []), overrideActive: false));
+
+        string ctx = InstalledPayload.FormatHelpContext(tier, channel);
+
+        Assert.Contains("tier: dotnet-cli-heurex", ctx);
+        Assert.Contains("channel: global-tool", ctx);
+        Assert.Contains("dotnet tool update", ctx);
+    }
 }

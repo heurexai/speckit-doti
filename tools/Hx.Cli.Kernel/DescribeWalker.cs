@@ -15,9 +15,10 @@ public static class DescribeWalker
         Command root,
         IReadOnlyList<ErrorCodeEntry> errorCodes,
         CliDescribeWorkflow? workflow = null,
-        DistributionChannelInfo? channel = null) =>
+        DistributionChannelInfo? channel = null,
+        CliDescribeTier? tier = null) =>
         new(JsonContractDefaults.SchemaVersion, meta.Tool, meta.Version, Walk(root),
-            Enum.GetNames<ExitClass>(), errorCodes, workflow, channel);
+            Enum.GetNames<ExitClass>(), errorCodes, workflow, channel, tier);
 
     private static CliDescribeCommand Walk(Command command) =>
         new(command.Name,

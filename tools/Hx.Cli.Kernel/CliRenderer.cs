@@ -32,15 +32,16 @@ public static class CliRenderer
         string tagline,
         CliHelpMode mode,
         IAnsiConsole? console = null,
-        TextWriter? plainOutput = null)
+        TextWriter? plainOutput = null,
+        string? helpContext = null)
     {
         if (ShouldWritePlain(mode))
         {
-            (plainOutput ?? Console.Out).Write(RenderPlainHelp(root, command, path, meta, banner, tagline));
+            (plainOutput ?? Console.Out).Write(RenderPlainHelp(root, command, path, meta, banner, tagline, helpContext));
             return;
         }
 
-        WriteRichHelp(root, command, path, meta, banner, tagline, mode, console);
+        WriteRichHelp(root, command, path, meta, banner, tagline, mode, console, helpContext);
     }
 
     public static string RenderPlainHelp(
@@ -49,19 +50,25 @@ public static class CliRenderer
         IReadOnlyList<string> path,
         CliMeta meta,
         string banner,
-        string tagline)
+        string tagline,
+        string? helpContext = null)
     {
         var lines = new List<string>
         {
             $"{banner} {meta.Version}",
             tagline,
-            string.Empty,
-            $"{Invocation(meta, path)} - {Description(command)}",
-            string.Empty,
-            "Usage:",
-            $"  {Invocation(meta, path)}{UsageSuffix(command)}",
-            string.Empty,
         };
+        if (!string.IsNullOrWhiteSpace(helpContext))
+        {
+            lines.Add(helpContext);
+        }
+
+        lines.Add(string.Empty);
+        lines.Add($"{Invocation(meta, path)} - {Description(command)}");
+        lines.Add(string.Empty);
+        lines.Add("Usage:");
+        lines.Add($"  {Invocation(meta, path)}{UsageSuffix(command)}");
+        lines.Add(string.Empty);
 
         if (command.Subcommands.Count > 0)
         {
@@ -84,12 +91,18 @@ public static class CliRenderer
         string banner,
         string tagline,
         CliHelpMode mode,
-        IAnsiConsole? console = null)
+        IAnsiConsole? console = null,
+        string? helpContext = null)
     {
         IAnsiConsole c = ResolveConsole(mode, console);
         c.WriteLine();
         c.Write(new FigletText(banner).LeftJustified().Color(Gold));
         c.MarkupLine($"  [{MutedHex}]{Markup.Escape(tagline)}[/]   [{GoldHex}]{Markup.Escape(meta.Version)}[/]");
+        if (!string.IsNullOrWhiteSpace(helpContext))
+        {
+            c.MarkupLine($"  [{MutedHex}]{Markup.Escape(helpContext)}[/]");
+        }
+
         c.WriteLine();
         c.MarkupLine($"  [{GoldHex}]{Markup.Escape(Invocation(meta, path))}[/] [{MutedHex}]- {Markup.Escape(Description(command))}[/]");
         c.WriteLine();

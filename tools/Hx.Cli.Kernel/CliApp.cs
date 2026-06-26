@@ -41,12 +41,14 @@ public static class CliApp
     /// cases and only invoking a real command action, the SCL defaults are never reached.
     /// </summary>
     public static int Harden(
-        RootCommand root, CliMeta meta, string[] args, string banner, string tagline, Stream? output = null)
+        RootCommand root, CliMeta meta, string[] args, string banner, string tagline, Stream? output = null,
+        string? helpContext = null)
     {
-        // 1. Help (any form, any level) → branded help.
+        // 1. Help (any form, any level) → branded help. The optional helpContext (007 T045, FR-042) is the active
+        //    tier + channel one-liner, surfaced in the human help header alongside the machine-readable describe.
         if (CliHelpRequestParser.TryParse(root, args) is { } help)
         {
-            CliRenderer.WriteHelp(root, help.Command, help.Path, meta, banner, tagline, help.Mode);
+            CliRenderer.WriteHelp(root, help.Command, help.Path, meta, banner, tagline, help.Mode, helpContext: helpContext);
             return (int)ExitClass.Success;
         }
 
@@ -94,7 +96,8 @@ public static class CliApp
         CliMeta meta,
         IReadOnlyList<ErrorCodeEntry> errorCodes,
         CliDescribeWorkflow? workflow = null,
-        DistributionChannelInfo? channel = null)
+        DistributionChannelInfo? channel = null,
+        CliDescribeTier? tier = null)
     {
         Option<bool> jsonOption = JsonOption();
         Command describe = new("describe",
@@ -102,7 +105,7 @@ public static class CliApp
         describe.Options.Add(jsonOption);
         describe.SetAction(parseResult => CliHost.Run(meta, "describe",
             () => CliResults.Ok(meta, "describe", $"{meta.Tool} capability description.",
-                DescribeWalker.Describe(meta, root, errorCodes, workflow, channel)),
+                DescribeWalker.Describe(meta, root, errorCodes, workflow, channel, tier)),
             forceJson: ForceJson(parseResult, jsonOption)));
         root.Subcommands.Add(describe);
     }
