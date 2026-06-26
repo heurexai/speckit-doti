@@ -35,6 +35,12 @@ stages:
   - id: arch-review
     command: 06-doti-arch-review
     kind: review
+    # NOTE (finding 3, deferred): arch-review SHOULD bind its review record via
+    # `produces: docs/reviews/{feature}-arch-review.md` so a downstream consumer (drift-review's spec<->code
+    # axis) depends on a content-bound artifact. Not added yet because the in-flight cycle stamped arch-review
+    # with empty artifact hashes; adding produces now would mark that stamp Stale (FreshnessEvaluator) and block
+    # the release. Add it at the next clean cycle boundary (or paired with a re-stamp). The template already
+    # writes the record so the binding is a one-line change then.
     prereqs: [analyze]
   - id: implement
     command: 07-doti-implement

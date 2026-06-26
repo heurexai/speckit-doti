@@ -36,7 +36,8 @@ public static class DotiWorkflowRegistry
             "Run `/05-doti-analyze` for a cross-artifact consistency review."),
         Stage(5, "analyze", "doti-analyze", "Analyze", "required",
             ["arch-review"], [],
-            "Run `/06-doti-arch-review` to review architecture impacts and rule coverage."),
+            // FR-028/SC-013: mark arch-review conditional/advisory when architecture impact is absent, required when present.
+            "Run `/06-doti-arch-review` — required when the change has architecture impact (production code, contracts, CLI, dependencies, or scaffold-template code), advisory (a quick no-op review record) when it has none."),
         Stage(6, "arch-review", "doti-arch-review", "Arch-Review", "advisory-required",
             ["implement"], [],
             "Run `/07-doti-implement` to implement the tasks."),
