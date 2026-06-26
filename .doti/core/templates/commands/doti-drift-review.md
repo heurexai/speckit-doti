@@ -30,13 +30,13 @@ Source-of-truth note: the agent context + skills are *rendered* from `.doti/core
 
 ## Axis 3 — source ↔ installed/rendered assets
 
-4. `Hx.Runner.Cli doti render-skills --check` is the authority for skill / agent-context / payload-parity drift (independent of the diff — it re-derives every rendered file from source).
+4. Run **both** parity authorities — they check different things (and both are independent of the diff): `doti render-skills --check` re-derives the rendered skills + agent-context + thin entrypoints from source (rendered-file freshness), and `doti payload check --repo .` verifies the full installed `.doti` payload — the static `.doti` assets **plus** the rendered files — against source. Both are also enforced by `gate run` (step 6), but cite them here so the manual review is not under-scoped.
 5. `AGENTS.md` and `CLAUDE.md` remain thin entrypoints; a hand-edited installed skill is drift — re-render from `.doti/core/skills.json`, never hand-edit the generated file.
 
 ## Gate + hand-off
 
 6. Run `gate run --profile normal --repo .`; any gate failure is blocking. Direct `dotnet test` output is diagnostic only — the persisted gate proof is the commit-authorizing evidence.
-7. On a clean review (no open drift in any *applicable* axis), stamp the stage (`doti cycle stamp --stage drift-review`), then confirm commit-readiness with `doti cycle check --stage commit` (fail-closed: every prerequisite stamped + fresh). **Open drift blocks the stamp** — fix the source of truth (the code, or whichever doc/asset lied about it) and re-run; do not stamp over known drift.
+7. On a clean review (no open drift in any *applicable* axis), stamp the stage: `doti cycle stamp --stage drift-review`. The stamp is **fail-closed** — it refuses if any transitive prerequisite is stale or missing, so a clean stamp IS the readiness proof (there is no separate `commit` stage; the commit is owned by the coded transition into `/09-doti-release`). **Open drift blocks the stamp** — fix the source of truth (the code, or whichever doc/asset lied about it) and re-run; do not stamp over known drift.
 
 Expected output: drift findings grouped by axis (spec↔code, code↔docs, source↔installed), each with evidence (`file:line` + the contradicting spec/doc/source ref) and the authoritative fix; plus which axes **ran** vs. **skipped (not applicable, + reason)**. A review where every applicable axis is clean is the pass.
 
