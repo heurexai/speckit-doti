@@ -12,35 +12,57 @@ namespace Hx.Impact.Cli;
 /// surfaced as Direction (a NextAction) + <c>data.outcome</c>, never as a process failure. A planner exception
 /// propagates to <see cref="CliHost"/>, which fail-closes to an Internal diagnostic — with no plan in the envelope,
 /// a failure can never be misread as "no tests affected".
+/// One plan, two audiences (007 T040, FR-043): <c>--for tests</c> reads <c>outcome</c>/<c>selectedTests</c>;
+/// <c>--for arch-review</c> reads <c>changedFiles</c>/<c>affectedSourceProjects</c>. The plan itself is identical —
+/// <c>--for</c> only tailors the human summary + Direction for the consumer; the structured data carries everything.
 /// </summary>
 public static class ImpactCommands
 {
-    /// <summary>Run the deterministic affected-test planner for a change set and wrap the plan in the envelope.</summary>
-    public static CliResult Plan(CliMeta meta, string repo, string baseRef, string headRef, string configuration) =>
-        FromPlan(meta, "plan", new AffectedTestPlanner().Plan(Path.GetFullPath(repo), baseRef, headRef, configuration));
+    /// <summary>Default audience: the affected-test scope (outcome + selected test projects).</summary>
+    public const string AudienceTests = "tests";
+
+    /// <summary>The <c>/06-doti-arch-review</c> audience: the changed-files + affected-projects review context.</summary>
+    public const string AudienceArchReview = "arch-review";
+
+    /// <summary>Run the deterministic planner for a change set and wrap the plan in the envelope for the given audience.</summary>
+    public static CliResult Plan(CliMeta meta, string repo, string baseRef, string headRef, string configuration, string audience) =>
+        FromPlan(meta, "plan", new AffectedTestPlanner().Plan(Path.GetFullPath(repo), baseRef, headRef, configuration), audience);
 
     /// <summary>Emit the placeholder full plan (smoke / bootstrap) in the envelope.</summary>
     public static CliResult BootstrapPlan(CliMeta meta) =>
         FromPlan(meta, "bootstrap-plan", AffectedPlanFactory.BootstrapFullPlan());
 
-    /// <summary>Map any affected plan onto the success envelope (exit 0) with outcome-specific Direction.</summary>
-    public static CliResult FromPlan(CliMeta meta, string command, AffectedPlan plan) =>
-        CliResults.Ok(meta, command, Summary(plan), plan, nextActions: NextActions(plan));
+    /// <summary>Map any affected plan onto the success envelope (exit 0) with audience-specific summary + Direction.</summary>
+    public static CliResult FromPlan(CliMeta meta, string command, AffectedPlan plan, string audience = AudienceTests) =>
+        CliResults.Ok(meta, command, Summary(plan, audience), plan, nextActions: NextActions(plan, audience));
 
-    internal static string Summary(AffectedPlan plan) => plan.Outcome switch
-    {
-        AffectedOutcome.Affected => $"Affected: {plan.SelectedTests.Count} test project(s) selected.",
-        AffectedOutcome.NoTestsRequired => "No tests required (only documentation/generated paths changed).",
-        AffectedOutcome.FullGateRequired => "Full gate required: the change could not be narrowed safely.",
-        _ => $"Plan outcome: {plan.Outcome}.",
-    };
+    internal static string Summary(AffectedPlan plan, string audience = AudienceTests) =>
+        audience == AudienceArchReview
+            ? $"Arch-review context: {plan.ChangedFiles.Count} changed file(s), {plan.AffectedSourceProjects.Count} affected source project(s)."
+            : plan.Outcome switch
+            {
+                AffectedOutcome.Affected => $"Affected: {plan.SelectedTests.Count} test project(s) selected.",
+                AffectedOutcome.NoTestsRequired => "No tests required (only documentation/generated paths changed).",
+                AffectedOutcome.FullGateRequired => "Full gate required: the change could not be narrowed safely.",
+                _ => $"Plan outcome: {plan.Outcome}.",
+            };
 
-    internal static IReadOnlyList<CliNextAction> NextActions(AffectedPlan plan) => plan.Outcome switch
+    internal static IReadOnlyList<CliNextAction> NextActions(AffectedPlan plan, string audience = AudienceTests)
     {
-        AffectedOutcome.FullGateRequired =>
-            [new CliNextAction("Run the full gate", "The change is broad or unattributed; run the whole suite.", "gate run --profile normal")],
-        AffectedOutcome.Affected =>
-            [new CliNextAction("Run the selected test projects", "Only these projects cover the change; see data.selectedTests for the exact commands.")],
-        _ => [],
-    };
+        if (audience == AudienceArchReview)
+        {
+            return [new CliNextAction(
+                "Inject the context into every lens",
+                "Triage the footprint from data.changedFiles, then pass data.changedFiles + data.affectedSourceProjects verbatim to each applicable arch-review lens so none rediscovers scope.")];
+        }
+
+        return plan.Outcome switch
+        {
+            AffectedOutcome.FullGateRequired =>
+                [new CliNextAction("Run the full gate", "The change is broad or unattributed; run the whole suite.", "gate run --profile normal")],
+            AffectedOutcome.Affected =>
+                [new CliNextAction("Run the selected test projects", "Only these projects cover the change; see data.selectedTests for the exact commands.")],
+            _ => [],
+        };
+    }
 }

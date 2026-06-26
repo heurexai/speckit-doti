@@ -22,8 +22,12 @@ public sealed partial class AffectedTestPlanner
         return Resolve(graph, changed, configuration);
     }
 
-    /// <summary>Pure resolution (no git/IO) — the testable core.</summary>
-    public static AffectedPlan Resolve(ProjectGraph graph, IReadOnlyList<string> changedPaths, string configuration)
+    /// <summary>Pure resolution (no git/IO) — the testable core. Always carries the change set's non-generated
+    /// changed files (007 T040, FR-043) so the same plan serves the test-scope and arch-review-context audiences.</summary>
+    public static AffectedPlan Resolve(ProjectGraph graph, IReadOnlyList<string> changedPaths, string configuration) =>
+        ResolveCore(graph, changedPaths, configuration) with { ChangedFiles = NonGeneratedChangedFiles(changedPaths) };
+
+    private static AffectedPlan ResolveCore(ProjectGraph graph, IReadOnlyList<string> changedPaths, string configuration)
     {
         ChangeImpact impact = AnalyzeChangedPaths(graph, changedPaths);
 
@@ -55,6 +59,16 @@ public sealed partial class AffectedTestPlanner
 
     private static IReadOnlyList<string> Dedup(IEnumerable<string> reasons) =>
         reasons.Distinct(StringComparer.Ordinal).OrderBy(r => r, StringComparer.Ordinal).ToArray();
+
+    // Arch-review context = the human-edited footprint: every changed path EXCEPT generated build output (bin/obj).
+    // Docs/templates/config are kept on purpose — the review triage needs them to decide which lenses apply
+    // ("only templates changed -> skip the code lenses"). Deterministic order; git already omits gitignored bin/obj,
+    // but filter defensively so a hand-built path list behaves identically.
+    private static IReadOnlyList<string> NonGeneratedChangedFiles(IReadOnlyList<string> changedPaths) =>
+        changedPaths
+            .Where(p => !p.Replace('\\', '/').Split('/').Any(s => s is "bin" or "obj"))
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .ToArray();
 
     private static string DiscoverSolution(string repositoryRoot)
     {

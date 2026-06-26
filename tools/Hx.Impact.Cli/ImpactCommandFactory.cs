@@ -31,16 +31,23 @@ public static class ImpactCommandFactory
             forceJson: CliApp.ForceJson(parseResult, bootstrapJson)));
         parent.Subcommands.Add(bootstrapCommand);
 
-        Command planCommand = new("plan", "Emit the deterministic affected-test plan for a change set.");
+        Command planCommand = new("plan", "Emit the deterministic affected-change plan for a change set.");
         Option<string> planRepo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
         Option<string> planBase = new("--base") { Description = "Base ref (default HEAD = working-tree changes only).", DefaultValueFactory = _ => "HEAD" };
         Option<string> planHead = new("--head") { Description = "Head ref.", DefaultValueFactory = _ => "HEAD" };
         Option<string> planConfiguration = new("--configuration") { Description = "Build configuration for the emitted test commands.", DefaultValueFactory = _ => "Release" };
+        Option<string> planFor = new("--for")
+        {
+            Description = "Audience: 'tests' (default — affected test scope) or 'arch-review' (changed-files context for /06-doti-arch-review).",
+            DefaultValueFactory = _ => ImpactCommands.AudienceTests,
+        };
+        planFor.AcceptOnlyFromAmong(ImpactCommands.AudienceTests, ImpactCommands.AudienceArchReview);
         Option<bool> planJson = CliApp.JsonOption();
         planCommand.Options.Add(planRepo);
         planCommand.Options.Add(planBase);
         planCommand.Options.Add(planHead);
         planCommand.Options.Add(planConfiguration);
+        planCommand.Options.Add(planFor);
         planCommand.Options.Add(planJson);
         planCommand.SetAction(parseResult => CliHost.Run(meta, "plan",
             () => ImpactCommands.Plan(
@@ -48,7 +55,8 @@ public static class ImpactCommandFactory
                 parseResult.GetValue(planRepo)!,
                 parseResult.GetValue(planBase)!,
                 parseResult.GetValue(planHead)!,
-                parseResult.GetValue(planConfiguration)!),
+                parseResult.GetValue(planConfiguration)!,
+                parseResult.GetValue(planFor)!),
             forceJson: CliApp.ForceJson(parseResult, planJson)));
         parent.Subcommands.Add(planCommand);
     }

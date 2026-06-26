@@ -105,4 +105,35 @@ public sealed class AffectedTestPlannerTests
         Assert.Equal(AffectedOutcome.FullGateRequired, plan.Outcome);
         Assert.Contains(plan.Reasons, r => r.Contains("graph-finding:cycle-detected", StringComparison.Ordinal));
     }
+
+    // 007 T040 (FR-043): the plan always carries the arch-review changed-files context.
+    [Fact]
+    public void ChangedFiles_carries_the_change_set_for_an_affected_plan()
+    {
+        AffectedPlan plan = AffectedTestPlanner.Resolve(SampleGraph(), ["src/C/Widget.cs"], "Release");
+
+        Assert.Equal(AffectedOutcome.Affected, plan.Outcome);
+        Assert.Equal(["src/C/Widget.cs"], plan.ChangedFiles);
+    }
+
+    [Fact]
+    public void ChangedFiles_excludes_generated_output_but_keeps_docs_for_triage()
+    {
+        // Arch-review triage needs to see docs/template edits ("only docs changed -> skip code lenses");
+        // it must NOT see bin/obj build output. Deterministic Ordinal order.
+        AffectedPlan plan = AffectedTestPlanner.Resolve(SampleGraph(), ["src/C/obj/C.dll", "docs/notes.md", "README.md"], "Release");
+
+        Assert.Equal(["README.md", "docs/notes.md"], plan.ChangedFiles);
+    }
+
+    [Fact]
+    public void ChangedFiles_is_present_even_when_the_plan_escalates_to_full_gate()
+    {
+        // A broad change escalates the TEST scope to full-gate, but the arch-review context must still arrive —
+        // the reviewer triages from the changed files regardless of the test-selection outcome.
+        AffectedPlan plan = AffectedTestPlanner.Resolve(SampleGraph(), ["Directory.Packages.props"], "Release");
+
+        Assert.Equal(AffectedOutcome.FullGateRequired, plan.Outcome);
+        Assert.Equal(["Directory.Packages.props"], plan.ChangedFiles);
+    }
 }

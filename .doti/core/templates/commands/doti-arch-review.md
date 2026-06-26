@@ -9,7 +9,7 @@ This is a **design review, not a structural-rule pass.** Sentrux and ArchUnitNET
 ## How to run
 
 1. Read `.doti/agent-context.md`, the active spec/plan/tasks, and the relevant current code.
-2. **Get the changed-files context once (don't hand-hunt).** Obtain the list of changed source files and inject it into every lens so no lens wastes tokens rediscovering scope. Preferred: the first-class command `hx`/doti emits for this (planned — 007 FR-043; `Hx.Impact.Cli plan --json` already produces the git-diff + project-graph closure today). Fallback: `git diff --name-only <cycle-base>..HEAD` plus `git status --porcelain` for untracked/working-tree files (the cycle base ref is in `.doti/cycle-state.json`). Pass this file list verbatim to each lens.
+2. **Get the changed-files context once (don't hand-hunt).** Run the first-class command (007 FR-043): `hx impact plan --for arch-review --base <cycle-base> --json` (dev: `Hx.Impact.Cli plan --for arch-review --base <cycle-base> --json`; the cycle base ref is in `.doti/cycle-state.json`, head defaults to HEAD and the change set already includes working-tree + untracked files). It reuses the git-diff + project-graph closure and emits the machine-readable review context: `data.changedFiles` (the non-generated footprint) and `data.affectedSourceProjects` (the reverse-dependency blast radius). Inject that one list into every lens verbatim so none wastes tokens rediscovering scope. Fallback only if the planner cannot run: `git diff --name-only <cycle-base>..HEAD` plus `git status --porcelain` for untracked/working-tree files.
 3. **Triage — classify the change footprint** from the changed files + spec/plan/tasks. Which does it touch? **production code** (`src/`, `tools/*/*.cs`); **CLI surface** (new/changed commands); **data/contracts** (schemas, error codes, JSON contracts, public interfaces, file formats, versioning); **security surface** (untrusted input, secrets, network, vendored binaries, privilege); **project graph / dependencies / layering**; **runtime behavior**; or only **templates / docs / skills / config** (no runtime, no code).
 4. **Select + run lenses.** Activate only the lenses whose *Applies when* matches the triage; record each non-applicable lens as **skipped (not applicable)** with a one-line reason.
    - **Sub-agents:** *if you are capable of spawning sub-agents, run each applicable lens as its own clean-context sub-agent IN PARALLEL.* Hand each sub-agent: the lens's **Look for** checklist (below), the changed-files list (step 2), the spec `FR`/`SC` IDs + plan decisions + tasks, and pointers to the current code it should read. If you cannot spawn sub-agents, run the applicable lenses yourself, sequentially, one focused pass per lens.
@@ -33,7 +33,7 @@ Findings ordered by severity (from the **applicable** lenses), each with evidenc
 
 ## Command availability
 
-This stage is an advisory design review — no single command mints its proof. The changed-files context comes from `hx`/`Hx.Impact.Cli plan` (or `git diff` as fallback); the command-backed gates (`architecture test`, `sentrux verify`/`check`, `gate run`) run at `/07-doti-implement`, not here.
+This stage is an advisory design review — no single command mints its proof. The changed-files context comes from `hx impact plan --for arch-review --json` (dev: `Hx.Impact.Cli plan --for arch-review --json`; `git diff` as fallback); the command-backed gates (`architecture test`, `sentrux verify`/`check`, `gate run`) run at `/07-doti-implement`, not here.
 
 ## Next
 

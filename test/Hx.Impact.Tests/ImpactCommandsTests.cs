@@ -65,4 +65,21 @@ public sealed class ImpactCommandsTests
         Assert.Equal((int)ExitClass.Success, result.ExitCode);
         Assert.Empty(result.NextActions);
     }
+
+    // 007 T040 (FR-043): the same plan, presented for the /06-doti-arch-review audience.
+    [Fact]
+    public void ArchReview_audience_summarizes_changed_files_and_affected_projects()
+    {
+        AffectedPlan plan = new(JsonContractDefaults.SchemaVersion, AffectedOutcome.Affected, ["Hx.Foo"], [], ["reason"])
+        {
+            ChangedFiles = ["docs/x.md", "src/Foo/Bar.cs"],
+        };
+
+        CliResult result = ImpactCommands.FromPlan(Meta, "plan", plan, ImpactCommands.AudienceArchReview);
+
+        Assert.True(result.Ok);
+        Assert.Contains("2 changed file", result.Summary);
+        Assert.Contains("1 affected source project", result.Summary);
+        Assert.Contains("lens", Assert.Single(result.NextActions).Label, StringComparison.OrdinalIgnoreCase);
+    }
 }
