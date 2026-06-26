@@ -1,40 +1,42 @@
 # doti-drift-review
 
-Purpose: the last **consistency** gate before release. A green `gate run` proves the code is internally sound; drift-review proves the code still **agrees with everything around it** — what was promised (the **spec**), what is claimed (the **docs**), and what ships (the **installed/rendered assets**). This is where *stale truth* is caught: a mechanism removed from the code but still described in the README, a requirement quietly downgraded from enforced to advisory, a command renamed but not re-documented, a hand-edited installed skill.
+Purpose: the last **consistency** gate before release. A green `gate run` proves the code is internally sound; drift-review proves the code still **agrees with everything around it** — what was promised (the **spec**), what is claimed (the **docs**), and what ships (the **installed/rendered assets**). This is where *stale truth* is caught: a mechanism removed from the code but still described in the README, a requirement quietly downgraded from enforced to advisory, a command renamed but not re-documented.
 
-Command-aware advisory behavior. **Triage the change first**, then run only the axes it touches (a templates/docs-only change skips Axis 1's design checks; a code-only change still runs all three). **If you can spawn sub-agents, run each applicable axis as its own clean-context sub-agent IN PARALLEL**, handing each the changed-files list (`hx impact plan --for arch-review --json`, or `git diff` fallback) plus the spec/plan/arch-review; otherwise run them yourself, one focused pass per axis.
+Command-aware advisory behavior.
 
 1. Read `.doti/agent-context.md`, the release train's spec(s)/plan(s), and the arch-review record (`docs/reviews/<NNN-slug>-arch-review.md`).
+2. **Scope to the implementation diff — don't scan blind.** Resolve the cycle base (`baseRef` in `.doti/cycle-state.json` — the commit *before* implementation began) and take the whole **before→after** change set: `git diff <baseRef>..HEAD` for the committed work, plus `git diff HEAD` / `git status --porcelain` for the working tree. **Every axis works from THIS diff:** only what changed this cycle can have drifted, so start from the changed code/docs/spec, never the whole repo. (`hx impact plan --for arch-review --json` already gives the changed-file list + affected projects; the full diff *content* is agent-run `git diff` for now — a future cycle folds the diff into `hx` as a first-class command, the same way T040 added the arch-review changed-files context.)
+3. **Triage the diff:** does it touch production code, contracts, docs, agent-context/skills, or only templates? Run only the axes the diff touches (a docs-only diff skips Axis 1's design checks). If you can spawn sub-agents, run each applicable axis as its own clean-context sub-agent IN PARALLEL, handing each the diff.
 
 ## Axis 1 — spec ↔ code (was it built as specified?)
 
-For each feature in the release train, walk every `FR-###`/`SC-###` and confirm a **real mechanism in the code** satisfies it — not just a checked task box. Look for:
+Read the diff's **code hunks** against the spec they were meant to satisfy. Look for:
 
-- A requirement the spec said MUST be **enforced** (fail-closed) that the code only treats as advisory, or skips entirely.
-- The approved **arch-review design** / the plan's **architecture delta** implemented differently than approved — logic that belongs in `*.Core` living in a `*.Cli`; a contract that was meant to be additive made breaking; a gate that should fail closed left advisory; an abstraction added that the design said to avoid.
-- A requirement with **no covering code at all**: run `hx doti converge --spec docs/specs/<NNN-slug>.md --tasks docs/tasks/<NNN-slug>-tasks.md` for the deterministic spec→tasks coverage gap, then spot-check that each *covering* task's code actually does what the `FR` says (a task box ticked is not proof the behavior exists).
+- A requirement the spec said MUST be **enforced** (fail-closed) that the diff implemented as advisory, or skipped.
+- A hunk that drifts from the approved **arch-review design** / the plan's **architecture delta** — logic that belongs in `*.Core` added to a `*.Cli`; a contract changed in a breaking way the design said keep additive; a gate left advisory that should fail closed; an abstraction the design said to avoid.
+- A requirement with **no covering code** — run `hx doti converge --spec docs/specs/<NNN-slug>.md --tasks docs/tasks/<NNN-slug>-tasks.md` for the deterministic spec→tasks coverage gap (this one is *not* diff-bound: a requirement can be uncovered with no diff at all), then spot-check that each covering change actually does what the `FR` says.
 
 Findings: each `FR-###`/`SC-###` whose implementation drifted from the spec, with `file:line` + the spec ref.
 
 ## Axis 2 — code ↔ docs (do the docs still tell the truth?)
 
-Every behavioral claim in a doc MUST match what the code **actually does today**. Check the surfaces that go stale:
+The diff IS the worklist — a doc only drifts when the code it describes changed. From the diff:
 
-- **User docs** — `README.md`, `CHANGELOG.md`, `packaging/*`: every install/release/feature claim matches the shipped commands, flags, and channels.
-- **Agent context** — `CLAUDE.md`, `AGENTS.md`, `.doti/agent-context.md`, and each rendered skill's *Command availability* + highlights: every command/flag/mechanism they describe exists and behaves as stated.
-- **Command help** — `hx describe --json` + `--help`: option/command descriptions and the surfaced tier/channel match the real surface.
+- **For each code change**, find the doc(s) that describe that behavior — `README.md`, `CHANGELOG.md`, `packaging/*`, the agent context (`CLAUDE.md`/`AGENTS.md`/`.doti/agent-context.md` + each rendered skill's *Command availability*), `hx describe`/`--help` — and confirm they changed to match. **A code change with no corresponding doc change is the prime drift suspect.**
+- **For each symbol the diff REMOVED or RENAMED** (a dropped dependency, a deleted command, a retired mechanism — these are the `-` lines in the diff), grep the whole repo for the old name: it must survive in NO doc, agent-context line, skill, or help string. (This is the stale-`Velopack` class of miss.)
+- **For each doc change in the diff**, confirm it matches the code it describes — the doc was updated to the truth, not to a *different* fiction.
 
-Method: for each behavioral claim, find the code path and confirm it matches; for each command/flag the code exposes, confirm it is documented; and **grep the whole repo for the name of anything you removed or renamed this cycle** — a dropped dependency, a deleted command, a retired mechanism must survive in NO doc, agent-context line, skill, or help string. (Source-of-truth note: the agent context + skills are *rendered* from `.doti/core/`+`.doti/profiles/` — fix the source and re-render, never hand-edit the installed file.) Findings: each stale, wrong, or undocumented claim, with the doc `file:line` and the contradicting code.
+Source-of-truth note: the agent context + skills are *rendered* from `.doti/core/` + `.doti/profiles/` — fix the source and re-render, never hand-edit the installed file. Findings: each stale/wrong/undocumented claim, with the doc `file:line` and the contradicting code.
 
 ## Axis 3 — source ↔ installed/rendered assets
 
-2. `Hx.Runner.Cli doti render-skills --check` is the authority for skill / agent-context / payload-parity drift.
-3. `AGENTS.md` and `CLAUDE.md` remain thin entrypoints; a hand-edited installed skill is drift — re-render from `.doti/core/skills.json`, never hand-edit the generated file.
+4. `Hx.Runner.Cli doti render-skills --check` is the authority for skill / agent-context / payload-parity drift (independent of the diff — it re-derives every rendered file from source).
+5. `AGENTS.md` and `CLAUDE.md` remain thin entrypoints; a hand-edited installed skill is drift — re-render from `.doti/core/skills.json`, never hand-edit the generated file.
 
 ## Gate + hand-off
 
-4. Run `gate run --profile normal --repo .`; any gate failure is blocking. Direct `dotnet test` output is diagnostic only — the persisted gate proof is the commit-authorizing evidence.
-5. On a clean review (no open drift in any *applicable* axis), stamp the stage (`doti cycle stamp --stage drift-review`), then confirm commit-readiness with `doti cycle check --stage commit` (fail-closed: every prerequisite stamped + fresh). **Open drift blocks the stamp** — fix the source of truth (the code, or whichever doc/asset lied about it) and re-run; do not stamp over known drift.
+6. Run `gate run --profile normal --repo .`; any gate failure is blocking. Direct `dotnet test` output is diagnostic only — the persisted gate proof is the commit-authorizing evidence.
+7. On a clean review (no open drift in any *applicable* axis), stamp the stage (`doti cycle stamp --stage drift-review`), then confirm commit-readiness with `doti cycle check --stage commit` (fail-closed: every prerequisite stamped + fresh). **Open drift blocks the stamp** — fix the source of truth (the code, or whichever doc/asset lied about it) and re-run; do not stamp over known drift.
 
 Expected output: drift findings grouped by axis (spec↔code, code↔docs, source↔installed), each with evidence (`file:line` + the contradicting spec/doc/source ref) and the authoritative fix; plus which axes **ran** vs. **skipped (not applicable, + reason)**. A review where every applicable axis is clean is the pass.
 
