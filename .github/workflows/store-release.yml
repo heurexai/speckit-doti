@@ -1,9 +1,25 @@
 name: Store release
 
-# Manual: build the MSIX (self-contained hx + payload + win-x64 tools) and submit it to the
-# Microsoft Store. The FIRST submission must be completed manually in Partner Center (listing,
-# age rating); this automates subsequent version submissions. Requires the repo secrets
-# STORE_TENANT_ID / STORE_SELLER_ID / STORE_CLIENT_ID / STORE_CLIENT_SECRET (the linked Azure AD app).
+# 007 T025 — build the Microsoft Store MSIX from CURATED staging (NO `git archive`, NO source tree) and
+# submit it. The layout beside `hx.exe` is the source-free payload ONLY: the pre-built `dotnet new`
+# template pack, `.doti`, the tool MANIFESTS + grammars, `hx.config.json`, and the generated
+# `payload.manifest.json` (channel=msix). Per-RID tool BINARIES are fetched + hash-verified on demand
+# (T022), never bundled — the Store install dir is read-only; the tool store lives in a writable user
+# location. No in-app self-update — updates come from the Store.
+#
+# H10 hardening (symmetric with the NuGet Trusted Publishing in release.yml):
+#   * Two jobs. `pack` builds + assembles + packs the MSIX with minimal `permissions` and NO Store
+#     credentials. `submit` downloads that artifact and submits it — Store credentials live ONLY here.
+#   * `submit` runs in the protected `store-release` Environment: a required reviewer gates the Store
+#     submission, so the long-lived Store credentials are never exercised on an unreviewed dispatch.
+#   * The produced unsigned MSIX is a Store-submission INPUT ONLY — uploaded as a workflow artifact for
+#     `submit`, and NEVER attached to a GitHub release (the Store signs it on submission; an unsigned
+#     local/CI MSIX must not ship as a release asset — this mirrors the no-source release gate).
+#   * Minimal `permissions: contents: read`; pin every action to a full commit SHA before first use.
+#
+# OPERATOR PREP (one-time): see packaging/STORE.md — reserve the product identity, complete the listing +
+# age rating + the FIRST manual submission in Partner Center, link the Azure AD app, add the STORE_*
+# secrets, and configure the `store-release` Environment with a required reviewer.
 on:
   workflow_dispatch:
     inputs:
@@ -15,49 +31,72 @@ permissions:
   contents: read
 
 jobs:
-  msix:
+  pack:
+    name: Build the curated MSIX (source-free payload, no source tree)
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7   # H10: pin to a full commit SHA before first use
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v5   # H10: pin to a full commit SHA before first use
         with:
           global-json-file: global.json
 
       - name: Build
         run: dotnet build scaffold-dotnet.slnx -c Release
 
-      - name: Fetch vendored tool binaries (win-x64)
-        run: dotnet run --project tools/Hx.Runner.Cli -c Release --no-build -- tools fetch --repo . --json
-
       - name: Publish hx (self-contained, single file)
         run: dotnet publish tools/Hx.Scaffold.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
-      - name: Verify hx version matches MSIX version
+      - name: Verify the published hx version matches the requested MSIX version
         shell: pwsh
         run: |
           $expected = "${{ inputs.version }}"
-          $actual = (& "publish/Hx.Scaffold.Cli.exe" --version).Trim()
-          if ($actual -ne $expected) {
-            throw "hx version '$actual' does not match MSIX version '$expected'. Run this workflow from the matching release tag/ref."
+          $raw = (& "publish/Hx.Scaffold.Cli.exe" --version).Trim()
+          # GitVersion informational versions carry -prerelease/+metadata suffixes; compare the major.minor.patch core.
+          function Core([string]$v) { if ($v -match '^(\d+)\.(\d+)\.(\d+)') { "$($Matches[1]).$($Matches[2]).$($Matches[3])" } else { $v } }
+          if ((Core $raw) -ne (Core $expected)) {
+            throw "Published hx version '$raw' does not match the requested MSIX version '$expected'. Run this workflow from the matching release tag/ref."
           }
 
-      - name: Assemble MSIX layout
+      - name: Assemble the curated MSIX layout (source-free payload beside hx.exe)
         shell: pwsh
         run: |
           $ver = "${{ inputs.version }}"
           $layout = "msix-layout"
+          Remove-Item -Recurse -Force $layout -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force $layout | Out-Null
-          # Payload (template, doti, source, manifests, vendored grammars) + win-x64 tool binaries + hx.
-          git archive --format=tar HEAD | tar -x -C $layout
-          foreach ($t in 'gitleaks','sentrux','gitversion') { if (Test-Path "tools/$t/bin") { Copy-Item -Recurse -Force "tools/$t/bin" "$layout/tools/$t/bin" } }
+
+          # 1. The pre-built `dotnet new` template pack — hx new instantiates it source-free.
+          dotnet pack scaffold/Hx.Scaffold.Templates.csproj -c Release -o "$layout/templates" --nologo
+
+          # 2. The .doti workflow assets (minus gitignored runtime state).
+          Copy-Item -Recurse -Force .doti "$layout/.doti"
+          Remove-Item -Force "$layout/.doti/cycle-state.json","$layout/.doti/gate-proof.json" -ErrorAction SilentlyContinue
+
+          # 3. Tool MANIFESTS + grammars only — NOT the per-RID bin/ (fetched + hash-verified on demand, T022).
+          foreach ($t in 'gitleaks','sentrux','gitversion') {
+            Copy-Item -Recurse -Force "tools/$t" "$layout/tools/$t"
+            Remove-Item -Recurse -Force "$layout/tools/$t/bin" -ErrorAction SilentlyContinue
+          }
+
+          # 4. hx.config.json — every operational command requires it (WithRequiredConfiguration).
+          Copy-Item -Force tools/Hx.Scaffold.Cli/hx.config.json "$layout/hx.config.json"
+
+          # 5. Generate payload.manifest.json (channel=msix) over the staged payload BEFORE adding the exe /
+          #    AppxManifest / Assets, so the descriptor covers ONLY the source-free payload (mirrors the global
+          #    tool). PayloadRoot.Resolve verifies declared files forward-only, so the extra files beside it are fine.
+          & "publish/Hx.Scaffold.Cli.exe" doti payload-manifest --root $layout --payload-version $ver --tool-version $ver --channel msix --mode installed --json
+
+          # 6. The self-contained hx.exe + the Store manifest (version-stamped) + tile assets sit beside the payload.
           Copy-Item publish/Hx.Scaffold.Cli.exe "$layout/hx.exe"
           Copy-Item packaging/msix/AppxManifest.xml "$layout/AppxManifest.xml"
           New-Item -ItemType Directory -Force "$layout/Assets" | Out-Null
           Copy-Item packaging/msix/Assets/* "$layout/Assets/"
-          # Stamp the Identity version (4-part; last part 0 for the Store). Anchor to the start of the line so
-          # MinVersion/MaxVersionTested (10.0.x, on the TargetDeviceFamily line) are never rewritten.
+          # Stamp the 4-part Identity version (last part 0 for the Store). Anchor to the line start so the
+          # TargetDeviceFamily MinVersion/MaxVersionTested (10.0.x) are never rewritten.
           (Get-Content "$layout/AppxManifest.xml") -replace '^(\s*)Version="[0-9.]+"', "`${1}Version=`"$ver.0`"" | Set-Content -Encoding utf8 "$layout/AppxManifest.xml"
 
       - name: Pack MSIX (makeappx)
@@ -69,12 +108,34 @@ jobs:
           if (-not $sdk) { throw "makeappx.exe not found in the Windows SDK." }
           & "$($sdk.FullName)/x64/makeappx.exe" pack /d msix-layout /p "speckit-doti-${{ inputs.version }}.msix" /o
 
-      # Subsequent-version submission via the Microsoft Store Developer CLI. The first submission
-      # (listing + age rating) is manual in Partner Center. NOTE: the MSStore CLI is NOT a dotnet/NuGet
-      # tool — it is installed via the official setup action below (winget locally). Verify the exact
-      # `publish` invocation on the first automated run: https://aka.ms/msstoredevcli
+      # The unsigned MSIX is a Store-submission INPUT ONLY — it is handed to `submit` as a workflow artifact
+      # and is NEVER attached to a GitHub release (the Store signs it; shipping an unsigned MSIX is forbidden).
+      - name: Upload the unsigned MSIX (Store-submission input only)
+        uses: actions/upload-artifact@v4   # H10: pin to a full commit SHA before first use
+        with:
+          name: msix
+          path: speckit-doti-${{ inputs.version }}.msix
+          if-no-files-found: error
+
+  submit:
+    name: Submit to the Microsoft Store
+    needs: pack
+    runs-on: windows-latest
+    environment: store-release   # protected: required reviewer gates the Store submission (H10)
+    permissions:
+      contents: read
+    steps:
+      - name: Download the unsigned MSIX
+        uses: actions/download-artifact@v4   # H10: pin to a full commit SHA before first use
+        with:
+          name: msix
+
+      # Subsequent-version submission via the Microsoft Store Developer CLI. The FIRST submission (listing +
+      # age rating) is manual in Partner Center. NOTE: the MSStore CLI is NOT a dotnet/NuGet tool — it is
+      # installed via the official setup action below. Verify the exact `publish` invocation on the first
+      # automated run: https://aka.ms/msstoredevcli
       - name: Setup Microsoft Store Developer CLI
-        uses: microsoft/microsoft-store-apppublisher@v1.1
+        uses: microsoft/microsoft-store-apppublisher@v1.1   # H10: pin to a full commit SHA before first use
 
       - name: Submit to the Microsoft Store
         shell: pwsh
