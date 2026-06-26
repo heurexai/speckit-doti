@@ -11,7 +11,7 @@ public sealed class DotiInstallScaffoldSourceTests
     [Fact]
     public void Scaffold_source_installs_dot_doti_payload_and_not_root_doti_payload()
     {
-        string source = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
+        string source = ScaffoldRoot.Find(Directory.GetCurrentDirectory());
         string parent = NewTempDir("hx-scaffold-doti-install-");
         string target = Path.Combine(parent, "missing-target");
         try
@@ -43,7 +43,7 @@ public sealed class DotiInstallScaffoldSourceTests
     [Fact]
     public void Scaffold_source_install_preserves_live_config_and_blocks_unproven_legacy_root()
     {
-        string source = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
+        string source = ScaffoldRoot.Find(Directory.GetCurrentDirectory());
         string target = NewTempDir("hx-scaffold-doti-upgrade-");
         string release = "{ \"schemaVersion\": 1, \"packageName\": \"Existing.App\" }\n";
         Directory.CreateDirectory(Path.Combine(target, ".doti"));

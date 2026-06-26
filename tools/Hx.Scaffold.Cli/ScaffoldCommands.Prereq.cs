@@ -20,7 +20,7 @@ public static partial class ScaffoldCommands
             return InvalidPrerequisiteCommand(meta, "prereq check", command, "new, version, or generated-validation");
         }
 
-        string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
+        string sourceRoot = InstalledPayload.ResolveAssetRoot(Directory.GetCurrentDirectory());
         PrerequisiteCheckReport report;
         try
         {
@@ -56,7 +56,7 @@ public static partial class ScaffoldCommands
             return InvalidPrerequisiteCommand(meta, "prereq install", command, "new");
         }
 
-        string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
+        string sourceRoot = InstalledPayload.ResolveAssetRoot(Directory.GetCurrentDirectory());
         PrerequisiteCheckReport report;
         try
         {

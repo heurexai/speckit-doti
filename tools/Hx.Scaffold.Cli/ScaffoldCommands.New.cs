@@ -20,7 +20,7 @@ public static partial class ScaffoldCommands
 
         string[] agents = agentsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var request = new ScaffoldRequest(name, company, output, profile, agents);
-        string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
+        string sourceRoot = InstalledPayload.ResolveAssetRoot(Directory.GetCurrentDirectory());
         CliResult? preflight = CheckPrerequisitesForCommand(
             meta,
             "new",

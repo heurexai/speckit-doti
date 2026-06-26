@@ -82,7 +82,7 @@ public sealed partial class ScaffoldCommandsTests
         try
         {
             string output = Path.Combine(parent, "Demo.App");
-            string sourceRoot = ScaffoldRoot.Resolve(Directory.GetCurrentDirectory());
+            string sourceRoot = ScaffoldRoot.Find(Directory.GetCurrentDirectory());
             PrerequisiteCheckReport pending = PrerequisitePreflight.Check(
                 new PrerequisiteCheckRequest(sourceRoot, PrerequisiteCommands.New, OutputPath: output),
                 services);
@@ -133,7 +133,7 @@ public sealed partial class ScaffoldCommandsTests
             Directory.CreateDirectory(manifestDir);
             string manifestPath = Path.Combine(manifestDir, "prerequisites.json");
             string original = File.ReadAllText(Path.Combine(
-                ScaffoldRoot.Resolve(Directory.GetCurrentDirectory()),
+                ScaffoldRoot.Find(Directory.GetCurrentDirectory()),
                 ".doti",
                 "core",
                 "prerequisites.json"));

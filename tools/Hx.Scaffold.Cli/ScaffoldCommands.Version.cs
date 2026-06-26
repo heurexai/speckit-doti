@@ -16,7 +16,7 @@ public static partial class ScaffoldCommands
         {
             prerequisites = TryPrerequisiteReport(
                 new PrerequisiteCheckRequest(
-                    ScaffoldRoot.Resolve(Directory.GetCurrentDirectory()),
+                    InstalledPayload.ResolveAssetRoot(Directory.GetCurrentDirectory()),
                     PrerequisiteCommands.Version,
                     RepositoryRoot: target),
                 prerequisiteServices);
