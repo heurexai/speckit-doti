@@ -44,6 +44,16 @@ public static class ErrorCodes
     public const string Integrity_ObsoleteRemovalBlocked = "ITG0007";
     public const string Integrity_VelopackArtifactMissing = "ITG0008";
     public const string Integrity_DotiPayloadDrift = "ITG0009";
+    public const string Integrity_PayloadRootMissing = "ITG0010";
+    public const string Integrity_PayloadDescriptorInvalid = "ITG0011";
+    public const string Integrity_DotiRepoPayloadAhead = "ITG0012";
+    public const string Integrity_ReleaseArtifactContainsSource = "ITG0013";
+    public const string Validation_TaskOutOfOrder = "VAL0023";
+    public const string Integrity_ProfileGateMissingConfig = "ITG0014";
+    public const string Validation_UrlBlocked = "VAL0024";
+    public const string Validation_BugFixUnbound = "VAL0025";
+    public const string Validation_BugAssessmentMissing = "VAL0026";
+    public const string Validation_ConvergeInput = "VAL0027";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -118,5 +128,25 @@ public static class ErrorCodes
             "A required Velopack release artifact is missing.", "Re-run the release command so installer/update artifacts and checksums are produced and inspected."),
         new("ITG0009", "integrity", "ITG", 9, Severity.Error, ExitClass.Integrity, "integrity.doti-payload-drift",
             "Scaffold-installed Doti payload parity drift was detected.", "Run doti render-skills or repair the scaffold payload source before relying on generated repos."),
+        new("ITG0010", "integrity", "ITG", 10, Severity.Error, ExitClass.Integrity, "integrity.payload-root-missing",
+            "The installed payload descriptor (payload.manifest.json) is absent beside hx.", "Use a verified hx installation; the installed payload descriptor must ship beside the executable. Do not run installed commands from a source checkout."),
+        new("ITG0011", "integrity", "ITG", 11, Severity.Error, ExitClass.Integrity, "integrity.payload-descriptor-invalid",
+            "The installed payload descriptor is unparseable or carries an unsupported schemaVersion.", "Reinstall hx from a verified channel; the payload descriptor must be valid and integrity-anchored to the installed executable."),
+        new("ITG0012", "integrity", "ITG", 12, Severity.Error, ExitClass.Integrity, "integrity.doti-repo-payload-ahead",
+            "The target repo's recorded Doti payload is newer than the installed tool's.", "Upgrade the installed hx (dotnet tool update -g Heurex.SpeckitDoti, or the Microsoft Store); the tool refuses to downgrade a repo's payload."),
+        new("ITG0013", "integrity", "ITG", 13, Severity.Error, ExitClass.Integrity, "integrity.release-artifact-contains-source",
+            "A produced release artifact contains the tool's own build tree or a full source archive.", "Stage only the curated payload (template pack, manifests, grammars, .doti); the packaging gate refuses source in any in-scope artifact."),
+        new("VAL0023", "validation", "VAL", 23, Severity.Error, ExitClass.Validation, "validation.task-out-of-order",
+            "A Doti task is checked out of order (an earlier task or phase is incomplete).", "Complete tasks in document/phase order; a task may be checked only when all earlier tasks are checked."),
+        new("ITG0014", "integrity", "ITG", 14, Severity.Error, ExitClass.Integrity, "integrity.profile-gate-missing-config",
+            "A gate the declared tier enforces is missing or has malformed config.", "Restore the gate's configuration; an enforced gate with missing or malformed config fails closed (no delete-config bypass)."),
+        new("VAL0024", "validation", "VAL", 24, Severity.Error, ExitClass.Validation, "validation.url-blocked",
+            "A URL was refused by the Doti URL trust policy.", "Use an https URL on the host allowlist that does not resolve to a loopback, link-local, private, or cloud-metadata address."),
+        new("VAL0025", "validation", "VAL", 25, Severity.Error, ExitClass.Validation, "validation.bug-fix-unbound",
+            "A bug-cycle fix is not bound to a recorded assessment.", "Run `doti bug assess` first; the fix stage must be bound to that assessment's verdict/remediation contract."),
+        new("VAL0026", "validation", "VAL", 26, Severity.Error, ExitClass.Validation, "validation.bug-assessment-missing",
+            "The bug-cycle assessment for this bug is missing.", "Run `doti bug assess` to produce the read-only verdict/remediation contract before the fix or test stage."),
+        new("VAL0027", "validation", "VAL", 27, Severity.Error, ExitClass.Validation, "validation.converge-input",
+            "The converge command's required inputs (spec/plan/tasks) are missing or invalid.", "Ensure the active feature's spec, plan, and tasks exist before running `doti converge`."),
     ];
 }

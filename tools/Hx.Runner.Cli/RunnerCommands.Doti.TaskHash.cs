@@ -45,6 +45,7 @@ public static partial class RunnerCommands
             "unchecked" => ErrorCodes.Validation_DotiTaskUnchecked,
             "missing-hash" => ErrorCodes.Validation_DotiTaskHashMissing,
             "hash-mismatch" => ErrorCodes.Validation_DotiTaskHashMismatch,
+            DotiTaskCompletion.OutOfOrderReason => ErrorCodes.Validation_TaskOutOfOrder,
             _ => ErrorCodes.Validation_Failed
         };
 }
