@@ -27,9 +27,11 @@
 ## 30-second quickstart
 
 ```bash
+# install the CLI (any OS, needs the .NET 10 SDK) — or the Microsoft Store on Windows
+dotnet tool install --global Heurex.SpeckitDoti
+
 # scaffold a new agent-first .NET solution (doti is installed automatically)
-dotnet run --project tools/Hx.Scaffold.Cli -- new \
-  --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
+hx new --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
 
 # it builds and tests green immediately
 dotnet build ./Acme.Widget/Acme.Widget.slnx -c Release
@@ -105,8 +107,7 @@ This is where most of the value lives.
 ### What `dotnet new` generates
 
 ```bash
-dotnet run --project tools/Hx.Scaffold.Cli -- new \
-  --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
+hx new --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
 ```
 
 produces a complete, buildable solution **and installs doti into it**:
@@ -258,34 +259,30 @@ doti is single-sourced and configurable — adapt it to your team without forkin
 
 Current release: [**v0.5.0**](https://github.com/heurexai/speckit-doti/releases/tag/v0.5.0).
 
-Each [**Release**](https://github.com/heurexai/speckit-doti/releases/latest) now treats Velopack installer/update packages as the product. Download the platform package for your OS, install or update `hx`, and run the bundled executable from the installed location. On Windows, use Velopack's install-location switch when you want a specific application directory:
+`hx` ships through **two channels**, both installing the same source-free CLI — per-RID tool binaries (Gitleaks/Sentrux/GitVersion) are fetched and hash-verified on demand, never bundled:
 
-```powershell
-.\speckit-doti-Setup.exe --installto C:\Tools\speckit-doti
-C:\Tools\speckit-doti\hx.exe version --json
-```
+- **.NET global tool** (any OS) — `dotnet tool install --global Heurex.SpeckitDoti`, then `hx`. Update with `dotnet tool update --global Heurex.SpeckitDoti`. Requires the .NET 10 SDK.
+- **Microsoft Store** (Windows, MSIX) — search "speckit-doti" in the Store, or `winget install Heurex.speckit-doti` (the `msstore` source). Store-signed, so no SmartScreen prompt.
 
 ```bash
-# macOS / Linux
-./hx new --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
-```
-```powershell
-# Windows
-.\hx.exe new --name Acme.Widget --output .\Acme.Widget --company Acme --agents codex,claude
+# .NET global tool — installs `hx` onto your PATH
+dotnet tool install --global Heurex.SpeckitDoti
+hx version --json
+hx new --name Acme.Widget --output ./Acme.Widget --company Acme --agents codex,claude
 ```
 
-Use the same standalone `hx` to inspect a doti-enabled repository. Product executable installs and updates are handled by Velopack installer/update artifacts; repo workflow assets are installed or repaired with installed `hx doti install`.
+Use the same `hx` to inspect a doti-enabled repository. Installed `hx` is updated via its channel (`dotnet tool update -g Heurex.SpeckitDoti`, or the Microsoft Store); repo workflow assets are installed or repaired with `hx doti install`.
 
 ```powershell
 # report the running hx version, the target repo's installed scaffold version,
 # and exact managed workflow/skill modifications
-.\hx.exe version --repo . --json
+hx version --repo . --json
 
 # repair/reinstall repo-owned Doti workflow assets when needed
-.\hx.exe doti install --repo <target-repo> --agents codex,claude --json
+hx doti install --repo <target-repo> --agents codex,claude --json
 ```
 
-The previous repository updater subcommand has been removed. Use the Velopack installer/update channel to update installed `hx`/product executables, and use installed `hx doti install --repo <path> --agents codex,claude --json` to install, repair, or migrate repo-owned Doti workflow assets. `--repo` is required; the command never defaults to the current directory. Its JSON proof classifies the target as `installed-new-target`, `installed-empty-target`, `installed-non-empty-non-doti-target`, or `upgraded-existing-doti-repo` and reports installed/preserved/removed/skipped/blocked paths with reasons. Live repo configuration and baselines, including `.doti/release.json`, cycle/gate state, prerequisite overrides, and Sentrux state, remain target-owned.
+The previous repository updater subcommand has been removed. Update installed `hx` through its channel (`dotnet tool update -g Heurex.SpeckitDoti`, or the Microsoft Store), and use `hx doti install --repo <path> --agents codex,claude --json` to install, repair, or migrate repo-owned Doti workflow assets. `--repo` is required; the command never defaults to the current directory. Its JSON proof classifies the target as `installed-new-target`, `installed-empty-target`, `installed-non-empty-non-doti-target`, or `upgraded-existing-doti-repo` and reports installed/preserved/removed/skipped/blocked paths with reasons. Live repo configuration and baselines, including `.doti/release.json`, cycle/gate state, prerequisite overrides, and Sentrux state, remain target-owned.
 
 When repairing a repo that already has doti v0.5 installed, project-owned feature docs are not silently renamed. Leave implemented or completed historical specs on their existing filenames. If an open, unimplemented legacy spec is still unnumbered, migrate it before continuing: choose the next `NNN-` prefix, rename the matching `docs/specs`, `docs/plans`, and `docs/tasks` artifacts to the same numbered slug, then re-stamp `specify` with that `NNN-short-name`. All subsequent new specs use the numbered format.
 
@@ -293,11 +290,11 @@ When repairing a repo that already has doti v0.5 installed, project-owned featur
 
 ### Local release output
 
-The current unreleased release train includes `006-task-hash-gated-velopack-completion`, which completes task-hash-gated implementation, Velopack-first release output, executable-local `hx.config.json`, generated starter configuration, and release documentation proof.
+The current unreleased release train includes `007-standalone-hx-source-independent-cli`, which makes installed `hx` run source-free, ships the two distribution channels (NuGet global tool + Microsoft Store MSIX), removes Velopack, and flips the default version intent to cycle-type-aware (feature → `minor`, bug-fix-only → `patch`).
 
-`hx release` builds Velopack installer/update artifacts plus `release.identity.json` proof from the committed repository state. Operational `hx` commands require an executable-adjacent `hx.config.json` loaded through Microsoft Configuration before they inspect or mutate a target repo. The target repository declares the product to publish in `.doti/release.json`: product/package name, publish `.csproj`, published executable name, and output executable name. This lets a vendored `hx.exe` release the target repo's own executable without requiring `tools/Hx.Scaffold.Cli` to exist in that repo.
+`hx release` packs the declared product as a framework-dependent .NET global tool (with a source-free install smoke), records the Microsoft Store MSIX channel proof, and writes `release.identity.json`, from the committed repository state. Operational `hx` commands require an executable-adjacent `hx.config.json` loaded through Microsoft Configuration before they inspect or mutate a target repo. The target repository declares the product to publish in `.doti/release.json`: product/package name, publish `.csproj`, published executable name, and output executable name. This lets a vendored `hx` release the target repo's own product without requiring `tools/Hx.Scaffold.Cli` to exist in that repo.
 
-Release tagging is command-backed. `hx release --major|--minor|--patch` validates the requested intent against the GitVersion-calculated version, creates or verifies the local annotated `v<version>` tag, stages vendored assets into the Velopack pack directory, runs `vpk pack`, and reports the tag push command needed for GitHub CI. `hx release` does not push tags.
+Release tagging is command-backed. `hx release [--major|--minor|--patch]` validates the intent against the GitVersion-calculated version (a feature cycle defaults to `minor`, a bug-fix-only cycle to `patch`), creates or verifies the local annotated `v<version>` tag, packs the global-tool package (`dotnet pack`) and records the MSIX channel proof, and reports the tag push command needed for GitHub CI. `hx release` does not push tags — pushing the `v*` tag triggers `release.yml` (NuGet Trusted Publishing) and the Store MSIX workflow.
 
 When `hx.config.json` enables local release output, the verified artifact set is copied to:
 
@@ -324,11 +321,11 @@ The installed `hx.config.json` file lives next to `hx.exe` and is the only suppo
 .\hx.exe release --repo . --patch --rid win-x64 --json
 ```
 
-Manual or agent-performed file copying is not release proof; use the command's `LocalReleaseResult` envelope, including its config source/path, Velopack artifacts, payload checks, version directory, latest directory, or disabled-copy reason.
+Manual or agent-performed file copying is not release proof; use the command's `LocalReleaseResult` envelope, including its config source/path, channel package artifacts, payload checks, version directory, latest directory, or disabled-copy reason.
 
-Package-manager manifest templates are prepared under `packaging/`; publishing them still requires the released archive hashes and external winget/Homebrew submission — see [packaging/PUBLISHING.md](packaging/PUBLISHING.md).
+Publishing to the two channels is automated on a pushed `v*` tag — NuGet Trusted Publishing (`release.yml`) and the Microsoft Store MSIX (`store-release.yml`); see [packaging/PUBLISHING.md](packaging/PUBLISHING.md) and [packaging/STORE.md](packaging/STORE.md).
 
-Each release bundles the vendored tools (Gitleaks, Sentrux, GitVersion); `new` installs them **once** into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides) and generated solutions resolve them from there — no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution; `hx prereq check` reports those prerequisites and directory readiness before `new` mutates anything.
+The vendored tools (Gitleaks, Sentrux, GitVersion) are **not** bundled in the package — installed `hx` fetches each per-RID binary on demand and hash-verifies it into a shared per-user store (the standard Windows per-user data directory, or the XDG data dir — `HX_TOOL_STORE` overrides), so generated solutions resolve them from there with no ~127 MB per-project copy. The [.NET 10 SDK](https://dotnet.microsoft.com/) + Git are still required to build the generated solution; `hx prereq check` reports those prerequisites and directory readiness before `new` mutates anything.
 
 ### Build from source
 

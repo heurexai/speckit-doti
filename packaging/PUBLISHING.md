@@ -1,53 +1,41 @@
 # Publishing speckit-doti
 
-The release workflow (`.github/workflows/release.yml`) builds, on each `v*` tag, a standalone
-installer per RID and attaches it to the GitHub Release:
+`hx` ships through **two channels**, both built from the same source-free package — per-RID tool
+binaries (Gitleaks/Sentrux/GitVersion) are fetched and hash-verified on demand, never bundled. Both
+publish automatically when a `v*` tag is pushed: `hx release` creates the tag locally; pushing it
+triggers CI.
 
-| RID | Archive |
-| --- | --- |
-| win-x64 | `speckit-doti-<version>-win-x64.zip` |
-| linux-x64 | `speckit-doti-<version>-linux-x64.tar.gz` |
-| osx-arm64 | `speckit-doti-<version>-osx-arm64.tar.gz` |
+## 1. .NET global tool (NuGet.org) — primary, all OSes
 
-Each archive is a self-contained `hx`/`hx.exe` plus the scaffold payload (template, doti, source,
-manifests, vendored grammars) and that RID's tool binaries. Download, extract, run `hx new …`.
-
-## Package managers (post-release, external)
-
-winget and Homebrew install **by reference to the published archives**, so they can only be updated
-**after** a release exists (their manifests pin the archive's SHA-256). Both also live in **external
-repos**. The templates here are the source of truth; publishing is a manual post-release step.
-
-### Get the published archive hashes
+`.github/workflows/release.yml` packs `Heurex.SpeckitDoti` (a framework-dependent .NET global tool),
+runs a **source-free install smoke** (`dotnet tool install` into a clean path, then `hx new` / `hx doti
+install` with no source checkout on `PATH`), and publishes to NuGet.org via **Trusted Publishing**
+(GitHub OIDC — no stored API key).
 
 ```bash
-v=v0.5.0
-for a in win-x64.zip linux-x64.tar.gz osx-arm64.tar.gz; do
-  f="speckit-doti-$v-$a"
-  gh release download "$v" --repo heurexai/speckit-doti --pattern "$f"
-  echo "$f  $(sha256sum "$f" | cut -d' ' -f1)"
-done
+dotnet tool install --global Heurex.SpeckitDoti     # install
+dotnet tool update  --global Heurex.SpeckitDoti     # update
 ```
 
-The GitHub Release also publishes `.sha256` sidecars for every archive; use those sidecars or the
-release asset digests as the source for package-manager manifest updates after the release completes.
+**One-time operator prep** (before the first publish — cannot be done from CI):
 
-### winget (`microsoft/winget-pkgs`)
+1. NuGet.org: create a Trusted Publishing policy (owner `heurexai`, repo `speckit-doti`, workflow `release.yml`).
+2. Add the `NUGET_USER` repo secret = the nuget.org **username** (not the email).
+3. Configure the `release` Environment with a **required reviewer** (gates OIDC issuance — a token is never
+   minted on just any collaborator's tag push).
+4. **Pin every action** in `release.yml` to a full commit SHA (the workflow is authored with floating major
+   tags as placeholders; resolve each from the action's verified release).
 
-1. Fill `PackageVersion`, `InstallerUrl`, and `InstallerSha256` (win-x64 zip) in `winget/*.yaml`.
-2. Validate: `winget validate --manifest packaging/winget` and (optionally) `winget install --manifest packaging/winget`.
-3. Submit the three manifests under `manifests/h/Heurex/SpeckitDoti/<version>/` via a PR to
-   [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) (or `wingetcreate submit`).
-   Then: `winget install Heurex.SpeckitDoti`.
+## 2. Microsoft Store (MSIX) — Windows
 
-### Homebrew (`heurexai/homebrew-tap`)
+`.github/workflows/store-release.yml` builds and submits the signed MSIX. The Store signs it with a
+Microsoft-trusted certificate, so a Store-installed `hx` runs with **no SmartScreen prompt**, and it also
+surfaces via `winget install Heurex.speckit-doti` (the `msstore` source). Product identity, Partner Center /
+Azure AD setup, and the `STORE_*` secrets are in **[STORE.md](STORE.md)**. This channel is Windows-only;
+other OSes use the global tool above.
 
-1. Create the tap repo `heurexai/homebrew-tap` once (a public repo with a `Formula/` dir).
-2. Fill the two `sha256` values (osx-arm64 + linux-x64 tarballs) in `homebrew/speckit-doti.rb`.
-3. Copy it to `Formula/speckit-doti.rb` in the tap, `brew audit --new --formula speckit-doti`, and push.
-   Then: `brew install heurexai/tap/speckit-doti`.
+## Signing
 
-## Signing (deferred)
-
-The archives and `hx` are unsigned. Authenticode (Windows) and Apple notarization (macOS) are deferred
-until certificates are available; until then macOS Gatekeeper / Windows SmartScreen may warn on first run.
+The **Store MSIX is signed** by the Store. The NuGet global tool's assemblies are unsigned (the tool runs
+under the .NET host, which the user already trusts); Authenticode for a standalone Windows `hx.exe` outside
+the Store is deferred until a certificate is available.
