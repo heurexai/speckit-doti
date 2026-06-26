@@ -219,6 +219,38 @@ public sealed class TemplateGoldenTests
         Assert.Contains("Required application configuration file was not found next to the executable", configuration);
     }
 
+    [Fact]
+    public void Template_cli_is_packable_as_a_dotnet_global_tool_with_no_velopack()
+    {
+        // 007 T042 (FR-025): the scaffolded app inherits the distribution-packaging rules — it packs as a
+        // framework-dependent .NET global tool (so installed commands run source-free) with no Velopack stub.
+        string cliDir = Path.Combine(TemplateRepo.TemplateDir, "src", "HxScaffoldSample.Cli");
+        string project = File.ReadAllText(Path.Combine(cliDir, "HxScaffoldSample.Cli.csproj"));
+
+        Assert.Contains("<PackAsTool>true</PackAsTool>", project);
+        Assert.Contains("<ToolCommandName>", project);
+        Assert.Contains("<PackageId>", project);
+        Assert.Contains("<IsPackable>true</IsPackable>", project);
+
+        // Nothing packs by default; only the CLI opts back in (so `dotnet pack` ships the one tool, not the library/tests).
+        string templateProps = File.ReadAllText(Path.Combine(TemplateRepo.TemplateDir, "Directory.Build.props"));
+        Assert.Contains("<IsPackable>false</IsPackable>", templateProps);
+
+        // No real Velopack stub — a package reference, a VelopackApp startup hook, or a vpk invocation. (Like the
+        // source repo's no-velopack gate, match actual USAGE, not the bare word: a comment documenting "no Velopack
+        // stub" is fine.) The source repo dropped Velopack; the template inherits that — installed commands update
+        // via the tool channel, not a self-update hook.
+        string packages = File.ReadAllText(Path.Combine(TemplateRepo.TemplateDir, "Directory.Packages.props"));
+        string program = File.ReadAllText(Path.Combine(cliDir, "Program.cs"));
+        foreach (string buildFile in new[] { project, templateProps, packages })
+        {
+            Assert.DoesNotContain("Include=\"Velopack", buildFile, System.StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("vpk ", buildFile, System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.DoesNotContain("VelopackApp", program, System.StringComparison.OrdinalIgnoreCase);
+    }
+
     private static int CountOccurrences(string haystack, string needle)
     {
         int count = 0, index = 0;

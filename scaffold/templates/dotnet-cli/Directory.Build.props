@@ -6,6 +6,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <LangVersion>latest</LangVersion>
     <Company>ACME_COMPANY</Company>
+    <!-- 007 T042 (FR-025): nothing packs by default; the CLI project opts back in as a .NET global tool. -->
+    <IsPackable>false</IsPackable>
     <!-- Secure-by-default: package-vulnerability audit + code-security analyzer rules. -->
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisModeSecurity>All</AnalysisModeSecurity>
