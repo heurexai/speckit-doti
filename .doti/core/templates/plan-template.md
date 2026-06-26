@@ -24,7 +24,7 @@ For each unknown / dependency / integration:
 
 ## Design
 
-**Selection rule:** choose the *simplest correct* design — one that satisfies the FR/SCs, fits the existing patterns, preserves deterministic proof (gates stay fail-closed), and avoids future drift. **Effort is not a criterion;** reject alternatives by architectural trade-off, not by convenience.
+**Selection rule:** choose the *simplest correct* design — one that satisfies the FR/SCs, fits the existing patterns, preserves deterministic proof (gates stay fail-closed), and avoids future drift. **Make it modular:** small single-responsibility units with clear seams — a named `*.Core` type per behavior, one concern per file/class, **composed rather than inlined** (right-sized, not premature abstraction). **Effort is not a criterion;** reject alternatives by architectural trade-off, not by convenience.
 
 **Patterns assessed (before deciding):** the existing similar code, the `*.Core` / `*.Cli` boundary this lands in, the command → `CliResult` → error-code convention, `rules/architecture.json` + `.sentrux/rules.toml`, and any `scaffold/templates/**` implications — note whether the design fits them or justifiably changes them.
 
