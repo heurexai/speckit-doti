@@ -73,6 +73,24 @@ public static partial class RunnerCommandFactory
             () => RunnerCommands.SecurityScan(meta, parseResult.GetValue(repo)!),
             forceJson: CliApp.ForceJson(parseResult, json)));
         securityCommand.Subcommands.Add(command);
+        securityCommand.Subcommands.Add(UrlCheckCommand(meta));
         rootCommand.Subcommands.Add(securityCommand);
+    }
+
+    // 007 T034 (FR-035 / SC-014): SSRF-resistant validation of a URL a command intends to ingest.
+    private static Command UrlCheckCommand(CliMeta meta)
+    {
+        Command command = new("url-check",
+            "Validate a URL for SSRF-resistant ingestion (https-only + host allowlist + no private/reserved resolution); fail closed.");
+        Option<string> url = new("--url") { Description = "The URL to validate.", DefaultValueFactory = _ => "" };
+        Option<string> allow = new("--allow") { Description = "Comma-separated host allowlist.", DefaultValueFactory = _ => "" };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(url);
+        command.Options.Add(allow);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "security url-check",
+            () => RunnerCommands.SecurityUrlCheck(meta, parseResult.GetValue(url)!, parseResult.GetValue(allow)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        return command;
     }
 }
