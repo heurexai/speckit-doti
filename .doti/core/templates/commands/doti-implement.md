@@ -25,6 +25,10 @@ Implement to a 95%-confidence bar. Do not rush, do not take shortcuts, and do no
 
 Expected output: completed edits, verification results, and missing gate notes.
 
+## Context budget (large features)
+
+A feature too large for one context is implemented scoped + resumable, not in one heroic run: work the lowest-numbered unchecked task, stamp its diff-bound completion marker, and let a fresh context resume at the next unchecked task — the ledger + markers are the durable state, and the ordered-task gate (T003) keeps a resumed or parallel run from skipping or reordering. Delegate `[P]` tasks (different files, no in-phase dependency) to parallel sub-agents; decompose a feature too large even for that into sub-features ("spec of specs"). See `docs/concepts/complex-features.md`.
+
 ## Next
 
 Run `/08-doti-drift-review` to check the diff against the approved design.

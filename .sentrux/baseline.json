@@ -1,7 +1,7 @@
 {
-  "timestamp": 1782489998.637269,
-  "quality_signal": 0.6391836513564805,
-  "coupling_score": 0.06127080181543117,
+  "timestamp": 1782494631.9498641,
+  "quality_signal": 0.6382970660332262,
+  "coupling_score": 0.0604274134119381,
   "coupling_edges": [
     {
       "rank": 1,
@@ -599,6 +599,24 @@
     },
     {
       "rank": 33,
+      "from_file": "test/Hx.Scaffold.Tests/LocalReleaseChannelTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core/Release",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core/Release contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "LocalReleaseService",
+          "line": 8,
+          "column": 15
+        }
+      ]
+    },
+    {
+      "rank": 34,
       "from_file": "test/Hx.Scaffold.Tests/LocalReleasePayloadAndVersionTests.cs",
       "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -616,7 +634,7 @@
       ]
     },
     {
-      "rank": 34,
+      "rank": 35,
       "from_file": "test/Hx.Scaffold.Tests/LocalReleasePayloadAndVersionTests.cs",
       "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseVersionPolicy.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -634,7 +652,7 @@
       ]
     },
     {
-      "rank": 35,
+      "rank": 36,
       "from_file": "test/Hx.Scaffold.Tests/LocalReleaseRootTests.cs",
       "to_file": "src/Hx.Scaffold.Core/Release/ReleaseTargetManifest.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -652,7 +670,7 @@
       ]
     },
     {
-      "rank": 36,
+      "rank": 37,
       "from_file": "test/Hx.Scaffold.Tests/LocalReleaseRootTests.cs",
       "to_file": "src/Hx.Scaffold.Core/Release/ScaffoldReleaseTargetWriter.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -670,7 +688,7 @@
       ]
     },
     {
-      "rank": 37,
+      "rank": 38,
       "from_file": "test/Hx.Scaffold.Tests/LocalReleaseRootTests.cs",
       "to_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -688,7 +706,7 @@
       ]
     },
     {
-      "rank": 38,
+      "rank": 39,
       "from_file": "test/Hx.Scaffold.Tests/PayloadManifestGeneratorTests.cs",
       "to_file": "src/Hx.Scaffold.Core/PayloadManifestGenerator.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -706,7 +724,7 @@
       ]
     },
     {
-      "rank": 39,
+      "rank": 40,
       "from_file": "test/Hx.Scaffold.Tests/PayloadManifestGeneratorTests.cs",
       "to_file": "src/Hx.Scaffold.Core/PayloadRoot.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -736,7 +754,7 @@
       ]
     },
     {
-      "rank": 40,
+      "rank": 41,
       "from_file": "test/Hx.Scaffold.Tests/PayloadRootTests.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -754,7 +772,7 @@
       ]
     },
     {
-      "rank": 41,
+      "rank": 42,
       "from_file": "test/Hx.Scaffold.Tests/PayloadRootTests.cs",
       "to_file": "src/Hx.Scaffold.Core/PayloadRoot.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -784,7 +802,7 @@
       ]
     },
     {
-      "rank": 42,
+      "rank": 43,
       "from_file": "test/Hx.Scaffold.Tests/PrerequisiteCommandTests.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldRoot.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -802,7 +820,7 @@
       ]
     },
     {
-      "rank": 43,
+      "rank": 44,
       "from_file": "test/Hx.Scaffold.Tests/ReleasedHxDotiInstallTests.cs",
       "to_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -820,7 +838,7 @@
       ]
     },
     {
-      "rank": 44,
+      "rank": 45,
       "from_file": "test/Hx.Scaffold.Tests/ScaffoldBootstrapTests.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldBootstrap.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -838,7 +856,7 @@
       ]
     },
     {
-      "rank": 45,
+      "rank": 46,
       "from_file": "test/Hx.Scaffold.Tests/ScaffoldCommandsTestHelpers.cs",
       "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -856,7 +874,7 @@
       ]
     },
     {
-      "rank": 46,
+      "rank": 47,
       "from_file": "test/Hx.Scaffold.Tests/ScaffoldCommandsTests.cs",
       "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -880,7 +898,7 @@
       ]
     },
     {
-      "rank": 47,
+      "rank": 48,
       "from_file": "test/Hx.Scaffold.Tests/ScaffoldNewSmokeTests.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldNewRunner.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -898,7 +916,7 @@
       ]
     },
     {
-      "rank": 48,
+      "rank": 49,
       "from_file": "test/Hx.Scaffold.Tests/ScaffoldNewSmokeTests.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldRoot.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -916,7 +934,7 @@
       ]
     },
     {
-      "rank": 49,
+      "rank": 50,
       "from_file": "test/Hx.Scaffold.Tests/StoreProvisionerTests.cs",
       "to_file": "src/Hx.Scaffold.Core/StoreProvisioner.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -934,7 +952,7 @@
       ]
     },
     {
-      "rank": 50,
+      "rank": 51,
       "from_file": "test/Hx.Scaffold.Tests/UnifiedWorkflowSurfaceTests.cs",
       "to_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
       "from_module": "test/Hx.Scaffold.Tests",
@@ -952,7 +970,7 @@
       ]
     },
     {
-      "rank": 51,
+      "rank": 52,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -970,7 +988,7 @@
       ]
     },
     {
-      "rank": 52,
+      "rank": 53,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanRequest.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -988,7 +1006,7 @@
       ]
     },
     {
-      "rank": 53,
+      "rank": 54,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -1006,7 +1024,7 @@
       ]
     },
     {
-      "rank": 54,
+      "rank": 55,
       "from_file": "tools/Hx.Gate.Core/NoVelopackScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/ScaffoldHygieneChecks.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -1024,7 +1042,7 @@
       ]
     },
     {
-      "rank": 55,
+      "rank": 56,
       "from_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
       "to_file": "tools/Hx.Gate.Core/Hx.Gate.Core.csproj",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1042,7 +1060,7 @@
       ]
     },
     {
-      "rank": 56,
+      "rank": 57,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
       "to_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1060,7 +1078,7 @@
       ]
     },
     {
-      "rank": 57,
+      "rank": 58,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
       "to_file": "tools/Hx.Gate.Core/LaneResolver.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1078,7 +1096,7 @@
       ]
     },
     {
-      "rank": 58,
+      "rank": 59,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1096,7 +1114,7 @@
       ]
     },
     {
-      "rank": 59,
+      "rank": 60,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1114,7 +1132,7 @@
       ]
     },
     {
-      "rank": 60,
+      "rank": 61,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksUpdateChecker.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1132,7 +1150,7 @@
       ]
     },
     {
-      "rank": 61,
+      "rank": 62,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1150,7 +1168,7 @@
       ]
     },
     {
-      "rank": 62,
+      "rank": 63,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicyLoader.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1168,7 +1186,7 @@
       ]
     },
     {
-      "rank": 63,
+      "rank": 64,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanRequest.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1186,7 +1204,7 @@
       ]
     },
     {
-      "rank": 64,
+      "rank": 65,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1204,7 +1222,7 @@
       ]
     },
     {
-      "rank": 65,
+      "rank": 66,
       "from_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
       "from_module": "tools/Hx.Runner.Core/Gitleaks",
@@ -1222,7 +1240,7 @@
       ]
     },
     {
-      "rank": 66,
+      "rank": 67,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksExitClassifier.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -1246,7 +1264,7 @@
       ]
     },
     {
-      "rank": 67,
+      "rank": 68,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifest.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -1270,7 +1288,7 @@
       ]
     },
     {
-      "rank": 68,
+      "rank": 69,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -1288,7 +1306,7 @@
       ]
     },
     {
-      "rank": 69,
+      "rank": 70,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksProcessAdapter.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -1306,7 +1324,7 @@
       ]
     },
     {
-      "rank": 70,
+      "rank": 71,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksReportParser.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -1324,7 +1342,7 @@
       ]
     },
     {
-      "rank": 71,
+      "rank": 72,
       "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
       "to_file": "src/Hx.Scaffold.Core/Hx.Scaffold.Core.csproj",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1342,7 +1360,7 @@
       ]
     },
     {
-      "rank": 72,
+      "rank": 73,
       "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
       "to_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1360,7 +1378,7 @@
       ]
     },
     {
-      "rank": 73,
+      "rank": 74,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1378,7 +1396,7 @@
       ]
     },
     {
-      "rank": 74,
+      "rank": 75,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.New.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1396,7 +1414,7 @@
       ]
     },
     {
-      "rank": 75,
+      "rank": 76,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.New.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldNewRunner.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1414,7 +1432,7 @@
       ]
     },
     {
-      "rank": 76,
+      "rank": 77,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.PayloadManifest.cs",
       "to_file": "src/Hx.Scaffold.Core/PayloadManifestGenerator.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1432,7 +1450,7 @@
       ]
     },
     {
-      "rank": 77,
+      "rank": 78,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Prereq.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1450,7 +1468,7 @@
       ]
     },
     {
-      "rank": 78,
+      "rank": 79,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Release.cs",
       "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1474,7 +1492,7 @@
       ]
     },
     {
-      "rank": 79,
+      "rank": 80,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Version.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1492,7 +1510,7 @@
       ]
     },
     {
-      "rank": 80,
+      "rank": 81,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Version.cs",
       "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1516,7 +1534,7 @@
       ]
     },
     {
-      "rank": 81,
+      "rank": 82,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldBootstrap.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -1551,7 +1569,7 @@
       "fan_in": 3,
       "fan_out": 42,
       "call_edges": 55,
-      "degree_centrality": 0.0476,
+      "degree_centrality": 0.0457,
       "instability": 0.9333,
       "max_complexity": 5,
       "function_count": 27
@@ -1569,7 +1587,7 @@
       "fan_in": 3,
       "fan_out": 29,
       "call_edges": 21,
-      "degree_centrality": 0.0338,
+      "degree_centrality": 0.0325,
       "instability": 0.9063,
       "max_complexity": 11,
       "function_count": 9
@@ -1587,7 +1605,7 @@
       "fan_in": 0,
       "fan_out": 23,
       "call_edges": 13,
-      "degree_centrality": 0.0243,
+      "degree_centrality": 0.0234,
       "instability": 1.0,
       "max_complexity": 3,
       "function_count": 4
@@ -1605,7 +1623,7 @@
       "fan_in": 1,
       "fan_out": 19,
       "call_edges": 10,
-      "degree_centrality": 0.0211,
+      "degree_centrality": 0.0203,
       "instability": 0.95,
       "max_complexity": 2,
       "function_count": 4
@@ -1620,19 +1638,25 @@
       "threshold": 15,
       "loc": 873,
       "imports": 16,
-      "fan_in": 2,
+      "fan_in": 3,
       "fan_out": 16,
       "call_edges": 17,
-      "degree_centrality": 0.019,
-      "instability": 0.8889,
+      "degree_centrality": 0.0193,
+      "instability": 0.8421,
       "max_complexity": 6,
       "function_count": 35
     }
   ],
   "hotspot_count": 1,
-  "complex_fn_count": 0,
-  "complex_functions": [],
+  "complex_fn_count": 1,
+  "complex_functions": [
+    {
+      "file": "tools/Hx.Security.Core/UrlTrustPolicy.cs",
+      "func": "IsBlockedAddress",
+      "value": 17
+    }
+  ],
   "max_depth": 11,
-  "total_import_edges": 1322,
-  "cross_module_edges": 1078
+  "total_import_edges": 1357,
+  "cross_module_edges": 1112
 }
