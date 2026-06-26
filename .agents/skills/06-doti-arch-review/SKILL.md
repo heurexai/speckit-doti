@@ -18,9 +18,9 @@ A multi-lens DESIGN review before implementation. The stage ALWAYS runs (a hard 
 Any operator-facing question — at any stage, for Claude or Codex — uses this fixed format, presented immediately before the question:
 
 - **Context** — the full background. Assume the operator has not re-read the material; restate what is unclear and the relevant facts.
-- **Why it matters** — the concrete impact and why it needs a decision now.
-- **Options** — for each option: **Pros**, **Cons**, and **Consequence** (what becomes true downstream if chosen).
-- **Recommendation** — the option you recommend and the reasoning; list it first and label it "(Recommended)".
+- **Why it matters** — the concrete impact AND a brief **concrete example** of how it plays out, and why it needs a decision now. Frame the stakes as QUALITY: for a code change — maintainability, consistency with existing patterns, correctness, testability, and future drift; for a docs/Doti-prose change — clarity, consistency, and accuracy of the documentation. **Never frame the stakes as effort or convenience** — that one option is more work is not why a question matters.
+- **Options** — for each option: **Pros**, **Cons**, and **Consequence** — what becomes true downstream if chosen, reasoned through in those same quality terms with a **concrete example** (e.g. "then every new command must re-declare its error codes — a consistency cost paid forever", or "the README would then document two install paths — a reader-clarity cost"). Effort/convenience is NOT a pro, con, or consequence here; whether an option is more work never decides it.
+- **Recommendation** — the option you recommend and the reasoning — the quality trade-off you are optimising, never "the easy one"; list it first and label it "(Recommended)".
 - **Assumptions** — the assumptions behind the recommendation.
 - **Confidence** — High / Medium / Low, with a one-line reason.
 

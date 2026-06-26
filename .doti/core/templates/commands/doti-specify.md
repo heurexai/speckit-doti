@@ -24,6 +24,7 @@ Purpose: create or refine a feature specification for scaffold-dotnet — the WH
 5. **Spec-quality self-check before handoff** (treat the spec like code that gets unit-tested):
    - *Content quality* — no implementation leak; written for a domain reader; mandatory sections present (omit an inapplicable section entirely — no "N/A").
    - *Requirement completeness* — every `FR`/`SC` testable and unambiguous; success criteria measurable and technology-agnostic; scope bounded; assumptions and dependencies stated.
+   - *Clarity & consistency* — written for quality and maintainability: each requirement is unambiguous, terms are used consistently, and no requirement contradicts another or the scope (so plan/tasks/implement build on it without re-deriving intent).
    - *Feature readiness* — each requirement has an acceptance signal; scenarios cover the primary flows.
    Fix what fails and re-check. If a gap cannot be closed without an operator decision, leave one `[NEEDS CLARIFICATION:]` rather than guess.
 6. Never claim deterministic gate proof; mark planned-but-absent commands advisory.
