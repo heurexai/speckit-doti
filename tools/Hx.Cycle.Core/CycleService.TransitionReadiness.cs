@@ -47,6 +47,7 @@ public sealed partial class CycleService
             else
             {
                 reasons.AddRange(GateProofValidator.ValidateAffectedTestProof(_repositoryRoot, gateProof));
+                reasons.AddRange(GateProofValidator.ValidateLadderCoverage(_repositoryRoot, gateProof));
             }
         }
 

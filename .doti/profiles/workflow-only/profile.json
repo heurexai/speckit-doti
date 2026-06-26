@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "profile": "workflow-only",
+  "tier": "workflow-only",
+  "maturity": "command-aware-advisory",
+  "description": "Tier 1 — the cycle + chokepoint baseline only (specify..release proofs, ordered-task enforcement, task-completion, hygiene). The opinionated Heurex structural gates (Sentrux, ArchUnitNET) are skipped, so doti installs as a pure spec-driven workflow into an existing repo without imposing the Heurex structure. This is the non-imposing default when no tier is declared.",
+  "gates": {
+    "sentrux-verify": "skip",
+    "sentrux-check": "skip",
+    "architecture-test": "skip"
+  }
+}

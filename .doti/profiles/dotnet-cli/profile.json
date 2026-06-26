@@ -3,6 +3,12 @@
   "profile": "dotnet-cli",
   "maturity": "command-aware-advisory",
   "description": "Doti workflow profile for building scaffold-dotnet and its first generated .NET CLI solution template.",
+  "tier": "dotnet-cli-heurex",
+  "gates": {
+    "sentrux-verify": "enforced",
+    "sentrux-check": "enforced",
+    "architecture-test": "enforced"
+  },
   "implementedCommands": {
     "restore": "dotnet restore .\\scaffold-dotnet.slnx",
     "build": "dotnet build .\\scaffold-dotnet.slnx -c Release --no-restore /m:1",

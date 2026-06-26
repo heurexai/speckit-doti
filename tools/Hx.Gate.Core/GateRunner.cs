@@ -31,19 +31,30 @@ public static class GateRunner
     {
         var steps = new List<GateStep>();
         void Emit(GateStep step) => EmitStep(steps, onStep, step);
+
+        // The repo's declared TIER (not the --profile lane) owns which opinionated gates run + in what mode
+        // (FR-029). A step the tier does not declare defaults to Enforced — today's behavior.
+        GateLadderResolution resolution = GateLadderResolver.Resolve(repositoryRoot);
+        GateLadder ladder = resolution.Ladder ?? new GateLadder("unresolved", new Dictionary<string, GateMode>());
+        if (!resolution.Ok)
+        {
+            Emit(new GateStep("tier-resolution", StageOutcome.Fail,
+                [new GateEvidence("tier-resolution", resolution.FailureReason ?? "could not resolve the repo's gate tier")]));
+        }
+
         Emit(HygieneStep(repositoryRoot, lane));
         Emit(GitleaksVerifyStep(repositoryRoot));
-        Emit(SentruxVerifyStep(repositoryRoot));
+        Emit(ApplyTier(ladder, "sentrux-verify", () => SentruxVerifyStep(repositoryRoot)));
         AffectedGatePlan affected = AffectedChangeStep(repositoryRoot);
         Emit(affected.Step);
         TaskCompletionProof taskCompletionProof = DotiTaskCompletion.CreateActiveFeatureProof(repositoryRoot);
         Emit(TaskCompletionStep(taskCompletionProof));
         BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, affected.Plan);
         Emit(buildAndTest.Step);
-        Emit(ArchitectureStep(repositoryRoot));
+        Emit(ApplyTier(ladder, "architecture-test", () => ArchitectureStep(repositoryRoot)));
         Emit(SkillDriftStep(repositoryRoot));
         Emit(DotiPayloadStep(repositoryRoot));
-        Emit(SentruxCheckStep(repositoryRoot));
+        Emit(ApplyTier(ladder, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
         Emit(VersionStep(repositoryRoot, lane));
         Emit(SecurityStep(repositoryRoot, lane));
         ReleaseDocumentationProof? documentationProof = null;
@@ -63,7 +74,26 @@ public static class GateRunner
             [],
             affectedProof,
             taskCompletionProof,
-            documentationProof);
+            documentationProof,
+            ladder.Tier,
+            ladder.Coverage());
+    }
+
+    // Apply the tier's mode to an opinionated gate step (FR-029): Skip → do not run; Advisory → run but never
+    // fail the gate; Enforced (the default for an undeclared step) → run fail-closed as today.
+    private static GateStep ApplyTier(GateLadder ladder, string stepName, Func<GateStep> run)
+    {
+        GateMode mode = ladder.ModeFor(stepName);
+        if (mode == GateMode.Skip)
+        {
+            return new GateStep(stepName, StageOutcome.Skipped,
+                [new GateEvidence(stepName, $"skipped by tier '{ladder.Tier}'")]);
+        }
+
+        GateStep step = run();
+        return mode == GateMode.Advisory && step.Outcome is StageOutcome.Fail or StageOutcome.Blocked
+            ? step with { Outcome = StageOutcome.Skipped }
+            : step;
     }
 
     private static void EmitStep(List<GateStep> steps, Action<GateStep>? onStep, GateStep step)

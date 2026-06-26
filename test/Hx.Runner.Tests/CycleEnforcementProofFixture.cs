@@ -35,7 +35,12 @@ public sealed partial class CycleEnforcementTests
             FullSuiteReason: fullSuite ? "release lane" : null,
             plan,
             []);
-        var gateProof = new GateProof(JsonContractDefaults.SchemaVersion, StageOutcome.Pass, [], [], affectedProof);
+        // Mint a tier-bound proof exactly as `gate run` now does (FR-029), so the transition's ladder-coverage
+        // recompute matches. The temp repo declares no tier, so it resolves to the non-imposing workflow-only.
+        GateLadder ladder = GateLadderResolver.Resolve(dir).Ladder!;
+        var gateProof = new GateProof(
+            JsonContractDefaults.SchemaVersion, StageOutcome.Pass, [], [], affectedProof,
+            Tier: ladder.Tier, LadderCoverage: ladder.Coverage());
         new GateProofStore(dir).Write(new PersistedGateProof(
             JsonContractDefaults.SchemaVersion,
             changeSetId,

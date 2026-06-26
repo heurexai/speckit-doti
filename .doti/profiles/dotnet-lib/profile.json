@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "profile": "dotnet-lib",
+  "tier": "dotnet-lib",
+  "maturity": "command-aware-advisory",
+  "description": "Tier 2 — the cycle + chokepoint baseline plus the standard .NET gates (restore/build/test, security, version), WITHOUT the opinionated Heurex Sentrux/ArchUnitNET structural gates. For an existing .NET library/repo that adopts the doti workflow but not the Heurex structure.",
+  "gates": {
+    "sentrux-verify": "skip",
+    "sentrux-check": "skip",
+    "architecture-test": "skip"
+  }
+}

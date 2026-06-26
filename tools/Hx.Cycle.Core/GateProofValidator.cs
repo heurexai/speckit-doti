@@ -97,6 +97,62 @@ public static class GateProofValidator
         return reasons;
     }
 
+    /// <summary>
+    /// FR-029 downgrade guard: re-resolve the repo's declared tier ladder and verify the proof was minted under
+    /// it. A proof whose recorded tier or ladder coverage does not match the current declared tier — i.e. a
+    /// silently narrowed/downgraded ladder (editing <c>integration.json</c> to a weaker tier, or a gate's mode to
+    /// advisory/skip) — cannot mint a passing proof. A pre-FR-029 proof (no tier binding) requires a re-run.
+    /// </summary>
+    public static IReadOnlyList<string> ValidateLadderCoverage(string repositoryRoot, PersistedGateProof persisted)
+    {
+        GateProof proof = persisted.Proof;
+        GateLadderResolution resolution = GateLadderResolver.Resolve(repositoryRoot);
+        if (!resolution.Ok)
+        {
+            return ["the repo's gate tier no longer resolves: " + (resolution.FailureReason ?? "unknown")];
+        }
+
+        if (proof.Tier is null || proof.LadderCoverage is null)
+        {
+            return ["gate proof predates tier-ladder binding; re-run `gate run` with the current runner"];
+        }
+
+        GateLadder expected = resolution.Ladder!;
+        var reasons = new List<string>();
+        if (!string.Equals(proof.Tier, expected.Tier, StringComparison.Ordinal))
+        {
+            reasons.Add($"gate proof tier '{proof.Tier}' does not match the repo's declared tier '{expected.Tier}' (a tier downgrade cannot mint a passing proof)");
+        }
+
+        if (!CoverageEqual(proof.LadderCoverage, expected.Coverage()))
+        {
+            reasons.Add("gate proof ladder coverage does not match the repo's declared tier ladder (a narrowed/downgraded ladder cannot mint a passing proof)");
+        }
+
+        return reasons;
+    }
+
+    private static bool CoverageEqual(IReadOnlyList<GateLadderEntry> recorded, IReadOnlyList<GateLadderEntry> expected)
+    {
+        if (recorded.Count != expected.Count)
+        {
+            return false;
+        }
+
+        GateLadderEntry[] a = recorded.OrderBy(e => e.Step, StringComparer.Ordinal).ToArray();
+        GateLadderEntry[] b = expected.OrderBy(e => e.Step, StringComparer.Ordinal).ToArray();
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (!string.Equals(a[i].Step, b[i].Step, StringComparison.Ordinal)
+                || !string.Equals(a[i].Mode, b[i].Mode, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private static IReadOnlyList<string> AllTestProjectPaths(string repositoryRoot)
     {
         string[] solutions = Directory.GetFiles(repositoryRoot, "*.slnx");

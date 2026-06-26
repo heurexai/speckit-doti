@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "profile": "dotnet-cli-heurex",
+  "tier": "dotnet-cli-heurex",
+  "maturity": "command-aware-advisory",
+  "description": "Tier 3 — full Heurex .NET CLI governance: the cycle + chokepoint baseline plus the opinionated Sentrux + ArchUnitNET structural gates. For repos that adopt the Heurex structure (the scaffold template). (dotnet-cli is the legacy alias of this tier.)",
+  "gates": {
+    "sentrux-verify": "enforced",
+    "sentrux-check": "enforced",
+    "architecture-test": "enforced"
+  }
+}
