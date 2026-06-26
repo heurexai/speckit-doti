@@ -18,6 +18,11 @@ public sealed record LocalReleaseRequest(
 
 public static class LocalReleaseService
 {
+    // 007 T016: Velopack removed. Until LocalReleaseService is retargeted to the NuGet global-tool + MSIX channels
+    // (T028), `hx release` validates + publishes + tags + records the payload identity, but produces no installable
+    // package artifact. The channel-neutral package/installer fields stay null until then.
+    private const string ReleaseProductInterim = "none";
+
     public static LocalReleaseResult Run(LocalReleaseRequest request)
     {
         string repo = Path.GetFullPath(request.RepositoryRoot);
@@ -138,7 +143,7 @@ public static class LocalReleaseService
             CommandVersion: request.CommandVersion,
             ConfigurationSource: request.Configuration.Source,
             ConfigurationPath: request.Configuration.SourcePath,
-            ReleaseProduct: "velopack",
+            ReleaseProduct: ReleaseProductInterim,
             SourceArchiveExcluded: true,
             Blockers: [],
             InstallLocationProof: null);
@@ -218,7 +223,7 @@ public static class LocalReleaseService
                 CommandVersion: request.CommandVersion,
                 ConfigurationSource: request.Configuration.Source,
                 ConfigurationPath: request.Configuration.SourcePath,
-                ReleaseProduct: "velopack",
+                ReleaseProduct: ReleaseProductInterim,
                 SourceArchiveExcluded: true,
                 Blockers: [],
                 InstallLocationProof: artifacts.InstallLocationProof);
@@ -302,45 +307,11 @@ public static class LocalReleaseService
         }
 
         IReadOnlyList<LocalReleasePayloadCheck> payloadChecks = InspectPayload(publish);
-        PackVelopack(repo, publish, tempRoot, velopackPackageId, version, executableName, target.ProductName, velopackChannel, rid);
-        IReadOnlyList<LocalReleaseArtifact> velopackArtifacts = DiscoverVelopackArtifacts(tempRoot)
-            .Select(artifact => artifact with
-            {
-                RuntimeIdentifier = rid,
-                Channel = velopackChannel,
-                Version = version,
-                PackageId = velopackPackageId
-            })
-            .ToArray();
-        if (velopackArtifacts.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "Velopack did not produce any recognized installer/update artifacts. Refusing raw-archive-only release output.");
-        }
 
-        LocalReleaseInstallLocationProof? installLocationProof = ValidateInstallLocationSmoke(
-            tempRoot,
-            velopackArtifacts,
-            executableName,
-            version,
-            rid);
-
-        var artifacts = new List<LocalReleaseArtifact>(velopackArtifacts);
-        foreach (LocalReleaseArtifact velopackArtifact in velopackArtifacts)
-        {
-            string checksumPath = Path.Combine(tempRoot, velopackArtifact.Name + ".sha256");
-            File.WriteAllText(checksumPath, $"{velopackArtifact.Sha256}  {velopackArtifact.Name}");
-            artifacts.Add(new LocalReleaseArtifact(
-                Path.GetFileName(checksumPath),
-                Sha256(checksumPath),
-                new FileInfo(checksumPath).Length,
-                Type: "checksum",
-                RuntimeIdentifier: rid,
-                Channel: velopackChannel,
-                Version: version,
-                PackageId: velopackPackageId));
-        }
-
+        // 007 T016: Velopack removed. The interim release records the payload identity (full payload hash manifest)
+        // but produces no installer/package and runs no install-location smoke. T028 retargets this to emit the
+        // framework-dependent NuGet global-tool package + curated MSIX layout and record their channel artifacts.
+        var artifacts = new List<LocalReleaseArtifact>();
         string identity = Path.Combine(tempRoot, "release.identity.json");
         File.WriteAllText(identity, JsonSerializer.Serialize(new
         {
@@ -360,13 +331,13 @@ public static class LocalReleaseService
             configurationSource,
             configurationPath,
             documentationProof,
-            releaseProduct = "velopack",
+            releaseProduct = ReleaseProductInterim,
             sourceArchiveExcluded = true,
             releaseTrain,
-            artifacts,
-            velopackArtifacts,
+            artifacts = Array.Empty<LocalReleaseArtifact>(),
+            velopackArtifacts = Array.Empty<LocalReleaseArtifact>(),
             payloadChecks,
-            installLocationProof
+            installLocationProof = (LocalReleaseInstallLocationProof?)null
         }, JsonContractSerializerOptions.Create()));
         artifacts.Add(new(
             "release.identity.json",
@@ -377,109 +348,7 @@ public static class LocalReleaseService
             Channel: velopackChannel,
             Version: version,
             PackageId: velopackPackageId));
-        return new ReleaseArtifactBuild(artifacts, velopackArtifacts, payloadChecks, installLocationProof);
-    }
-
-    private static LocalReleaseInstallLocationProof? ValidateInstallLocationSmoke(
-        string tempRoot,
-        IReadOnlyList<LocalReleaseArtifact> velopackArtifacts,
-        string executableName,
-        string version,
-        string rid)
-    {
-        if (!rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase))
-        {
-            return new LocalReleaseInstallLocationProof(
-                "skipped",
-                null,
-                null,
-                null,
-                null,
-                null,
-                [],
-                [$"install-location smoke is implemented for Windows Setup.exe artifacts; RID '{rid}' is not Windows"]);
-        }
-
-        LocalReleaseArtifact? setup = velopackArtifacts.FirstOrDefault(artifact =>
-            string.Equals(artifact.Type, "velopack-installer", StringComparison.Ordinal)
-            && artifact.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
-        if (setup is null)
-        {
-            throw new InvalidOperationException("Velopack install-location proof could not find a Windows Setup.exe artifact.");
-        }
-
-        string setupPath = Path.Combine(tempRoot, setup.Name);
-        string installDir = Path.Combine(tempRoot, "install-smoke");
-        Directory.CreateDirectory(installDir);
-        (int setupExit, string setupOutput) = ProcessRunner.Run(
-            setupPath,
-            $"--installto {Quote(installDir)} --silent",
-            tempRoot,
-            ProcessRunner.NestedDotnetEnv());
-        if (setupExit != 0)
-        {
-            throw new InvalidOperationException("Velopack install-location smoke failed: " + ProcessRunner.Tail(setupOutput));
-        }
-
-        string installedExe = FindInstalledExecutableWithPayload(installDir, executableName)
-            ?? throw new InvalidOperationException($"Velopack install-location proof did not find {executableName} with hx.config.json and .doti/core/skills.json under {installDir}.");
-        string installedDir = Path.GetDirectoryName(installedExe)!;
-        string config = Path.Combine(installedDir, "hx.config.json");
-        string dotiSkills = Path.Combine(installedDir, ".doti", "core", "skills.json");
-        var payloadChecks = new List<string>();
-        if (!File.Exists(config))
-        {
-            throw new InvalidOperationException("Velopack install-location proof did not find hx.config.json beside installed hx.");
-        }
-
-        payloadChecks.Add("hx.config.json");
-        if (!File.Exists(dotiSkills))
-        {
-            throw new InvalidOperationException("Velopack install-location proof did not find .doti/core/skills.json beside installed hx.");
-        }
-
-        payloadChecks.Add(".doti/core/skills.json");
-        if (!Path.GetFullPath(installedExe).StartsWith(EnsureTrailingSeparator(Path.GetFullPath(installDir)), StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Velopack install-location proof found hx outside the requested install directory.");
-        }
-
-        (int versionExit, string versionOutput) = ProcessRunner.Run(
-            installedExe,
-            "version --json",
-            installedDir,
-            ProcessRunner.NestedDotnetEnv());
-        if (versionExit != 0)
-        {
-            throw new InvalidOperationException("Installed hx version smoke failed: " + ProcessRunner.Tail(versionOutput));
-        }
-
-        if (!versionOutput.Contains(version, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException($"Installed hx version smoke output did not contain release version {version}.");
-        }
-
-        return new LocalReleaseInstallLocationProof(
-            "pass",
-            setup.Name,
-            installDir,
-            installedExe,
-            "hx version --json",
-            Sha256Text(versionOutput),
-            payloadChecks,
-            []);
-    }
-
-    private static string? FindInstalledExecutableWithPayload(string installDir, string executableName)
-    {
-        return Directory.EnumerateFiles(installDir, executableName, SearchOption.AllDirectories)
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault(path =>
-            {
-                string dir = Path.GetDirectoryName(path)!;
-                return File.Exists(Path.Combine(dir, "hx.config.json"))
-                    && File.Exists(Path.Combine(dir, ".doti", "core", "skills.json"));
-            });
+        return new ReleaseArtifactBuild(artifacts, VelopackArtifacts: [], payloadChecks, InstallLocationProof: null);
     }
 
     private static void PublishLocalCopy(
@@ -647,72 +516,6 @@ public static class LocalReleaseService
             .ToArray();
     }
 
-    private static void PackVelopack(
-        string repo,
-        string publish,
-        string outputDir,
-        string packageId,
-        string version,
-        string mainExe,
-        string title,
-        string channel,
-        string rid)
-    {
-        string arguments = BuildVelopackPackArguments(publish, outputDir, packageId, version, mainExe, title, channel, rid);
-
-        VelopackToolInvocation tool = VelopackTool.Prepare(repo, rid, outputDir);
-        (int exitCode, string output) = ProcessRunner.Run(
-            tool.FileName,
-            tool.ArgumentsPrefix + " " + arguments,
-            repo,
-            ProcessRunner.NestedDotnetEnv());
-        if (exitCode != 0)
-        {
-            throw new InvalidOperationException("vpk pack failed: " + ProcessRunner.Tail(output));
-        }
-    }
-
-    private static string BuildVelopackPackArguments(
-        string publish,
-        string outputDir,
-        string packageId,
-        string version,
-        string mainExe,
-        string title,
-        string channel,
-        string rid) =>
-        "pack " +
-        $"--packId {Quote(packageId)} " +
-        $"--packVersion {Quote(version)} " +
-        $"--packDir {Quote(publish)} " +
-        $"--mainExe {Quote(mainExe)} " +
-        $"--packTitle {Quote(title)} " +
-        $"--channel {Quote(channel)} " +
-        $"--runtime {Quote(rid)} " +
-        "--shortcuts None " +
-        $"--outputDir {Quote(outputDir)}";
-
-    private static IReadOnlyList<LocalReleaseArtifact> DiscoverVelopackArtifacts(string tempRoot)
-    {
-        return Directory.EnumerateFiles(tempRoot, "*", SearchOption.TopDirectoryOnly)
-            .Where(path =>
-            {
-                string name = Path.GetFileName(path);
-                return VelopackArtifactClassifier.IsVelopackArtifactName(name);
-            })
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .Select(path =>
-            {
-                string name = Path.GetFileName(path);
-                return new LocalReleaseArtifact(
-                    name,
-                    Sha256(path),
-                    new FileInfo(path).Length,
-                    Type: VelopackArtifactClassifier.Classify(name) ?? "velopack-artifact");
-            })
-            .ToArray();
-    }
-
     private static string ChannelFromRid(string rid)
     {
         int dash = rid.IndexOf('-', StringComparison.Ordinal);
@@ -847,9 +650,6 @@ public static class LocalReleaseService
         using FileStream stream = File.OpenRead(path);
         return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
-
-    private static string Sha256Text(string value) =>
-        Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
     private static string Quote(string value) => '"' + value.Replace("\"", "\\\"", StringComparison.Ordinal) + '"';
 
