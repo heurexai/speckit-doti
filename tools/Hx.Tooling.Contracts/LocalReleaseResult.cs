@@ -30,7 +30,13 @@ public sealed record LocalReleaseResult(
     string ReleaseProduct,
     bool SourceArchiveExcluded,
     IReadOnlyList<string> Blockers,
-    LocalReleaseInstallLocationProof? InstallLocationProof = null);
+    LocalReleaseInstallLocationProof? InstallLocationProof = null,
+    // 007 T004 (additive, channel-neutral; the Velopack* fields above are kept/mapped so existing
+    // release.identity.json readers do not break — no JsonContractDefaults.SchemaVersion bump). Populated when
+    // LocalReleaseService is retargeted off vpk (T028).
+    string? PackageId = null,
+    string? Channel = null,
+    IReadOnlyList<ChannelInstallProof>? ChannelInstallProofs = null);
 
 public sealed record LocalReleaseRootDecision(
     string EffectiveEnvironmentVariableName,

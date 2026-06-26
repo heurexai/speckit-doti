@@ -8,12 +8,14 @@ public sealed record CliDescribeOption(
     string? Description = null,
     string? Default = null);
 
-/// <summary>A command in the describe tree, with its options and subcommands.</summary>
+/// <summary>A command in the describe tree, with its options and subcommands. <see cref="Mode"/> marks the
+/// command installed-vs-source/developer (FR-022 / <see cref="CommandMode"/>); null until surfaced by T012/T045.</summary>
 public sealed record CliDescribeCommand(
     string Name,
     string? Summary,
     IReadOnlyList<CliDescribeOption> Options,
-    IReadOnlyList<CliDescribeCommand> Subcommands);
+    IReadOnlyList<CliDescribeCommand> Subcommands,
+    string? Mode = null);
 
 public sealed record CliDescribeWorkflow(
     string Name,
@@ -49,4 +51,6 @@ public sealed record CliDescribe(
     CliDescribeCommand Root,
     IReadOnlyList<string> ExitClasses,
     IReadOnlyList<ErrorCodeEntry> ErrorCodeCatalog,
-    CliDescribeWorkflow? Workflow = null);
+    CliDescribeWorkflow? Workflow = null,
+    // 007 T004 (FR-022/FR-042): the active distribution channel + its update mechanism; null until surfaced by T012/T045.
+    DistributionChannelInfo? Channel = null);

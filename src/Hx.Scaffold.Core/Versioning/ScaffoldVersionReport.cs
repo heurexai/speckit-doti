@@ -43,7 +43,9 @@ public sealed record ScaffoldVersionReport(
     string TargetRelation,
     ManagedAssetModificationSummary? ManagedAssets,
     IReadOnlyList<string> Diagnostics,
-    PrerequisiteCheckReport? Prerequisites = null);
+    PrerequisiteCheckReport? Prerequisites = null,
+    // 007 T004 (FR-013/FR-022): the active distribution channel + its update command; null until surfaced by T012.
+    DistributionChannelInfo? Channel = null);
 
 public static class ScaffoldVersionReporter
 {
