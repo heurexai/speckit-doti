@@ -11,6 +11,8 @@ metadata:
 
 Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/doti-plan.md`.
 
+This stage ORIGINATES the best design (arch-review later challenges it; implement preserves it). Two rules: (1) Assess the existing architecture BEFORE deciding — read the similar existing code, the *.Core vs *.Cli boundary the change lands in, the command->CliResult->error-code convention, rules/architecture.json + .sentrux/rules.toml, and any scaffold/templates/** implications; the design must fit those patterns or justifiably change them (name which). (2) Choose the SIMPLEST CORRECT design — effort is NOT a design criterion: never pick an approach because it is less work. Prefer the simplest design that satisfies the FR/SCs, fits the existing patterns, preserves deterministic proof (gates stay fail-closed, nothing downgraded enforced->advisory), and avoids future drift; reject alternatives by architectural trade-off, not by convenience. Record Decision/Rationale/Alternatives-rejected and the architecture delta (the ArchUnit family + Sentrux boundary) so the design is enforced, not just described.
+
 ## Asking the operator a question (required format)
 
 Any operator-facing question — at any stage, for Claude or Codex — uses this fixed format, presented immediately before the question:

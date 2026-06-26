@@ -14,6 +14,8 @@ disable-model-invocation: false
 
 Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/doti-implement.md`.
 
+Implement REINFORCES the approved design — it is NOT where design happens. Make narrow edits aligned with the spec/plan/tasks; if implementation reveals the plan/arch-review is materially wrong (a better architecture, or a design that won't satisfy an FR/SC), STOP — do not silently code a different design (drift /08 + the gate can't fully catch) and do not force-fit a plan you've found wrong. Report the mismatch and re-run /03-doti-plan (then /04-doti-tasks / /06-doti-arch-review as needed) before coding through it.
+
 Engineering discipline (required): RCA root causes — don't patch symptoms; validate every assumption by reading the code, running the command, or observing the output (never assume; prove claims with evidence); take no shortcuts (don't silence checks, hard-code around problems, or declare done without proof); hold a 95%-confidence bar — if not ≥95% confident the solution and code are correct, keep finding better approaches or validating until you are; if truly blocked, surface it with what you tried rather than guess; report honestly (what was validated, what remains, deferrals with rationale).
 
 ## Asking the operator a question (required format)

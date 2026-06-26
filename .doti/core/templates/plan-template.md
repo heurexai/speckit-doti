@@ -24,6 +24,10 @@ For each unknown / dependency / integration:
 
 ## Design
 
+**Selection rule:** choose the *simplest correct* design — one that satisfies the FR/SCs, fits the existing patterns, preserves deterministic proof (gates stay fail-closed), and avoids future drift. **Effort is not a criterion;** reject alternatives by architectural trade-off, not by convenience.
+
+**Patterns assessed (before deciding):** the existing similar code, the `*.Core` / `*.Cli` boundary this lands in, the command → `CliResult` → error-code convention, `rules/architecture.json` + `.sentrux/rules.toml`, and any `scaffold/templates/**` implications — note whether the design fits them or justifiably changes them.
+
 Technical approach and files likely to change. **Architecture delta:** projects / namespaces / layers added or moved, and the exact rule changes that encode it — the ArchUnitNET family in `rules/architecture.json` and the Sentrux layer / boundary in `.sentrux/rules.toml`, kept mutually consistent (`/doti-arch-review` validates both engines encode the same intent). A structural change without a matching rule change will drift.
 
 ## CLI surface & error contract
