@@ -5,10 +5,10 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
-  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 desktop rescap">
+  IgnorableNamespaces="uap uap5 desktop4 rescap">
 
   <Identity Name="Heurex.speckit-doti"
             Publisher="CN=44BD9E29-FD96-49A3-87CD-DCD53760D855"
@@ -38,11 +38,15 @@
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png" />
       <Extensions>
-        <uap3:Extension Category="windows.appExecutionAlias">
-          <uap3:AppExecutionAlias>
-            <desktop:ExecutionAlias Alias="hx.exe" />
-          </uap3:AppExecutionAlias>
-        </uap3:Extension>
+        <!-- Console AppExecutionAlias (uap5 + desktop4:Subsystem="console", 007 T026): typing `hx` in any
+             terminal launches the packaged exe attached to THAT terminal's stdin/stdout/stderr. The old
+             uap3 + desktop:ExecutionAlias form launches DETACHED (GUI semantics) and swallows console output,
+             which is wrong for a CLI, so the installed `hx` commands must use this uap5 console alias. -->
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="hx.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:AppExecutionAlias desktop4:Subsystem="console">
+            <uap5:ExecutionAlias Alias="hx.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>
