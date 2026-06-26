@@ -6,11 +6,10 @@ publish/
 
 # Vendored tool binaries — NOT committed (kept lean). They are fetched operationally
 # per the pinned manifests under tools/*/ (gitleaks.version.json, sentrux.version.json,
-# gitversion.version.json, velopack.version.json) and verified by SHA-256. Gates fail closed until vendored.
+# gitversion.version.json) and verified by SHA-256. Gates fail closed until vendored.
 tools/gitleaks/bin/
 tools/sentrux/bin/
 tools/gitversion/bin/
-tools/velopack/bin/
 # tools/sentrux/grammars/ is intentionally NOT ignored: the sentrux C# grammar has no downloadUrl
 # (it cannot be fetched like the executables), so it is vendored in-repo — pinned + SHA-256-verified
 # in sentrux.version.json — so the build and the standalone installer stay offline-capable.

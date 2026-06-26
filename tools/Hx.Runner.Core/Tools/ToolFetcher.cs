@@ -24,7 +24,6 @@ public static partial class ToolFetcher
         "tools/gitleaks/gitleaks.version.json",
         "tools/sentrux/sentrux.version.json",
         "tools/gitversion/gitversion.version.json",
-        "tools/velopack/velopack.version.json",
     ];
 
     /// <summary>Fetch every vendored tool for <paramref name="rid"/>, aggregating the per-tool outcomes.</summary>
