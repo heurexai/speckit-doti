@@ -51,3 +51,16 @@ Two lenses recommend splitting the 47-task program into **Feature A (distributio
 ## Verdict
 
 BLOCKERs B1–B7 are all resolvable by design revision (no code yet) and have been folded into spec/plan/tasks this stage. With them resolved, no BLOCKER remains open in an applicable lens → `/07-implement` is unblocked. The HIGH/MEDIUM items are recorded here and in the revised tasks so implementation carries them.
+
+## Second round — independent Codex panel (2026-06-26)
+
+A second six-lens review (run via Codex) found 5 further BLOCKERs + 6 non-blockers. **All were judged valid** (several were items the first round *raised* but left as "decide", and one the first round got *wrong*). Verified against code before accepting; all folded in:
+
+- **C1 — Generated repos lose their workflow path (the big one; first round got it wrong).** `SourceVendor.Vendor` copies the **12-project runner+impact closure** into every generated repo because the repo's whole doti workflow runs as `dotnet run --project tools/Hx.Runner.Cli -- gate run`/etc. (generated `profile.json` ≈ 34 such commands; `FirstSmokeRunner.BuildVendoredTooling`). The installed `hx` (`Hx.Scaffold.Cli`) does **not** expose that surface. So the first round's "remove `SourceVendor`, use `hx`" would strip the repo's workflow. **Fix: new FR-045** — wire the runner+impact command trees into installed `hx`; rewrite generated `profile.json`/agent-context/smoke to `hx <command>`; remove `SourceVendor` only after. (FR-045, SC-019, T015, T021, T027)
+- **C2 — Descriptor had no concrete trust root.** "Integrity-verified" was metadata-only → a malicious payload could carry a self-consistent descriptor. **Fix:** executable-embedded expected payload digest + per-file hashes, verified on every path incl. `HX_PAYLOAD_ROOT`. (FR-003, R2, T010)
+- **C3 — SC-004 banned the template pack's own content.** A blanket `.csproj`/`src/` ban false-positives on the required template pack. **Fix:** SC-004 rewritten to ban the tool's own build tree / full source archive, allow expected template-pack content (FR-005-consistent). (SC-004)
+- **C4 — FR-031 still MUST-required composition the plan/tasks deferred.** **Fix:** narrowed FR-031 to the concrete `gates:{step→mode}` map; composition deferred beyond 007.
+- **C5 — Contract version strategy undecided.** **Fix (decided):** additive/channel-neutral `LocalReleaseResult` rename, schema stays v1, `ITG0008` orphaned-but-frozen, compat test; two payload records carry their own `schemaVersion`. (T004/T028)
+- Non-blockers folded: offline degrade restricted to genuine network conditions (hash/provenance/malformed/extract fail closed); Store submission hardened like NuGet (environment/reviewer, SHA-pin, isolated creds); **package strategy → framework-dependent** (RID-specific self-contained is moot once binaries are fetched); `Integrity_ProfileGateMissingConfig` aligned across SC-011/T005/T007; template Velopack-free asserted by the T027 smoke (catches the Phase-7 template fix early); T018 authored test-first.
+
+Net: 0 BLOCKERs open after both rounds; `/07-implement` unblocked.
