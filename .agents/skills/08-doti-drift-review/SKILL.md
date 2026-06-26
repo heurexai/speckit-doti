@@ -1,6 +1,6 @@
 ---
 name: 08-doti-drift-review
-description: Review drift between scaffold-dotnet source assets and installed bootstrap files.
+description: The last consistency gate before release: detect drift across the spec, the code, the docs, and the installed/rendered assets.
 compatibility:
   - codex
 metadata:
@@ -10,6 +10,8 @@ metadata:
 # 08-doti-drift-review
 
 Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/doti-drift-review.md`.
+
+THREE drift axes, not just asset parity — a green gate proves the code is internally sound; drift-review proves it still AGREES with everything around it. (1) spec↔code: every FR/SC has a real enforcing mechanism and the approved arch-review/plan design was built as approved — nothing silently downgraded from enforced to advisory, no logic that belongs in *.Core landing in *.Cli; back it with `hx doti converge` for the spec→tasks coverage gap, then spot-check the covering code. (2) code↔docs: README/CHANGELOG/packaging + the agent context (CLAUDE.md/AGENTS.md/.doti/agent-context.md + each rendered skill's Command-availability) + `hx describe`/`--help` describe what the code ACTUALLY does — and grep the repo for anything you removed/renamed this cycle (it must survive in NO doc; the stale-Velopack docs were exactly this miss). (3) source↔installed: `doti render-skills --check` parity, thin AGENTS.md/CLAUDE.md entrypoints, no hand-edited installed skills (fix the `.doti/core` source + re-render). Then `gate run --profile normal` (blocking) and stamp drift-review ONLY on a clean review — open drift in any applicable axis blocks the stamp. If you can spawn sub-agents, run each applicable axis as a parallel clean-context pass; triage first so a docs-only change skips the spec↔code design checks.
 
 ## Asking the operator a question (required format)
 
