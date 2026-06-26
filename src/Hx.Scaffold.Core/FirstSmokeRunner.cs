@@ -40,13 +40,10 @@ public static class FirstSmokeRunner
                 $"scanned {hygiene.ScannedFileCount} files; {hygiene.Findings.Count} findings");
         });
 
-        // 2. Restore + build + test the generated solution (the only nested dotnet — hang-fixed).
+        // 2. Restore + build + test the generated solution (the only nested dotnet — hang-fixed). 007 T021: the
+        //    former 2b "vendored-tooling" build is gone — the generated repo no longer vendors the runner/impact
+        //    source; its workflow runs through the installed `hx` global tool (the T015 unified surface).
         Tracked("build-test", () => BuildAndTest(targetRepoRoot));
-
-        // 2b. Build the vendored runner tooling. Catches a vendored-source closure gap — a copied CLI
-        //     referencing a project that was not vendored (e.g. a missing Hx.Gate.Core reference). The generated
-        //     repo's CLI is not running, so building it is lock-free.
-        Tracked("vendored-tooling", () => BuildVendoredTooling(targetRepoRoot));
 
         // 3. git init + stage so Sentrux (which enumerates via `git ls-files`) sees the files.
         GitInitAndStage(targetRepoRoot);
@@ -104,20 +101,6 @@ public static class FirstSmokeRunner
             ? "restore + build + test passed (incl. architecture tests)"
             : "failed: " + ProcessRunner.Tail(test.output);
         return new GateStep("build-test", outcome, [new GateEvidence("dotnet-test", message)]);
-    }
-
-    private static GateStep BuildVendoredTooling(string targetRepoRoot)
-    {
-        (int code, string output) = ProcessRunner.Run(
-            "dotnet",
-            "build tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj -c Release --nologo --disable-build-servers",
-            targetRepoRoot,
-            ProcessRunner.NestedDotnetEnv());
-        StageOutcome outcome = code == 0 ? StageOutcome.Pass : StageOutcome.Fail;
-        string message = code == 0
-            ? "vendored runner tooling builds (closure complete)"
-            : "vendored tooling build failed: " + ProcessRunner.Tail(output);
-        return new GateStep("vendored-tooling", outcome, [new GateEvidence("dotnet-build", message)]);
     }
 
     private static void GitInitAndStage(string targetRepoRoot)

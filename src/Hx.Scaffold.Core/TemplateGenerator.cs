@@ -31,19 +31,13 @@ public static class TemplateGenerator
         Dictionary<string, string> env = ProcessRunner.NestedDotnetEnv();
         env["DOTNET_CLI_HOME"] = cliHome; // sandbox the template install root
 
-        string packProject = Path.Combine(sourceRepoRoot, PackProjectRelative.Replace('/', Path.DirectorySeparatorChar));
-
         try
         {
-            (int code, string output) pack = ProcessRunner.Run(
-                "dotnet", $"pack \"{packProject}\" -c Release -o \"{pkgOut}\" --nologo --disable-build-servers",
-                sourceRepoRoot, env);
-            if (pack.code != 0)
+            string? nupkg = ResolveTemplateNupkg(sourceRepoRoot, env, pkgOut, symbols, out TemplateInvocation? packFailure);
+            if (nupkg is null)
             {
-                return Fail(symbols, "pack failed: " + ProcessRunner.Tail(pack.output));
+                return packFailure!;
             }
-
-            string nupkg = Directory.GetFiles(pkgOut, "*.nupkg").Single();
 
             (int code, string output) install = ProcessRunner.Run(
                 "dotnet", $"new install \"{nupkg}\"", sourceRepoRoot, env);
@@ -74,6 +68,41 @@ public static class TemplateGenerator
         {
             TryDelete(sandbox);
         }
+    }
+
+    // 007 T021: prefer a pre-built template pack bundled in the installed payload (source-free; T023 bundles it
+    // beside the executable). In dev/self-host the asset root resolves to the source tree (FR-004), so no bundled
+    // pack exists and we `dotnet pack` the in-repo template project — the source-mode fallback.
+    private static string? ResolveTemplateNupkg(
+        string sourceRepoRoot,
+        IReadOnlyDictionary<string, string> env,
+        string pkgOut,
+        IReadOnlyDictionary<string, string> symbols,
+        out TemplateInvocation? failure)
+    {
+        failure = null;
+        string assetRoot = InstalledPayload.ResolveAssetRoot(sourceRepoRoot);
+        string? bundled = Directory.Exists(assetRoot)
+            ? Directory.EnumerateFiles(assetRoot, PackId + "*.nupkg", SearchOption.TopDirectoryOnly)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .LastOrDefault()
+            : null;
+        if (bundled is not null)
+        {
+            return bundled;
+        }
+
+        string packProject = Path.Combine(sourceRepoRoot, PackProjectRelative.Replace('/', Path.DirectorySeparatorChar));
+        (int code, string output) pack = ProcessRunner.Run(
+            "dotnet", $"pack \"{packProject}\" -c Release -o \"{pkgOut}\" --nologo --disable-build-servers",
+            sourceRepoRoot, env);
+        if (pack.code != 0)
+        {
+            failure = Fail(symbols, "pack failed: " + ProcessRunner.Tail(pack.output));
+            return null;
+        }
+
+        return Directory.GetFiles(pkgOut, "*.nupkg").Single();
     }
 
     private static TemplateInvocation Fail(IReadOnlyDictionary<string, string> symbols, string message) =>

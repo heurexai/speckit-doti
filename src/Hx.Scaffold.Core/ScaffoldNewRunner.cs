@@ -32,10 +32,11 @@ public static class ScaffoldNewRunner
 
         string targetRoot = Path.GetFullPath(request.OutputPath);
 
-        // 2. Finish: vendor the verified tools + the runner/impact source, then install Doti assets.
+        // 2. Finish: vendor the verified tool binaries (Gitleaks/Sentrux), then install Doti assets. 007 T021:
+        // the generated repo no longer vendors the runner/impact SOURCE — its workflow runs through the installed
+        // `hx` global tool (the unified surface from T015), so SourceVendor is gone.
         Emit("vendor-tooling", "running");
         ToolVendor.Vendor(sourceRepoRoot, targetRoot);
-        SourceVendor.Vendor(sourceRepoRoot, targetRoot);
         Emit("vendor-tooling", "pass");
 
         Emit("doti-install", "running");
