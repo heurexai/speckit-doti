@@ -169,7 +169,36 @@ public static class ScaffoldCommandFactory
     {
         Command group = new("doti", "Install or repair Doti repo workflow assets from this installed hx payload.");
         AddDotiInstall(group, meta, configurationDirectory);
+        AddDotiPayloadManifest(group, meta); // 007 T023 — pack-pipeline payload-descriptor generator
         rootCommand.Subcommands.Add(group);
+    }
+
+    private static void AddDotiPayloadManifest(Command group, CliMeta meta)
+    {
+        Command command = new("payload-manifest",
+            "Generate payload.manifest.json (the source-free PayloadDescriptor) for a staged payload root — a pack/release build tool (007 T023).");
+        Option<string> root = new("--root") { Description = "Staged payload root to hash + describe." };
+        Option<string> payloadVersion = new("--payload-version") { Description = "Payload version stamped into the descriptor.", DefaultValueFactory = _ => "0.0.0" };
+        Option<string> toolVersion = new("--tool-version") { Description = "Tool version stamped into the descriptor.", DefaultValueFactory = _ => "0.0.0" };
+        Option<string> channel = new("--channel") { Description = "Distribution channel id.", DefaultValueFactory = _ => DistributionChannelId.GlobalTool };
+        Option<string> mode = new("--mode") { Description = "Command mode.", DefaultValueFactory = _ => CommandMode.Installed };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(root);
+        command.Options.Add(payloadVersion);
+        command.Options.Add(toolVersion);
+        command.Options.Add(channel);
+        command.Options.Add(mode);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti payload-manifest",
+            () => ScaffoldCommands.PayloadManifest(
+                meta,
+                parseResult.GetValue(root)!,
+                parseResult.GetValue(payloadVersion)!,
+                parseResult.GetValue(toolVersion)!,
+                parseResult.GetValue(channel)!,
+                parseResult.GetValue(mode)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        group.Subcommands.Add(command);
     }
 
     private static void AddDotiInstall(Command group, CliMeta meta, string configurationDirectory)

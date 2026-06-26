@@ -1,6 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+
+    <!-- 007 T023: framework-dependent .NET global tool — ONE package for all OSes (per-RID tool binaries are fetched
+         on demand per T022, not bundled; hx already requires the SDK). Installs as `dotnet tool install -g Heurex.SpeckitDoti`. -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>hx</ToolCommandName>
+    <PackageId>Heurex.SpeckitDoti</PackageId>
+    <Authors>Heurex</Authors>
+    <Description>speckit-doti — the hx CLI: an agentic, enforced spec-driven development workflow plus a .NET scaffold generator. Source-free: per-RID tool binaries (Gitleaks/Sentrux/GitVersion) are fetched and hash-verified on demand.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/heurexai/speckit-doti</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/heurexai/speckit-doti</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>dotnet-tool;cli;scaffold;spec-driven-development;sdd;doti;heurex</PackageTags>
+    <!-- The payload includes dotfiles (.doti/**) and the template .nupkg; both are dropped by NuGet's default
+         package excludes (files starting with '.' or ending '.nupkg'). Keep them — they ARE the source-free payload. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+
+    <!-- Pack-pipeline staging: repo root + the payload staging dir (under obj/), and the documented extension point
+         that lays the staged payload (template pack, .doti, tool manifests + grammars, payload.manifest.json) under
+         tools/<tfm>/any/ beside the entry assembly so installed hx resolves it source-free (PayloadRoot). -->
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../'))</RepoRoot>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);AddHxPayloadToPackage</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,7 +34,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- hx.config.json ships in the publish/tool output (every operational command is wrapped in
+         WithRequiredConfiguration); it is also staged (below) so the payload manifest records its hash. -->
     <None Include="hx.config.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <None Include="$(RepoRoot)README.md" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,4 +50,52 @@
     <ProjectReference Include="..\Hx.Runner.Cli\Hx.Runner.Cli.csproj" />
     <ProjectReference Include="..\Hx.Impact.Cli\Hx.Impact.Cli.csproj" />
   </ItemGroup>
+
+  <!-- 007 T023: stage the source-free payload + generate its descriptor. Runs after the tool is built (Pack depends
+       on Build), so the just-built hx generates payload.manifest.json over the staged tree. -->
+  <Target Name="StageHxPayload" DependsOnTargets="Build">
+    <!-- Resolve the staging path HERE (not in the top-level PropertyGroup): IntermediateOutputPath (obj/) is only
+         set once the SDK props have run, so a top-level evaluation would be empty and leak into the project dir. -->
+    <PropertyGroup>
+      <HxPayloadStaging>$(IntermediateOutputPath)hx-payload/</HxPayloadStaging>
+    </PropertyGroup>
+    <RemoveDir Directories="$(HxPayloadStaging)" />
+    <MakeDir Directories="$(HxPayloadStaging)" />
+
+    <!-- 1. The pre-built Hx.Scaffold.Templates `dotnet new` pack (hx new instantiates it source-free). -->
+    <Exec Command="dotnet pack &quot;$(RepoRoot)scaffold/Hx.Scaffold.Templates.csproj&quot; -c $(Configuration) -o &quot;$(HxPayloadStaging)templates&quot; --nologo --disable-build-servers" />
+
+    <!-- 2. The .doti workflow assets (minus gitignored runtime state). -->
+    <ItemGroup>
+      <_HxDoti Include="$(RepoRoot).doti/**/*" Exclude="$(RepoRoot).doti/cycle-state.json;$(RepoRoot).doti/gate-proof.json" />
+      <!-- 3. The tool manifests + grammars (NOT the per-RID bin/ binaries — fetched per T022). -->
+      <_HxGitleaks Include="$(RepoRoot)tools/gitleaks/**/*" Exclude="$(RepoRoot)tools/gitleaks/bin/**" />
+      <_HxSentrux Include="$(RepoRoot)tools/sentrux/**/*" Exclude="$(RepoRoot)tools/sentrux/bin/**" />
+      <_HxGitversion Include="$(RepoRoot)tools/gitversion/**/*" Exclude="$(RepoRoot)tools/gitversion/bin/**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_HxDoti)" DestinationFiles="@(_HxDoti->'$(HxPayloadStaging).doti/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_HxGitleaks)" DestinationFiles="@(_HxGitleaks->'$(HxPayloadStaging)tools/gitleaks/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_HxSentrux)" DestinationFiles="@(_HxSentrux->'$(HxPayloadStaging)tools/sentrux/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_HxGitversion)" DestinationFiles="@(_HxGitversion->'$(HxPayloadStaging)tools/gitversion/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+
+    <!-- 4. hx.config.json (also shipped via the publish output) — staged so the manifest records its hash. -->
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/hx.config.json" DestinationFiles="$(HxPayloadStaging)hx.config.json" SkipUnchangedFiles="true" />
+
+    <!-- 5. Generate payload.manifest.json via the just-built hx (single source of truth: PayloadManifestGenerator). -->
+    <PropertyGroup>
+      <_HxPayloadVersion Condition="'$(PackageVersion)' != ''">$(PackageVersion)</_HxPayloadVersion>
+      <_HxPayloadVersion Condition="'$(_HxPayloadVersion)' == ''">$(Version)</_HxPayloadVersion>
+      <_HxPayloadVersion Condition="'$(_HxPayloadVersion)' == ''">0.0.0</_HxPayloadVersion>
+    </PropertyGroup>
+    <Exec Command="dotnet &quot;$(TargetDir)Hx.Scaffold.Cli.dll&quot; doti payload-manifest --root &quot;$(HxPayloadStaging)&quot; --payload-version $(_HxPayloadVersion) --tool-version $(_HxPayloadVersion) --channel global-tool --mode installed" />
+  </Target>
+
+  <Target Name="AddHxPayloadToPackage" DependsOnTargets="StageHxPayload">
+    <ItemGroup>
+      <!-- hx.config.json is excluded here — it already ships in the tool's publish output (avoids a duplicate). -->
+      <TfmSpecificPackageFile Include="$(HxPayloadStaging)**/*" Exclude="$(HxPayloadStaging)hx.config.json">
+        <PackagePath>tools/$(TargetFramework)/any/%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
 </Project>
