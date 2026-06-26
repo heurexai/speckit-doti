@@ -4,7 +4,7 @@ using Hx.Doti.Core.Workflow;
 
 namespace Hx.Runner.Cli;
 
-internal static partial class RunnerCommandFactory
+public static partial class RunnerCommandFactory
 {
     public static RootCommand Create(CliMeta meta)
     {

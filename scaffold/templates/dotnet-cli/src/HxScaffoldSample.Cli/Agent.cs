@@ -75,7 +75,11 @@ public static class Agent
         return options;
     }
 
-    /// <summary>Shared CLI entry point: intercept human help for root/group/leaf commands, then dispatch normally.</summary>
+    /// <summary>
+    /// Shared CLI entry point. Hardens the renderer seam so nothing falls through to System.CommandLine's default
+    /// unbranded output: human help (root/group/leaf), the root <c>--version</c>, and parse errors all render the
+    /// branded envelope here; only a clean parse reaches the command action.
+    /// </summary>
     public static int Invoke(RootCommand root, string[] args)
     {
         if (TryHelp(root, args, out Command? command, out List<string>? path, out HelpMode mode))
@@ -84,7 +88,41 @@ public static class Agent
             return (int)ExitClass.Success;
         }
 
-        return root.Parse(args).Invoke();
+        if (IsRootVersionRequest(args))
+        {
+            return Run("--version", () => Ok("--version", $"{ToolName} {ToolVersion}",
+                new { tool = ToolName, version = ToolVersion }));
+        }
+
+        ParseResult parse = root.Parse(args);
+        if (parse.Errors.Count > 0)
+        {
+            IReadOnlyList<Diagnostic> errors = parse.Errors
+                .Select((error, index) => new Diagnostic($"USG{index + 1:0000}", Severity.Error, error.Message))
+                .ToList();
+            return Run("usage", () => Fail("usage", ExitClass.Usage, errors, "Invalid command line."));
+        }
+
+        return parse.Invoke();
+    }
+
+    /// <summary>True when the args are a bare root-level <c>--version</c> request (no preceding subcommand token).</summary>
+    private static bool IsRootVersionRequest(string[] args)
+    {
+        foreach (string token in args)
+        {
+            if (IsCommandToken(token))
+            {
+                return false;
+            }
+
+            if (EqualsToken(token, "--version"))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>A success: <paramref name="data"/> becomes the Result ring, exit 0.</summary>

@@ -3,7 +3,7 @@ using Hx.Cli.Kernel;
 
 namespace Hx.Runner.Cli;
 
-internal static partial class RunnerCommandFactory
+public static partial class RunnerCommandFactory
 {
     private static void AddArchitecture(RootCommand rootCommand, CliMeta meta)
     {

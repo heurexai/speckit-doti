@@ -20,8 +20,56 @@ public static class ScaffoldCommandFactory
         AddRelease(rootCommand, meta, configurationDirectory);
         AddPrereq(rootCommand, meta, configurationDirectory);
         AddDoti(rootCommand, meta, configurationDirectory);
+        ComposeWorkflowSurface(rootCommand, meta); // FR-045
         CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All, channel: InstalledPayload.ResolveChannel());
         return rootCommand;
+    }
+
+    // FR-045: the installed hx exposes the runner + impact workflow command surface source-free. Build those
+    // trees (with the hx meta so output stays consistent) and graft them into the hx root, reconciling the two
+    // overlaps: the runner's `doti` subcommands merge into hx's `doti` group (hx's payload `install` wins), and
+    // the runner's `version calculate` joins hx's `version` (which keeps its repo-report action). The runner's
+    // own `describe` is dropped (hx provides its own). The impact planner becomes the `hx impact` group.
+    private static void ComposeWorkflowSurface(RootCommand hxRoot, CliMeta meta)
+    {
+        RootCommand runner = Hx.Runner.Cli.RunnerCommandFactory.Create(meta);
+        Command? hxDoti = hxRoot.Subcommands.FirstOrDefault(c => c.Name == "doti");
+        Command? hxVersion = hxRoot.Subcommands.FirstOrDefault(c => c.Name == "version");
+
+        foreach (Command sub in runner.Subcommands.ToList())
+        {
+            runner.Subcommands.Remove(sub);
+            switch (sub.Name)
+            {
+                case "describe":
+                    break;
+                case "doti" when hxDoti is not null:
+                    MergeSubcommands(sub, hxDoti);
+                    break;
+                case "version" when hxVersion is not null:
+                    MergeSubcommands(sub, hxVersion);
+                    break;
+                default:
+                    hxRoot.Subcommands.Add(sub);
+                    break;
+            }
+        }
+
+        Command impact = new("impact", "Deterministic affected-test planning.");
+        Hx.Impact.Cli.ImpactCommandFactory.AddPlannerCommands(impact, meta);
+        hxRoot.Subcommands.Add(impact);
+    }
+
+    private static void MergeSubcommands(Command source, Command target)
+    {
+        foreach (Command child in source.Subcommands.ToList())
+        {
+            source.Subcommands.Remove(child);
+            if (target.Subcommands.All(c => !string.Equals(c.Name, child.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                target.Subcommands.Add(child);
+            }
+        }
     }
 
     private static void AddProfile(RootCommand rootCommand, CliMeta meta, string configurationDirectory)

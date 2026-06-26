@@ -21,5 +21,8 @@
     <ProjectReference Include="..\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
     <ProjectReference Include="..\Hx.Doti.Core\Hx.Doti.Core.csproj" />
     <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+    <!-- 007 FR-045: installed hx composes the runner + impact workflow command trees source-free. -->
+    <ProjectReference Include="..\Hx.Runner.Cli\Hx.Runner.Cli.csproj" />
+    <ProjectReference Include="..\Hx.Impact.Cli\Hx.Impact.Cli.csproj" />
   </ItemGroup>
 </Project>
