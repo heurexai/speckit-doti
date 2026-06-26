@@ -1,6 +1,5 @@
 using System.CommandLine;
 using HxScaffoldSample;
-using Velopack;
 
 namespace HxScaffoldSample.Cli;
 
@@ -8,8 +7,6 @@ public static class Program
 {
     public static int Main(string[] args)
     {
-        VelopackApp.Build().Run();
-
         RootCommand root = new("HxScaffoldSample command-line tool.");
 
         // ---- greet: a thin command — do the work, return a CliResult, let Agent render + exit. ----
