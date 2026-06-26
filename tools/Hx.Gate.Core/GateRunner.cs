@@ -52,6 +52,7 @@ public static class GateRunner
         BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, affected.Plan);
         Emit(buildAndTest.Step);
         Emit(ApplyTier(ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
+        Emit(NoVelopackStep(repositoryRoot)); // FR-007/SC-005: always enforced — a hard product invariant, not tier-downgradable
         Emit(SkillDriftStep(repositoryRoot));
         Emit(DotiPayloadStep(repositoryRoot));
         Emit(ApplyTier(ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
@@ -134,6 +135,18 @@ public static class GateRunner
         ArchitectureTestResult arch = ArchitectureTestRunner.Run(repositoryRoot);
         return Step("architecture-test", arch.Outcome,
             $"{arch.PassedCount}/{arch.TestCount} passed; {arch.Families.Count} families");
+    }
+
+    private static GateStep NoVelopackStep(string repositoryRoot)
+    {
+        NoVelopackScanResult result = NoVelopackScanner.Scan(repositoryRoot);
+        return result.Outcome == StageOutcome.Pass
+            ? Step("no-velopack", StageOutcome.Pass,
+                $"{result.ScannedFileCount} product file(s) scanned; no Velopack package reference, startup hook, or vpk invocation (FR-007)")
+            : new GateStep("no-velopack", StageOutcome.Fail,
+                result.Findings
+                    .Select(f => new GateEvidence($"no-velopack.{f.Kind}", $"{f.Path}:{f.Line} {f.Snippet}", f.Path))
+                    .ToArray());
     }
 
     private static GateStep SkillDriftStep(string repositoryRoot)
