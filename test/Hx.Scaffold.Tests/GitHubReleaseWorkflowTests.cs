@@ -2,23 +2,60 @@ using Xunit;
 
 namespace Hx.Scaffold.Tests;
 
+/// <summary>
+/// 007 T024: the release workflow publishes the framework-dependent global tool <c>Heurex.SpeckitDoti</c> to
+/// NuGet.org via Trusted Publishing (GitHub OIDC — no stored key), runs the source-free install smoke before
+/// publishing, and is H10-hardened (OIDC on the publish job only, behind the protected <c>release</c> Environment).
+/// Velopack/vpk packaging is gone. Structural assertion — the workflow itself only runs in GitHub Actions.
+/// </summary>
 public sealed class GitHubReleaseWorkflowTests
 {
-    [Fact]
-    public void Release_workflow_publishes_velopack_artifacts_not_source_archives()
-    {
-        string workflow = File.ReadAllText(Path.Combine(FindRepoRoot(), ".github", "workflows", "release.yml"));
+    private static string Workflow() =>
+        File.ReadAllText(Path.Combine(FindRepoRoot(), ".github", "workflows", "release.yml"));
 
-        Assert.Contains("vpk-payload", workflow);
-        Assert.Contains("vpk.dll", workflow);
-        Assert.Contains("pack `", workflow);
-        Assert.Contains("releaseProduct = \"velopack\"", workflow);
-        Assert.Contains("sourceArchiveExcluded = $true", workflow);
-        Assert.Contains("release-artifacts", workflow);
-        Assert.Contains("gh release upload", workflow);
+    [Fact]
+    public void Release_workflow_publishes_the_global_tool_via_trusted_publishing_not_velopack()
+    {
+        string workflow = Workflow();
+
+        // Pack + push the framework-dependent global tool to public NuGet.org.
+        Assert.Contains("dotnet pack tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj", workflow);
+        Assert.Contains("dotnet nuget push", workflow);
+        Assert.Contains("https://api.nuget.org/v3/index.json", workflow);
+
+        // The source-free install smoke runs before publish: install the packed tool, exercise the documented path.
+        Assert.Contains("dotnet tool install Heurex.SpeckitDoti", workflow);
+        Assert.Contains("hx new", workflow);
+        Assert.Contains("hx doti install", workflow);
+
+        // Velopack/vpk packaging is gone (T016/T017); no source-archive release.
+        Assert.DoesNotContain("vpk pack", workflow);
+        Assert.DoesNotContain("vpk.dll", workflow);
+        Assert.DoesNotContain("vpk-payload", workflow);
+        Assert.DoesNotContain("releaseProduct = \"velopack\"", workflow);
         Assert.DoesNotContain("git archive", workflow);
         Assert.DoesNotContain("Compress-Archive", workflow);
-        Assert.DoesNotContain("tar czf", workflow);
+    }
+
+    [Fact]
+    public void Release_workflow_uses_oidc_trusted_publishing_with_no_stored_key_and_h10_hardening()
+    {
+        string workflow = Workflow();
+
+        // Trusted Publishing: the API key is OIDC-derived (NuGet/login), never a stored secret.
+        Assert.Contains("NuGet/login@", workflow);
+        Assert.Contains("steps.login.outputs.NUGET_API_KEY", workflow);
+        Assert.DoesNotContain("secrets.NUGET_API_KEY", workflow);
+
+        // H10: OIDC on the publish job only; the workflow declares no top-level write permission.
+        Assert.Contains("id-token: write", workflow);
+        Assert.DoesNotContain("contents: write", workflow);
+
+        // H10: publish behind the protected `release` Environment (required reviewer gates OIDC issuance).
+        Assert.Contains("environment: release", workflow);
+
+        // H10: action-SHA-pinning is documented as required operator prep.
+        Assert.Contains("pin to a full commit SHA", workflow);
     }
 
     private static string FindRepoRoot()
