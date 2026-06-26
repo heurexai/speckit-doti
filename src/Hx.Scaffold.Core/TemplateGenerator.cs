@@ -82,11 +82,11 @@ public static class TemplateGenerator
     {
         failure = null;
         string assetRoot = InstalledPayload.ResolveAssetRoot(sourceRepoRoot);
-        string? bundled = Directory.Exists(assetRoot)
-            ? Directory.EnumerateFiles(assetRoot, PackId + "*.nupkg", SearchOption.TopDirectoryOnly)
-                .OrderBy(path => path, StringComparer.Ordinal)
-                .LastOrDefault()
-            : null;
+        // 007 T023 stages the bundled template pack under `<payloadRoot>/templates/` (AddHxPayloadToPackage), so the
+        // installed (source-free) tool MUST look there — searching only the payload-root top dir misses it and falls
+        // to the dev-only `dotnet pack`, which fails with no source repo (the SC-001 regression T047's smoke caught).
+        // The top-dir is kept as a defensive secondary in case a future layout co-locates the pack with the manifest.
+        string? bundled = FindBundledPack(Path.Combine(assetRoot, "templates")) ?? FindBundledPack(assetRoot);
         if (bundled is not null)
         {
             return bundled;
@@ -104,6 +104,16 @@ public static class TemplateGenerator
 
         return Directory.GetFiles(pkgOut, "*.nupkg").Single();
     }
+
+    /// <summary>The newest bundled template pack (<c>Hx.Scaffold.Templates*.nupkg</c>) in <paramref name="dir"/>,
+    /// or null if the directory is absent or holds none. <c>internal</c> so the source-free resolution is unit-tested
+    /// without the heavy install smoke (007 T047).</summary>
+    internal static string? FindBundledPack(string dir) =>
+        Directory.Exists(dir)
+            ? Directory.EnumerateFiles(dir, PackId + "*.nupkg", SearchOption.TopDirectoryOnly)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .LastOrDefault()
+            : null;
 
     private static TemplateInvocation Fail(IReadOnlyDictionary<string, string> symbols, string message) =>
         new(TemplateShortName, message, symbols, StageOutcome.Fail);
