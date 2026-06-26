@@ -1,12 +1,1638 @@
 {
-  "timestamp": 1781827827.8348458,
-  "quality_signal": 0.6486879636076699,
-  "coupling_score": 0.11546840958605664,
+  "timestamp": 1782489998.637269,
+  "quality_signal": 0.6391836513564805,
+  "coupling_score": 0.06127080181543117,
+  "coupling_edges": [
+    {
+      "rank": 1,
+      "from_file": "src/Hx.Scaffold.Core/FirstSmokeRunner.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanRequest.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygieneScanRequest",
+          "line": 38,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "from_file": "src/Hx.Scaffold.Core/FirstSmokeRunner.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygieneScanner",
+          "line": 37,
+          "column": 41
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "from_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+      "to_file": "src/Hx.Scaffold.Core/DirectoryCopy.cs",
+      "from_module": "src/Hx.Scaffold.Core/Release",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core/Release to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "DirectoryCopy",
+          "line": 673,
+          "column": 17
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "from_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+      "to_file": "src/Hx.Scaffold.Core/PayloadRoot.cs",
+      "from_module": "src/Hx.Scaffold.Core/Release",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core/Release to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadRoot",
+          "line": 450,
+          "column": 17
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "from_file": "src/Hx.Scaffold.Core/ScaffoldDotiInstaller.cs",
+      "to_file": "src/Hx.Scaffold.Core/Release/ScaffoldReleaseTargetWriter.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "src/Hx.Scaffold.Core/Release",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module src/Hx.Scaffold.Core/Release contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldReleaseTargetWriter",
+          "line": 22,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "from_file": "src/Hx.Scaffold.Core/ScaffoldDotiInstaller.cs",
+      "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "src/Hx.Scaffold.Core/Versioning",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module src/Hx.Scaffold.Core/Versioning contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldVersionReporter",
+          "line": 23,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksConfigRenderer",
+          "line": 53,
+          "column": 39
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifest.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksManifest",
+          "line": 56,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicy",
+          "line": 50,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicyLoader.cs",
+      "from_module": "src/Hx.Scaffold.Core",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicyLoader",
+          "line": 50,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "from_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
+      "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
+      "from_module": "src/Hx.Scaffold.Core/Versioning",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from src/Hx.Scaffold.Core/Versioning to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "InstalledPayload",
+          "line": 106,
+          "column": 43
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "from_file": "test/Hx.Architecture.Tests/ArchitectureTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
+      "from_module": "test/Hx.Architecture.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Architecture.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ToolVendor",
+          "line": 30,
+          "column": 41
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "from_file": "test/Hx.Architecture.Tests/Hx.Architecture.Tests.csproj",
+      "to_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
+      "from_module": "test/Hx.Architecture.Tests",
+      "to_module": "tools/Hx.Runner.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Architecture.Tests to unstable module tools/Hx.Runner.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\..\\tools\\Hx.Runner.Cli\\Hx.Runner.Cli.csproj",
+          "line": 20,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "from_file": "test/Hx.Architecture.Tests/Hx.Architecture.Tests.csproj",
+      "to_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
+      "from_module": "test/Hx.Architecture.Tests",
+      "to_module": "tools/Hx.Scaffold.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Architecture.Tests to unstable module tools/Hx.Scaffold.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\..\\tools\\Hx.Scaffold.Cli\\Hx.Scaffold.Cli.csproj",
+          "line": 21,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "from_file": "test/Hx.Runner.Tests/GateTests.cs",
+      "to_file": "tools/Hx.Gate.Core/GateRunner.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GateRunner",
+          "line": 41,
+          "column": 41
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "from_file": "test/Hx.Runner.Tests/GateTests.cs",
+      "to_file": "tools/Hx.Gate.Core/LaneResolver.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "LaneResolver",
+          "line": 19,
+          "column": 33
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "from_file": "test/Hx.Runner.Tests/GitleaksConfigRendererTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksConfigRenderer",
+          "line": 8,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "from_file": "test/Hx.Runner.Tests/GitleaksConfigRendererTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicy",
+          "line": 13,
+          "column": 53
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "from_file": "test/Hx.Runner.Tests/GitleaksExitClassifierTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksExitClassifier.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksExitClassifier",
+          "line": 6,
+          "column": 21
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksRunStatus",
+          "line": 9,
+          "column": 26
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "from_file": "test/Hx.Runner.Tests/GitleaksManifestValidatorTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksManifestValidator",
+          "line": 7,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "from_file": "test/Hx.Runner.Tests/GitleaksReportParserTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksReportParser.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksReportParser",
+          "line": 8,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "from_file": "test/Hx.Runner.Tests/Hx.Runner.Tests.csproj",
+      "to_file": "tools/Hx.Gate.Core/Hx.Gate.Core.csproj",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\..\\tools\\Hx.Gate.Core\\Hx.Gate.Core.csproj",
+          "line": 20,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "from_file": "test/Hx.Runner.Tests/Hx.Runner.Tests.csproj",
+      "to_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\..\\tools\\Hx.Runner.Cli\\Hx.Runner.Cli.csproj",
+          "line": 17,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "from_file": "test/Hx.Runner.Tests/HygienePolicyLoaderTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicy",
+          "line": 6,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "from_file": "test/Hx.Runner.Tests/HygienePolicyLoaderTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicyLoader.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicyLoader",
+          "line": 6,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "from_file": "test/Hx.Runner.Tests/NoVelopackScanTests.cs",
+      "to_file": "tools/Hx.Gate.Core/NoVelopackScanner.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "NoVelopackScanResult",
+          "line": 17,
+          "column": 9
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "NoVelopackScanner",
+          "line": 17,
+          "column": 39
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "from_file": "test/Hx.Runner.Tests/ReleaseDocumentationProofTests.cs",
+      "to_file": "tools/Hx.Gate.Core/GateRunner.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GateRunner",
+          "line": 54,
+          "column": 25
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "from_file": "test/Hx.Runner.Tests/ScaffoldHygieneChecksTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicy",
+          "line": 18,
+          "column": 77
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "from_file": "test/Hx.Runner.Tests/ScaffoldHygieneChecksTests.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/ScaffoldHygieneChecks.cs",
+      "from_module": "test/Hx.Runner.Tests",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Runner.Tests to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldHygieneChecks",
+          "line": 7,
+          "column": 21
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScanFile",
+          "line": 13,
+          "column": 20
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "from_file": "test/Hx.Scaffold.Tests/DotiInstallScaffoldSourceTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/ScaffoldRoot.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldRoot",
+          "line": 14,
+          "column": 25
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "from_file": "test/Hx.Scaffold.Tests/Hx.Scaffold.Tests.csproj",
+      "to_file": "src/Hx.Scaffold.Core/Hx.Scaffold.Core.csproj",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\..\\src\\Hx.Scaffold.Core\\Hx.Scaffold.Core.csproj",
+          "line": 17,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "from_file": "test/Hx.Scaffold.Tests/Hx.Scaffold.Tests.csproj",
+      "to_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "tools/Hx.Scaffold.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module tools/Hx.Scaffold.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\..\\tools\\Hx.Scaffold.Cli\\Hx.Scaffold.Cli.csproj",
+          "line": 19,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 33,
+      "from_file": "test/Hx.Scaffold.Tests/LocalReleasePayloadAndVersionTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core/Release",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core/Release contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "LocalReleaseService",
+          "line": 21,
+          "column": 36
+        }
+      ]
+    },
+    {
+      "rank": 34,
+      "from_file": "test/Hx.Scaffold.Tests/LocalReleasePayloadAndVersionTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseVersionPolicy.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core/Release",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core/Release contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "LocalReleaseVersionPolicy",
+          "line": 36,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 35,
+      "from_file": "test/Hx.Scaffold.Tests/LocalReleaseRootTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/Release/ReleaseTargetManifest.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core/Release",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core/Release contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ReleaseTargetManifest",
+          "line": 183,
+          "column": 37
+        }
+      ]
+    },
+    {
+      "rank": 36,
+      "from_file": "test/Hx.Scaffold.Tests/LocalReleaseRootTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/Release/ScaffoldReleaseTargetWriter.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core/Release",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core/Release contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldReleaseTargetWriter",
+          "line": 223,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 37,
+      "from_file": "test/Hx.Scaffold.Tests/LocalReleaseRootTests.cs",
+      "to_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "tools/Hx.Scaffold.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module tools/Hx.Scaffold.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldCommandFactory",
+          "line": 18,
+          "column": 28
+        }
+      ]
+    },
+    {
+      "rank": 38,
+      "from_file": "test/Hx.Scaffold.Tests/PayloadManifestGeneratorTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/PayloadManifestGenerator.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadManifestGenerator",
+          "line": 12,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 39,
+      "from_file": "test/Hx.Scaffold.Tests/PayloadManifestGeneratorTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/PayloadRoot.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadFailureKind",
+          "line": 60,
+          "column": 22
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadResolution",
+          "line": 43,
+          "column": 9
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadRoot",
+          "line": 8,
+          "column": 99
+        }
+      ]
+    },
+    {
+      "rank": 40,
+      "from_file": "test/Hx.Scaffold.Tests/PayloadRootTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "InstalledPayload",
+          "line": 152,
+          "column": 38
+        }
+      ]
+    },
+    {
+      "rank": 41,
+      "from_file": "test/Hx.Scaffold.Tests/PayloadRootTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/PayloadRoot.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadFailureKind",
+          "line": 69,
+          "column": 26
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadResolution",
+          "line": 51,
+          "column": 13
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadRoot",
+          "line": 9,
+          "column": 80
+        }
+      ]
+    },
+    {
+      "rank": 42,
+      "from_file": "test/Hx.Scaffold.Tests/PrerequisiteCommandTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/ScaffoldRoot.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldRoot",
+          "line": 85,
+          "column": 33
+        }
+      ]
+    },
+    {
+      "rank": 43,
+      "from_file": "test/Hx.Scaffold.Tests/ReleasedHxDotiInstallTests.cs",
+      "to_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "tools/Hx.Scaffold.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module tools/Hx.Scaffold.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldCommandFactory",
+          "line": 33,
+          "column": 28
+        }
+      ]
+    },
+    {
+      "rank": 44,
+      "from_file": "test/Hx.Scaffold.Tests/ScaffoldBootstrapTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/ScaffoldBootstrap.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldBootstrap",
+          "line": 6,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 45,
+      "from_file": "test/Hx.Scaffold.Tests/ScaffoldCommandsTestHelpers.cs",
+      "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core/Versioning",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core/Versioning contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldVersionReporter",
+          "line": 20,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 46,
+      "from_file": "test/Hx.Scaffold.Tests/ScaffoldCommandsTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core/Versioning",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core/Versioning contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldVersionReport",
+          "line": 51,
+          "column": 9
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldVersionReporter",
+          "line": 88,
+          "column": 13
+        }
+      ]
+    },
+    {
+      "rank": 47,
+      "from_file": "test/Hx.Scaffold.Tests/ScaffoldNewSmokeTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/ScaffoldNewRunner.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldNewRunner",
+          "line": 12,
+          "column": 47
+        }
+      ]
+    },
+    {
+      "rank": 48,
+      "from_file": "test/Hx.Scaffold.Tests/ScaffoldNewSmokeTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/ScaffoldRoot.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldRoot",
+          "line": 28,
+          "column": 33
+        }
+      ]
+    },
+    {
+      "rank": 49,
+      "from_file": "test/Hx.Scaffold.Tests/StoreProvisionerTests.cs",
+      "to_file": "src/Hx.Scaffold.Core/StoreProvisioner.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "StoreProvisioner",
+          "line": 11,
+          "column": 25
+        }
+      ]
+    },
+    {
+      "rank": 50,
+      "from_file": "test/Hx.Scaffold.Tests/UnifiedWorkflowSurfaceTests.cs",
+      "to_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
+      "from_module": "test/Hx.Scaffold.Tests",
+      "to_module": "tools/Hx.Scaffold.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from test/Hx.Scaffold.Tests to unstable module tools/Hx.Scaffold.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldCommandFactory",
+          "line": 12,
+          "column": 59
+        }
+      ]
+    },
+    {
+      "rank": 51,
+      "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
+      "from_module": "tools/Hx.Gate.Core",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksManifestValidator",
+          "line": 121,
+          "column": 43
+        }
+      ]
+    },
+    {
+      "rank": 52,
+      "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanRequest.cs",
+      "from_module": "tools/Hx.Gate.Core",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygieneScanRequest",
+          "line": 243,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 53,
+      "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "from_module": "tools/Hx.Gate.Core",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygieneScanner",
+          "line": 246,
+          "column": 36
+        }
+      ]
+    },
+    {
+      "rank": 54,
+      "from_file": "tools/Hx.Gate.Core/NoVelopackScanner.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/ScaffoldHygieneChecks.cs",
+      "from_module": "tools/Hx.Gate.Core",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScanFile",
+          "line": 38,
+          "column": 17
+        }
+      ]
+    },
+    {
+      "rank": 55,
+      "from_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
+      "to_file": "tools/Hx.Gate.Core/Hx.Gate.Core.csproj",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\Hx.Gate.Core\\Hx.Gate.Core.csproj",
+          "line": 13,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 56,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
+      "to_file": "tools/Hx.Gate.Core/GateRunner.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GateRunner",
+          "line": 30,
+          "column": 15
+        }
+      ]
+    },
+    {
+      "rank": 57,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
+      "to_file": "tools/Hx.Gate.Core/LaneResolver.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Gate.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Gate.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "LaneResolver",
+          "line": 26,
+          "column": 29
+        }
+      ]
+    },
+    {
+      "rank": 58,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksConfigRenderer",
+          "line": 41,
+          "column": 23
+        }
+      ]
+    },
+    {
+      "rank": 59,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksManifestValidator",
+          "line": 33,
+          "column": 49
+        }
+      ]
+    },
+    {
+      "rank": 60,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksUpdateChecker.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksUpdateChecker",
+          "line": 36,
+          "column": 97
+        }
+      ]
+    },
+    {
+      "rank": 61,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicy",
+          "line": 40,
+          "column": 9
+        }
+      ]
+    },
+    {
+      "rank": 62,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicyLoader.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicyLoader",
+          "line": 40,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 63,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanRequest.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygieneScanRequest",
+          "line": 27,
+          "column": 60
+        }
+      ]
+    },
+    {
+      "rank": 64,
+      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "from_module": "tools/Hx.Runner.Cli",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygieneScanner",
+          "line": 27,
+          "column": 36
+        }
+      ]
+    },
+    {
+      "rank": 65,
+      "from_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
+      "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
+      "from_module": "tools/Hx.Runner.Core/Gitleaks",
+      "to_module": "tools/Hx.Runner.Core/Hygiene",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Core/Gitleaks to unstable module tools/Hx.Runner.Core/Hygiene contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "HygienePolicy",
+          "line": 17,
+          "column": 33
+        }
+      ]
+    },
+    {
+      "rank": 66,
+      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksExitClassifier.cs",
+      "from_module": "tools/Hx.Runner.Core/Hygiene",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksExitClassifier",
+          "line": 241,
+          "column": 17
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksRunStatus",
+          "line": 241,
+          "column": 91
+        }
+      ]
+    },
+    {
+      "rank": 67,
+      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifest.cs",
+      "from_module": "tools/Hx.Runner.Core/Hygiene",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksAsset",
+          "line": 209,
+          "column": 9
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksManifest",
+          "line": 90,
+          "column": 47
+        }
+      ]
+    },
+    {
+      "rank": 68,
+      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
+      "from_module": "tools/Hx.Runner.Core/Hygiene",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksManifestValidator",
+          "line": 90,
+          "column": 47
+        }
+      ]
+    },
+    {
+      "rank": 69,
+      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksProcessAdapter.cs",
+      "from_module": "tools/Hx.Runner.Core/Hygiene",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksProcessAdapter",
+          "line": 228,
+          "column": 27
+        }
+      ]
+    },
+    {
+      "rank": 70,
+      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksReportParser.cs",
+      "from_module": "tools/Hx.Runner.Core/Hygiene",
+      "to_module": "tools/Hx.Runner.Core/Gitleaks",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Gitleaks contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "GitleaksReportParser",
+          "line": 248,
+          "column": 19
+        }
+      ]
+    },
+    {
+      "rank": 71,
+      "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
+      "to_file": "src/Hx.Scaffold.Core/Hx.Scaffold.Core.csproj",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\..\\src\\Hx.Scaffold.Core\\Hx.Scaffold.Core.csproj",
+          "line": 44,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 72,
+      "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
+      "to_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "tools/Hx.Runner.Cli",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module tools/Hx.Runner.Cli contributes to coupling score",
+      "sources": [
+        {
+          "kind": "project_reference",
+          "symbol": "..\\Hx.Runner.Cli\\Hx.Runner.Cli.csproj",
+          "line": 50,
+          "column": 32
+        }
+      ]
+    },
+    {
+      "rank": 73,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
+      "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "InstalledPayload",
+          "line": 24,
+          "column": 72
+        }
+      ]
+    },
+    {
+      "rank": 74,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.New.cs",
+      "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "InstalledPayload",
+          "line": 23,
+          "column": 29
+        }
+      ]
+    },
+    {
+      "rank": 75,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.New.cs",
+      "to_file": "src/Hx.Scaffold.Core/ScaffoldNewRunner.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldNewRunner",
+          "line": 34,
+          "column": 31
+        }
+      ]
+    },
+    {
+      "rank": 76,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.PayloadManifest.cs",
+      "to_file": "src/Hx.Scaffold.Core/PayloadManifestGenerator.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "PayloadManifestGenerator",
+          "line": 23,
+          "column": 40
+        }
+      ]
+    },
+    {
+      "rank": 77,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Prereq.cs",
+      "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "InstalledPayload",
+          "line": 23,
+          "column": 29
+        }
+      ]
+    },
+    {
+      "rank": 78,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Release.cs",
+      "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core/Release",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core/Release contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "LocalReleaseRequest",
+          "line": 29,
+          "column": 69
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "LocalReleaseService",
+          "line": 29,
+          "column": 41
+        }
+      ]
+    },
+    {
+      "rank": 79,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Version.cs",
+      "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "InstalledPayload",
+          "line": 19,
+          "column": 21
+        }
+      ]
+    },
+    {
+      "rank": 80,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Version.cs",
+      "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core/Versioning",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core/Versioning contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldVersionReport",
+          "line": 30,
+          "column": 9
+        },
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldVersionReporter",
+          "line": 30,
+          "column": 40
+        }
+      ]
+    },
+    {
+      "rank": 81,
+      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.cs",
+      "to_file": "src/Hx.Scaffold.Core/ScaffoldBootstrap.cs",
+      "from_module": "tools/Hx.Scaffold.Cli",
+      "to_module": "src/Hx.Scaffold.Core",
+      "target_stable": false,
+      "classification": "cross_module_unstable_dependency",
+      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module src/Hx.Scaffold.Core contributes to coupling score",
+      "sources": [
+        {
+          "kind": "csharp_type_reference",
+          "symbol": "ScaffoldBootstrap",
+          "line": 16,
+          "column": 69
+        }
+      ]
+    }
+  ],
   "cycle_count": 0,
-  "god_file_count": 4,
-  "hotspot_count": 0,
+  "cycle_details": [],
+  "god_file_count": 5,
+  "god_files": [
+    {
+      "rank": 1,
+      "path": "tools/Hx.Gate.Core/GateRunner.cs",
+      "language": "csharp",
+      "reason": "call-edge fan-out exceeds language threshold (42 > 15), indicating responsibility concentration",
+      "classification": "fan_out_above_threshold",
+      "score": 2.8,
+      "threshold": 15,
+      "loc": 456,
+      "imports": 42,
+      "fan_in": 3,
+      "fan_out": 42,
+      "call_edges": 55,
+      "degree_centrality": 0.0476,
+      "instability": 0.9333,
+      "max_complexity": 5,
+      "function_count": 27
+    },
+    {
+      "rank": 2,
+      "path": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
+      "language": "csharp",
+      "reason": "dependency fan-out exceeds language threshold (29 > 15), indicating responsibility concentration",
+      "classification": "fan_out_above_threshold",
+      "score": 1.9333,
+      "threshold": 15,
+      "loc": 323,
+      "imports": 29,
+      "fan_in": 3,
+      "fan_out": 29,
+      "call_edges": 21,
+      "degree_centrality": 0.0338,
+      "instability": 0.9063,
+      "max_complexity": 11,
+      "function_count": 9
+    },
+    {
+      "rank": 3,
+      "path": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
+      "language": "csharp",
+      "reason": "dependency fan-out exceeds language threshold (23 > 15), indicating responsibility concentration",
+      "classification": "fan_out_above_threshold",
+      "score": 1.5333,
+      "threshold": 15,
+      "loc": 66,
+      "imports": 23,
+      "fan_in": 0,
+      "fan_out": 23,
+      "call_edges": 13,
+      "degree_centrality": 0.0243,
+      "instability": 1.0,
+      "max_complexity": 3,
+      "function_count": 4
+    },
+    {
+      "rank": 4,
+      "path": "src/Hx.Scaffold.Core/FirstSmokeRunner.cs",
+      "language": "csharp",
+      "reason": "dependency fan-out exceeds language threshold (19 > 15), indicating responsibility concentration",
+      "classification": "fan_out_above_threshold",
+      "score": 1.2667,
+      "threshold": 15,
+      "loc": 114,
+      "imports": 19,
+      "fan_in": 1,
+      "fan_out": 19,
+      "call_edges": 10,
+      "degree_centrality": 0.0211,
+      "instability": 0.95,
+      "max_complexity": 2,
+      "function_count": 4
+    },
+    {
+      "rank": 5,
+      "path": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+      "language": "csharp",
+      "reason": "call-edge fan-out exceeds language threshold (16 > 15), indicating responsibility concentration",
+      "classification": "fan_out_above_threshold",
+      "score": 1.0667,
+      "threshold": 15,
+      "loc": 873,
+      "imports": 16,
+      "fan_in": 2,
+      "fan_out": 16,
+      "call_edges": 17,
+      "degree_centrality": 0.019,
+      "instability": 0.8889,
+      "max_complexity": 6,
+      "function_count": 35
+    }
+  ],
+  "hotspot_count": 1,
   "complex_fn_count": 0,
-  "max_depth": 9,
-  "total_import_edges": 459,
-  "cross_module_edges": 362
+  "complex_functions": [],
+  "max_depth": 11,
+  "total_import_edges": 1322,
+  "cross_module_edges": 1078
 }

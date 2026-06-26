@@ -19,10 +19,9 @@ public sealed record LocalReleaseRequest(
 
 public static class LocalReleaseService
 {
-    // 007 T016: Velopack removed. Until LocalReleaseService is retargeted to the NuGet global-tool + MSIX channels
-    // (T028), `hx release` validates + publishes + tags + records the payload identity, but produces no installable
-    // package artifact. The channel-neutral package/installer fields stay null until then.
-    private const string ReleaseProductInterim = "none";
+    // 007 T028: when no local release root is configured the release validates + tags but builds no artifacts, so it
+    // produces no channel product. The BUILD path computes the real product via ComposeReleaseProduct.
+    private const string ReleaseProductNone = "none";
 
     public static LocalReleaseResult Run(LocalReleaseRequest request)
     {
@@ -144,7 +143,7 @@ public static class LocalReleaseService
             CommandVersion: request.CommandVersion,
             ConfigurationSource: request.Configuration.Source,
             ConfigurationPath: request.Configuration.SourcePath,
-            ReleaseProduct: ReleaseProductInterim,
+            ReleaseProduct: ReleaseProductNone,
             SourceArchiveExcluded: true,
             Blockers: [],
             InstallLocationProof: null);
@@ -224,10 +223,13 @@ public static class LocalReleaseService
                 CommandVersion: request.CommandVersion,
                 ConfigurationSource: request.Configuration.Source,
                 ConfigurationPath: request.Configuration.SourcePath,
-                ReleaseProduct: ReleaseProductInterim,
+                ReleaseProduct: artifacts.ReleaseProduct,
                 SourceArchiveExcluded: true,
                 Blockers: [],
-                InstallLocationProof: artifacts.InstallLocationProof);
+                InstallLocationProof: artifacts.InstallLocationProof,
+                PackageId: artifacts.PackageId,
+                Channel: artifacts.Channel,
+                ChannelInstallProofs: artifacts.ChannelInstallProofs);
         }
         finally
         {
@@ -264,7 +266,19 @@ public static class LocalReleaseService
         IReadOnlyList<LocalReleaseArtifact> Artifacts,
         IReadOnlyList<LocalReleaseArtifact> VelopackArtifacts,
         IReadOnlyList<LocalReleasePayloadCheck> PayloadChecks,
-        LocalReleaseInstallLocationProof? InstallLocationProof);
+        LocalReleaseInstallLocationProof? InstallLocationProof,
+        string ReleaseProduct,
+        string? PackageId,
+        string? Channel,
+        IReadOnlyList<ChannelInstallProof> ChannelInstallProofs);
+
+    // 007 T028: the framework-dependent global-tool package + its source-free install smoke proof.
+    internal sealed record GlobalToolChannelResult(
+        LocalReleaseArtifact PackageArtifact,
+        string PackageId,
+        string PackageVersion,
+        LocalReleaseInstallLocationProof InstallProof,
+        ChannelInstallProof ChannelProof);
 
     private static ReleaseArtifactBuild BuildArtifacts(
         string repo,
@@ -282,6 +296,212 @@ public static class LocalReleaseService
         string velopackPackageId,
         string velopackChannel,
         CycleReleaseTrain releaseTrain)
+    {
+        (string projectName, IReadOnlyList<LocalReleasePayloadCheck> payloadChecks) =
+            StagePublishAndInspect(repo, tempRoot, target, rid);
+
+        // 007 T028: retarget off the interim no-package state — produce the framework-dependent global-tool package,
+        // smoke it source-free in a no-source install location, and record the channel-neutral release identity. The
+        // Windows MSIX is a CI/Store-only channel (makeappx needs the Windows SDK; the Store signs it), so its curated
+        // layout + signed .msix + submission live in store-release.yml and the channel proof is recorded advisory here.
+        var artifacts = new List<LocalReleaseArtifact>();
+        GlobalToolChannelResult globalTool = BuildGlobalToolChannel(repo, target, tempRoot);
+        artifacts.Add(globalTool.PackageArtifact);
+
+        // The packed global tool must ALSO carry no source — the no-source gate looks INSIDE the .nupkg (FR-006).
+        ReleaseSourceScanResult packageScan = ReleaseSourceInspector.Scan(tempRoot);
+        if (packageScan.Outcome != StageOutcome.Pass)
+        {
+            throw new InvalidOperationException(
+                $"{ReleaseSourceInspector.ViolationCode}: the global-tool package carries the tool's build tree (FR-006): " +
+                string.Join("; ", packageScan.Findings.Take(5).Select(f => $"{f.Artifact}!{f.Entry} ({f.Marker})")));
+        }
+
+        ChannelInstallProof? msixProof = MsixChannelProof(repo);
+        var channelProofs = new List<ChannelInstallProof> { globalTool.ChannelProof };
+        if (msixProof is not null)
+        {
+            channelProofs.Add(msixProof);
+        }
+
+        string releaseProduct = ComposeReleaseProduct(globalTool: true, msix: msixProof is not null);
+        string identity = Path.Combine(tempRoot, "release.identity.json");
+        File.WriteAllText(identity, JsonSerializer.Serialize(new
+        {
+            schemaVersion = JsonContractDefaults.SchemaVersion,
+            projectName,
+            version,
+            releaseIntent,
+            tag,
+            gitVersionSource = $"gitversion + {tag.Name}",
+            velopackPackageId,
+            velopackChannel,
+            packageId = globalTool.PackageId,
+            channel = DistributionChannelId.GlobalTool,
+            runtimeIdentifier = rid,
+            sourceCommit,
+            target,
+            command = "hx release",
+            commandVersion,
+            configurationSource,
+            configurationPath,
+            documentationProof,
+            releaseProduct,
+            sourceArchiveExcluded = true,
+            releaseTrain,
+            artifacts = artifacts.ToArray(),
+            velopackArtifacts = Array.Empty<LocalReleaseArtifact>(),
+            payloadChecks,
+            channelInstallProofs = channelProofs,
+            installLocationProof = globalTool.InstallProof
+        }, JsonContractSerializerOptions.Create()));
+        artifacts.Add(new(
+            "release.identity.json",
+            Sha256(identity),
+            new FileInfo(identity).Length,
+            Type: "release-identity",
+            RuntimeIdentifier: rid,
+            Channel: DistributionChannelId.GlobalTool,
+            Version: version,
+            PackageId: globalTool.PackageId));
+        return new ReleaseArtifactBuild(
+            artifacts,
+            VelopackArtifacts: [],
+            payloadChecks,
+            globalTool.InstallProof,
+            releaseProduct,
+            globalTool.PackageId,
+            DistributionChannelId.GlobalTool,
+            channelProofs);
+    }
+
+    // 007 T028: pack the target's tool project into a framework-dependent global-tool package, then smoke it
+    // source-free (install into a no-source location and exercise the documented command path). One package for all
+    // OSes — per-RID tool binaries fetch + hash-verify on demand (T022), not bundled.
+    internal static GlobalToolChannelResult BuildGlobalToolChannel(string repo, LocalReleaseTarget target, string tempRoot)
+    {
+        string publishProject = target.PublishProject.Replace('/', Path.DirectorySeparatorChar);
+        Dotnet(repo, $"pack {Quote(publishProject)} -c Release -o {Quote(tempRoot)} --nologo");
+
+        // pack writes the package(s) at the tempRoot top level; the tool package (it bundles the payload) is the
+        // largest .nupkg. Filter on the real extension so a symbol .snupkg is never selected.
+        string nupkg = Directory.EnumerateFiles(tempRoot, "*.nupkg")
+            .Where(path => string.Equals(Path.GetExtension(path), ".nupkg", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(path => new FileInfo(path).Length)
+            .FirstOrDefault()
+            ?? throw new InvalidOperationException("dotnet pack produced no .nupkg for the global tool.");
+
+        string fileName = Path.GetFileName(nupkg);
+        (string packageId, string packageVersion) = ParseNupkgIdentity(fileName);
+        var artifact = new LocalReleaseArtifact(
+            fileName, Sha256(nupkg), new FileInfo(nupkg).Length,
+            Type: "global-tool-package", RuntimeIdentifier: "any",
+            Channel: DistributionChannelId.GlobalTool, Version: packageVersion, PackageId: packageId);
+
+        (LocalReleaseInstallLocationProof install, ChannelInstallProof channel) =
+            SmokeInstalledGlobalTool(tempRoot, fileName, packageId, packageVersion);
+        return new GlobalToolChannelResult(artifact, packageId, packageVersion, install, channel);
+    }
+
+    // 007 T028 (FR-023/FR-024): install the packed tool into a no-source location and run the DOCUMENTED source-free
+    // command path. Recorded, not release-blocking: an environmental install failure is advisory; a command failure
+    // is a recorded fail with blockers. (The fuller `new` + `doti install` smoke is the CI release/store workflow.)
+    private static (LocalReleaseInstallLocationProof Install, ChannelInstallProof Channel) SmokeInstalledGlobalTool(
+        string tempRoot, string nupkgFileName, string packageId, string packageVersion)
+    {
+        string toolPath = Path.Combine(tempRoot, "tool-smoke");
+        (int installExit, string installOut) = ProcessRunner.Run(
+            "dotnet",
+            $"tool install {Quote(packageId)} --version {Quote(packageVersion)} --add-source {Quote(tempRoot)} --tool-path {Quote(toolPath)}",
+            tempRoot,
+            ProcessRunner.NestedDotnetEnv());
+        if (installExit != 0)
+        {
+            // Environmental (offline restore, or a non-tool package): advisory, not a release-breaking failure.
+            string[] reason = ["dotnet tool install failed: " + ProcessRunner.Tail(installOut)];
+            return (
+                new LocalReleaseInstallLocationProof("advisory", nupkgFileName, toolPath, null, null, null, [], reason),
+                new ChannelInstallProof(DistributionChannelId.GlobalTool, "advisory", null, [], reason));
+        }
+
+        string hx = Path.Combine(toolPath, OperatingSystem.IsWindows() ? "hx.exe" : "hx");
+        (string Label, (int ExitCode, string Output) Result)[] runs = new[] { "--help", "version --json", "prereq check --json" }
+            .Select(args => ($"hx {args}", ProcessRunner.Run(hx, args, toolPath, ProcessRunner.NestedDotnetEnv())))
+            .ToArray();
+
+        string versionOutput = runs.Single(r => r.Label == "hx version --json").Result.Output;
+        bool channelReported = versionOutput.Contains(DistributionChannelId.GlobalTool, StringComparison.Ordinal)
+            && versionOutput.Contains(CommandMode.Installed, StringComparison.Ordinal);
+        List<string> blockers = runs.Where(r => r.Result.ExitCode != 0)
+            .Select(r => $"{r.Label} exited {r.Result.ExitCode}: {ProcessRunner.Tail(r.Result.Output)}")
+            .ToList();
+        if (!channelReported)
+        {
+            blockers.Add("version --json did not report channel=global-tool / mode=installed");
+        }
+
+        string outcome = blockers.Count == 0 ? "pass" : "fail";
+        string[] payloadChecks = channelReported
+            ? ["version --json resolved the installed payload (channel=global-tool, mode=installed)"]
+            : [];
+        return (
+            new LocalReleaseInstallLocationProof(
+                outcome, nupkgFileName, toolPath, hx, "hx version --json",
+                PayloadRoot.Sha256OfText(versionOutput), payloadChecks, blockers),
+            new ChannelInstallProof(DistributionChannelId.GlobalTool, outcome, hx, runs.Select(r => r.Label).ToArray(), blockers));
+    }
+
+    // 007 T028: a NuGet package file is "{PackageId}.{Version}.nupkg"; the version starts at the first dot followed
+    // by a digit. (PackageId segments are never numeric-leading, so this split is unambiguous.)
+    internal static (string PackageId, string Version) ParseNupkgIdentity(string nupkgFileName)
+    {
+        string stem = nupkgFileName.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase)
+            ? nupkgFileName[..^".nupkg".Length]
+            : nupkgFileName;
+        for (int i = 0; i < stem.Length - 1; i++)
+        {
+            if (stem[i] == '.' && char.IsDigit(stem[i + 1]))
+            {
+                return (stem[..i], stem[(i + 1)..]);
+            }
+        }
+
+        return (stem, "");
+    }
+
+    // 007 T028: name the channels actually produced by this release for the release identity's releaseProduct.
+    internal static string ComposeReleaseProduct(bool globalTool, bool msix) =>
+        (globalTool, msix) switch
+        {
+            (true, true) => "global-tool+msix",
+            (true, false) => "global-tool",
+            (false, true) => "msix",
+            _ => ReleaseProductNone,
+        };
+
+    // 007 T028: the Windows MSIX channel is applicable when the repo ships an MSIX manifest, but the curated layout +
+    // signed .msix + Store submission are produced by store-release.yml (makeappx needs the Windows SDK; the Store
+    // signs it), so the local release records the channel proof as advisory rather than packing the MSIX here.
+    internal static ChannelInstallProof? MsixChannelProof(string repo)
+    {
+        string manifest = Path.Combine(repo, "packaging", "msix", "AppxManifest.xml");
+        if (!File.Exists(manifest))
+        {
+            return null;
+        }
+
+        return new ChannelInstallProof(
+            DistributionChannelId.Msix,
+            "advisory",
+            InstalledCommandPath: null,
+            ExercisedCommands: [],
+            Blockers: ["the curated MSIX layout + signed .msix are produced and submitted by the Store-release CI workflow (store-release.yml)"]);
+    }
+
+    // Publish the target's self-contained executable, stage the packaged assets, and fail closed if the staged tree
+    // carries the tool's own build tree (FR-006). Returns the filesystem-safe project name + the payload hash set.
+    private static (string ProjectName, IReadOnlyList<LocalReleasePayloadCheck> PayloadChecks) StagePublishAndInspect(
+        string repo, string tempRoot, LocalReleaseTarget target, string rid)
     {
         string projectName = SafeSegment(target.PackageName);
         string publishProject = target.PublishProject.Replace('/', Path.DirectorySeparatorChar);
@@ -307,8 +527,6 @@ public static class LocalReleaseService
             File.Copy(publishedExe, expectedExe, overwrite: true);
         }
 
-        IReadOnlyList<LocalReleasePayloadCheck> payloadChecks = InspectPayload(publish);
-
         // 007 T020 (FR-006/SC-004): packaging fails closed if the staged release layout carries the tool's own build
         // tree — recursively, including inside any bundled .nupkg. The legitimate template pack + payload pass.
         ReleaseSourceScanResult sourceScan = ReleaseSourceInspector.Scan(publish);
@@ -319,47 +537,7 @@ public static class LocalReleaseService
                 string.Join("; ", sourceScan.Findings.Take(5).Select(f => $"{f.Artifact}!{f.Entry} ({f.Marker})")));
         }
 
-        // 007 T016: Velopack removed. The interim release records the payload identity (full payload hash manifest)
-        // but produces no installer/package and runs no install-location smoke. T028 retargets this to emit the
-        // framework-dependent NuGet global-tool package + curated MSIX layout and record their channel artifacts.
-        var artifacts = new List<LocalReleaseArtifact>();
-        string identity = Path.Combine(tempRoot, "release.identity.json");
-        File.WriteAllText(identity, JsonSerializer.Serialize(new
-        {
-            schemaVersion = JsonContractDefaults.SchemaVersion,
-            projectName,
-            version,
-            releaseIntent,
-            tag,
-            gitVersionSource = $"gitversion + {tag.Name}",
-            velopackPackageId,
-            velopackChannel,
-            runtimeIdentifier = rid,
-            sourceCommit,
-            target,
-            command = "hx release",
-            commandVersion,
-            configurationSource,
-            configurationPath,
-            documentationProof,
-            releaseProduct = ReleaseProductInterim,
-            sourceArchiveExcluded = true,
-            releaseTrain,
-            artifacts = Array.Empty<LocalReleaseArtifact>(),
-            velopackArtifacts = Array.Empty<LocalReleaseArtifact>(),
-            payloadChecks,
-            installLocationProof = (LocalReleaseInstallLocationProof?)null
-        }, JsonContractSerializerOptions.Create()));
-        artifacts.Add(new(
-            "release.identity.json",
-            Sha256(identity),
-            new FileInfo(identity).Length,
-            Type: "release-identity",
-            RuntimeIdentifier: rid,
-            Channel: velopackChannel,
-            Version: version,
-            PackageId: velopackPackageId));
-        return new ReleaseArtifactBuild(artifacts, VelopackArtifacts: [], payloadChecks, InstallLocationProof: null);
+        return (projectName, InspectPayload(publish));
     }
 
     private static void PublishLocalCopy(
