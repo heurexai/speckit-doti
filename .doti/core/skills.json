@@ -72,7 +72,9 @@
       "name": "doti-release",
       "description": "Run scaffold-dotnet release proof and command-backed local release output.",
       "argumentHint": "[release intent]",
-      "highlights": [],
+      "highlights": [
+        "Default version intent is cycle-type-aware (FR-044/SC-016): a feature cycle defaults to `minor` — the release-stage transition (`doti cycle stamp --stage release`) writes `+semver: minor` into the automatic transition commit, so GitVersion calculates a minor bump and `hx release`'s blank intent (which follows that bump) validates by default rather than failing 'Release intent mismatch'. A bug-fix-only cycle (the FR-034 assess->fix->test mini-cycle) never hits that transition, so it writes no minor signal and defaults to `patch`. An explicit `--major|--minor|--patch` overrides the +semver trailer and the release default together (kept in lockstep)."
+      ],
       "nextStage": "Cycle complete. Start the next feature with `/01-doti-specify`."
     },
     {

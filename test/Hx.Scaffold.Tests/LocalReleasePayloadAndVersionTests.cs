@@ -1,4 +1,5 @@
 using System.Reflection;
+using Hx.Cycle.Core;
 using Hx.Scaffold.Core.Release;
 using Xunit;
 
@@ -46,4 +47,45 @@ public sealed class LocalReleasePayloadAndVersionTests
         Assert.Contains("as a minor release", ex.Message);
         Assert.Contains("+semver", ex.Message);
     }
+
+    // 007 T041 (FR-044/SC-016): the blank-intent default follows the GitVersion-calculated bump, and that default
+    // validates by construction — a feature cycle (minor bump from the +semver: minor trailer) defaults to minor,
+    // a bug-fix-only cycle (patch bump, no signal) defaults to patch.
+    [Fact]
+    public void Default_feature_cycle_intent_is_minor_and_validates()
+    {
+        // The cycle stamp wrote +semver: minor, so GitVersion calculated 1.3.0 from 1.2.3.
+        string intent = LocalReleaseVersionPolicy.DefaultIntent("1.2.3", "1.3.0");
+
+        Assert.Equal("minor", intent);
+        LocalReleaseVersionPolicy.ValidateIntent("1.2.3", "1.3.0", intent); // does not throw
+    }
+
+    [Fact]
+    public void Default_bug_fix_only_cycle_intent_is_patch_and_validates()
+    {
+        // No minor signal, so GitVersion calculated a patch bump 1.2.4 from 1.2.3.
+        string intent = LocalReleaseVersionPolicy.DefaultIntent("1.2.3", "1.2.4");
+
+        Assert.Equal("patch", intent);
+        LocalReleaseVersionPolicy.ValidateIntent("1.2.3", "1.2.4", intent); // does not throw
+    }
+
+    [Fact]
+    public void Default_intent_with_no_previous_tag_is_the_feature_minor()
+    {
+        // First release: the delta cannot be classified, so default to the feature-cycle intent.
+        Assert.Equal("minor", LocalReleaseVersionPolicy.DefaultIntent(null, "0.1.0"));
+    }
+
+    // 007 T041 (FR-044/SC-016): the cycle-stamp counterpart kept in lockstep — the release-stage transition's
+    // default +semver signal is `minor` (feature cycle); an explicit intent overrides and is normalized.
+    [Theory]
+    [InlineData(null, "minor")]
+    [InlineData("", "minor")]
+    [InlineData("   ", "minor")]
+    [InlineData("patch", "patch")]
+    [InlineData("MAJOR", "major")]
+    public void Release_transition_semver_signal_defaults_to_minor(string? intent, string expected) =>
+        Assert.Equal(expected, CycleService.ReleaseSemverSignal(intent));
 }

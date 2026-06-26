@@ -20,7 +20,7 @@ public static partial class RunnerCommandFactory
         Option<string> stage = new("--stage") { Description = "Stage id (specify, clarify, plan, tasks, analyze, arch-review, implement, drift-review, release).", DefaultValueFactory = _ => "" };
         Option<string> feature = new("--feature") { Description = "Numbered feature slug (required on the first stamp; e.g. 001-doti-cycle-state).", DefaultValueFactory = _ => "" };
         Option<string> baseRef = new("--base") { Description = "Base ref for the change-set identity (default: dev if it resolves, else HEAD).", DefaultValueFactory = _ => "" };
-        Option<string> releaseIntent = new("--release-intent") { Description = "Release intent for a release-stage transition: major, minor, or patch. Adds the matching GitVersion +semver signal to the automatic transition commit.", DefaultValueFactory = _ => "" };
+        Option<string> releaseIntent = new("--release-intent") { Description = "Release intent for the release-stage transition: major, minor, or patch. Adds the matching GitVersion +semver signal to the automatic transition commit. Default (blank) for a feature cycle is minor (FR-044); an explicit value overrides.", DefaultValueFactory = _ => "" };
         Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(stage);

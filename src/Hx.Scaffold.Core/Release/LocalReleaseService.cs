@@ -29,7 +29,7 @@ public static class LocalReleaseService
         string rid = string.IsNullOrWhiteSpace(request.RuntimeIdentifier)
             ? HostPlatformDetector.DetectCurrent().RuntimeIdentifier
             : request.RuntimeIdentifier.Trim();
-        string releaseIntent = NormalizeReleaseIntent(request.ReleaseIntent);
+        string? explicitIntent = NormalizeExplicitReleaseIntent(request.ReleaseIntent);
         HxLocalConfigurationLoader.Validate(request.Configuration);
         LocalReleaseRootDecision rootDecision = ResolveRootFromConfiguration(request.Configuration);
         LocalReleaseTarget target = ReleaseTargetManifest.Load(repo);
@@ -58,7 +58,7 @@ public static class LocalReleaseService
             Limitation: "release roots are read from executable-adjacent hx.config.json; environment persistence is no longer supported");
         VersionResult version = GitVersionTool.Calculate(repo);
         string sourceCommit = Git(repo, "rev-parse HEAD").Trim();
-        ValidateReleaseIntent(repo, version.Version, releaseIntent);
+        string releaseIntent = ResolveReleaseIntent(repo, version.Version, explicitIntent);
         LocalReleaseTag tag = EnsureReleaseTag(repo, version.Version, releaseIntent, sourceCommit);
         string velopackPackageId = projectName;
         string velopackChannel = ChannelFromRid(rid);
@@ -579,18 +579,31 @@ public static class LocalReleaseService
         }
     }
 
-    private static string NormalizeReleaseIntent(string? intent)
+    // 007 T041 (FR-044): validate an EXPLICIT intent here (fail fast on a bad value); a blank intent is no longer
+    // defaulted to `patch` — it returns null so Run resolves the cycle-type-aware default from the GitVersion-
+    // calculated bump (LocalReleaseVersionPolicy.DefaultIntent), keeping the release default in lockstep with the
+    // cycle's +semver trailer (minor for a feature cycle, patch for a bug-fix-only cycle).
+    private static string? NormalizeExplicitReleaseIntent(string? intent)
     {
-        string normalized = string.IsNullOrWhiteSpace(intent) ? "patch" : intent.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(intent))
+        {
+            return null;
+        }
+
+        string normalized = intent.Trim().ToLowerInvariant();
         return normalized is "major" or "minor" or "patch"
             ? normalized
             : throw new InvalidOperationException($"Unknown release intent '{intent}'. Use major, minor, or patch.");
     }
 
-    private static void ValidateReleaseIntent(string repo, string version, string releaseIntent)
+    // Resolve the effective intent: an explicit --major|--minor|--patch wins; a blank intent follows the
+    // GitVersion-calculated bump (FR-044/SC-016). Either way the result is validated against the calculated bump.
+    private static string ResolveReleaseIntent(string repo, string version, string? explicitIntent)
     {
         string? previous = LatestVersionTag(repo, version);
-        LocalReleaseVersionPolicy.ValidateIntent(previous, version, releaseIntent);
+        string intent = explicitIntent ?? LocalReleaseVersionPolicy.DefaultIntent(previous, version);
+        LocalReleaseVersionPolicy.ValidateIntent(previous, version, intent);
+        return intent;
     }
 
     private static LocalReleaseTag EnsureReleaseTag(string repo, string version, string releaseIntent, string sourceCommit)

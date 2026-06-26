@@ -11,6 +11,8 @@ metadata:
 
 Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/doti-release.md`.
 
+Default version intent is cycle-type-aware (FR-044/SC-016): a feature cycle defaults to `minor` — the release-stage transition (`doti cycle stamp --stage release`) writes `+semver: minor` into the automatic transition commit, so GitVersion calculates a minor bump and `hx release`'s blank intent (which follows that bump) validates by default rather than failing 'Release intent mismatch'. A bug-fix-only cycle (the FR-034 assess->fix->test mini-cycle) never hits that transition, so it writes no minor signal and defaults to `patch`. An explicit `--major|--minor|--patch` overrides the +semver trailer and the release default together (kept in lockstep).
+
 ## Asking the operator a question (required format)
 
 Any operator-facing question — at any stage, for Claude or Codex — uses this fixed format, presented immediately before the question:

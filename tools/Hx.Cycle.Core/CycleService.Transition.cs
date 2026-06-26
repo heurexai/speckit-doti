@@ -111,14 +111,24 @@ public sealed partial class CycleService
     private static string TransitionCommitMessage(CycleState state, string nextStage, string? releaseIntent)
     {
         string message = $"{state.CurrentStage}: {state.Feature}";
-        if (string.Equals(nextStage, "release", StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrWhiteSpace(releaseIntent))
+        if (string.Equals(nextStage, "release", StringComparison.OrdinalIgnoreCase))
         {
-            message += $"\n\n+semver: {releaseIntent}";
+            message += $"\n\n+semver: {ReleaseSemverSignal(releaseIntent)}";
         }
 
         return message;
     }
+
+    /// <summary>
+    /// 007 T041 (FR-044/SC-016): the GitVersion <c>+semver:</c> signal a FEATURE cycle's release-stage transition
+    /// writes. A blank intent defaults to <c>minor</c> so GitVersion calculates a minor bump and <c>hx release</c>'s
+    /// default intent (which follows that bump) validates by default — no more blank-intent "Release intent mismatch".
+    /// An explicit <c>--release-intent</c> overrides (e.g. a feature that is really a patch). The bug-fix-only cycle is
+    /// the assess→fix→test mini-cycle (FR-034); it never reaches this transition, so it writes no minor signal → patch.
+    /// Public + pure so the default is unit-testable without a git repo.
+    /// </summary>
+    public static string ReleaseSemverSignal(string? releaseIntent) =>
+        string.IsNullOrWhiteSpace(releaseIntent) ? "minor" : releaseIntent.Trim().ToLowerInvariant();
 
     private static bool CanCommitReleaseStageRecovery(CycleStage target) =>
         string.Equals(target.Id, "release", StringComparison.OrdinalIgnoreCase)
