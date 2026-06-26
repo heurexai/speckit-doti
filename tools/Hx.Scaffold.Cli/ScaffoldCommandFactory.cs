@@ -167,7 +167,7 @@ public static class ScaffoldCommandFactory
 
     private static void AddDoti(RootCommand rootCommand, CliMeta meta, string configurationDirectory)
     {
-        Command group = new("doti", "Install or repair Doti repo workflow assets from this installed hx payload.");
+        Command group = new("doti", "Install, repair, migrate, or update Doti repo workflow assets from this installed hx payload.");
         AddDotiInstall(group, meta, configurationDirectory);
         AddDotiPayloadManifest(group, meta); // 007 T023 — pack-pipeline payload-descriptor generator
         rootCommand.Subcommands.Add(group);
@@ -203,7 +203,7 @@ public static class ScaffoldCommandFactory
 
     private static void AddDotiInstall(Command group, CliMeta meta, string configurationDirectory)
     {
-        Command command = new("install", "Install or repair .doti workflow assets into an explicit target repo.");
+        Command command = new("install", "Install, repair, migrate, or update Doti workflow assets in a --repo target (version-aware reconciliation; operator edits preserved).");
         Option<string?> repo = new("--repo") { Description = "Target repository root to install into. Required; the command never defaults to the current directory." };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
         Option<bool> force = new("--force") { Description = "Replace modified/unknown legacy Doti-owned assets during migration." };

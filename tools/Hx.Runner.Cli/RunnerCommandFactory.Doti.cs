@@ -54,7 +54,7 @@ public static partial class RunnerCommandFactory
 
     private static void AddDotiInstall(Command dotiCommand, CliMeta meta)
     {
-        Command command = new("install", "Install or repair .doti workflow assets into an explicit target repo.");
+        Command command = new("install", "Install, repair, migrate, or update Doti workflow assets in a --repo target (version-aware reconciliation; operator edits preserved).");
         Option<string?> repo = new("--repo") { Description = "Target repository root to install into. Required; the command never defaults to the current directory." };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
         Option<bool> force = new("--force") { Description = "Replace modified/unknown legacy Doti-owned assets during migration." };
