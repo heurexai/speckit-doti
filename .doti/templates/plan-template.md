@@ -2,6 +2,10 @@
 
 > Resolve unknowns and decide the design before code. The Constitution Check is a gate (before AND after design). Name the architecture rule deltas so the design is enforced, not just described.
 
+## Summary
+
+Primary requirement extracted from the spec + the technical approach (from research), in one paragraph.
+
 ## Technical Context
 
 Approach, stack, dependencies, and constraints relevant to scaffold-dotnet. Mark anything undecided `[NEEDS CLARIFICATION]` and resolve it in Research — do not plan on an unproven premise.
@@ -20,7 +24,21 @@ For each unknown / dependency / integration:
 
 ## Design
 
+**Selection rule:** choose the *simplest correct* design — one that satisfies the FR/SCs, fits the existing patterns, preserves deterministic proof (gates stay fail-closed), and avoids future drift. **Make it modular:** small single-responsibility units with clear seams — a named `*.Core` type per behavior, one concern per file/class, **composed rather than inlined** (right-sized, not premature abstraction). **Effort is not a criterion;** reject alternatives by architectural trade-off, not by convenience.
+
+**Patterns assessed (before deciding):** the existing similar code, the `*.Core` / `*.Cli` boundary this lands in, the command → `CliResult` → error-code convention, `rules/architecture.json` + `.sentrux/rules.toml`, and any `scaffold/templates/**` implications — note whether the design fits them or justifiably changes them.
+
 Technical approach and files likely to change. **Architecture delta:** projects / namespaces / layers added or moved, and the exact rule changes that encode it — the ArchUnitNET family in `rules/architecture.json` and the Sentrux layer / boundary in `.sentrux/rules.toml`, kept mutually consistent (`/doti-arch-review` validates both engines encode the same intent). A structural change without a matching rule change will drift.
+
+## CLI surface & error contract
+
+(Only if the feature adds or changes a CLI command/operation; omit this section otherwise.) For each new or changed command, declare:
+
+- **Error codes** it emits — the stable `<PREFIX><NNNN>` diagnostics, registered in `errorcodes/registry.json` (frozen append-only by `errorcodes check`).
+- **Exit class** — Success / Usage / Validation / Integrity / Internal.
+- **`describe` entry** — the command/option/exit-class surface it adds to the capability model, so an agent learns it in one call.
+- **Envelope** — returns the `CliResult` envelope, JSON-first (no direct console writes).
+- **Channel boundary** — new behavior lives in a `*.Core` library; the CLI delta is wiring-only (parse → delegate to a named core type → render). Name the core type each new command delegates to. Enforced by the thin-CLI families (`cliSurfaceConfinement` / `cliDelegation`).
 
 ## Command Availability
 
