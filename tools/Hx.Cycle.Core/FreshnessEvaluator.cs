@@ -1,4 +1,3 @@
-using Hx.Runner.Core.Io;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Cycle.Core;
@@ -47,11 +46,32 @@ public sealed class FreshnessEvaluator
         {
             string artifactPath = ResolveProduces(pattern, feature);
             string full = Path.GetFullPath(Path.Combine(_repositoryRoot, artifactPath.Replace('/', Path.DirectorySeparatorChar)));
-            string current = File.Exists(full) ? FileHashing.Sha256OfFile(full) : "absent";
+            string current = File.Exists(full) ? CanonicalArtifactHasher.CanonicalHashOfFile(full) : "absent";
             if (proof.ArtifactHashes.Count == 0 || !proof.ArtifactHashes.Contains(current))
             {
                 return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
                     $"artifact '{artifactPath}' changed since stamp");
+            }
+        }
+
+        // Living-Spec (FR-027): a stage also binds the canonical CONTENT of its transitive prerequisite
+        // artifacts, so editing the spec stales a dependent plan/tasks even though its own file is
+        // untouched — forcing re-clarify/re-analyze. Re-stamping an upstream stage WITHOUT a content change
+        // does NOT stale it (the binding is to content, not the upstream proof), removing the re-stamp cascade.
+        IReadOnlyList<string> currentPrereqs =
+            CanonicalArtifactHasher.PrerequisiteArtifactHashes(_repositoryRoot, _stageModel, proof.Stage, feature);
+        if (currentPrereqs.Count > 0)
+        {
+            if (proof.PrerequisiteArtifactHashes is null)
+            {
+                return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
+                    "missing prerequisite artifact binding; re-stamp with the current runner");
+            }
+
+            if (!proof.PrerequisiteArtifactHashes.SequenceEqual(currentPrereqs, StringComparer.Ordinal))
+            {
+                return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
+                    "a prerequisite artifact changed since stamp; re-clarify/re-analyze the dependent");
             }
         }
 

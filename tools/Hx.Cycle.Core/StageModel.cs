@@ -38,6 +38,28 @@ public sealed class StageModel
         ?? throw new InvalidOperationException(
             $"Unknown stage '{stageId}'. Known stages: {string.Join(", ", Stages.Select(s => s.Id))}.");
 
+    /// <summary>The transitive prerequisite closure of a stage, in workflow declaration order (deterministic).</summary>
+    public IReadOnlyList<CycleStage> TransitivePrereqStages(string stageId)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var stack = new Stack<string>(Find(stageId).Prereqs);
+        while (stack.Count > 0)
+        {
+            string id = stack.Pop();
+            if (!seen.Add(id))
+            {
+                continue;
+            }
+
+            foreach (string parent in Find(id).Prereqs)
+            {
+                stack.Push(parent);
+            }
+        }
+
+        return Stages.Where(s => seen.Contains(s.Id)).ToList();
+    }
+
     // YAML binding shapes (private; unmatched properties — name/maturity/rules/etc. — are ignored).
     private sealed class WorkflowDoc
     {

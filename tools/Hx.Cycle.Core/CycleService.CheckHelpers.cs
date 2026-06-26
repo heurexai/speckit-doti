@@ -97,29 +97,12 @@ public sealed partial class CycleService
             }
         }
 
-        string? expectedHash = CycleStageProofHasher.HashPrerequisites(state, prereqStage.Prereqs);
-        StagePrereqResult result = ValidatePrerequisiteHash(prereqId, proof, expectedHash);
+        // Living-Spec (FR-027): staleness from an upstream artifact edit is caught by FreshnessEvaluator's
+        // prerequisite-artifact-content binding (via evaluator.Evaluate above) plus the recursive own-freshness
+        // of each prerequisite. The old prerequisite-PROOF-hash check is removed: it bound dependents to upstream
+        // proof OBJECTS, so any re-stamp invalidated everything downstream (the throwaway cascade). Content
+        // binding keeps enforcement without the cascade.
         evaluating.Remove(prereqId);
-        return result;
-    }
-
-    private static StagePrereqResult ValidatePrerequisiteHash(
-        string prereqId,
-        CycleStageProof proof,
-        string? expectedHash)
-    {
-        if (string.IsNullOrWhiteSpace(proof.PrerequisiteProofHash))
-        {
-            return new StagePrereqResult(prereqId, "invalid", false,
-                "missing prerequisite proof hash; re-stamp the stage with the current runner");
-        }
-
-        if (!string.Equals(expectedHash, proof.PrerequisiteProofHash, StringComparison.Ordinal))
-        {
-            return new StagePrereqResult(prereqId, "invalid", false,
-                "prerequisite proof hash differs from the current prerequisite proofs");
-        }
-
         return new StagePrereqResult(prereqId, "fresh", true, null);
     }
 

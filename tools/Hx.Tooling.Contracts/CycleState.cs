@@ -86,7 +86,11 @@ public sealed record CycleStageProof(
     string ChangeSetId,
     IReadOnlyList<string> ArtifactHashes,
     string? StampedAtCommit,
-    string? PrerequisiteProofHash = null);
+    string? PrerequisiteProofHash = null,
+    // Living-Spec (FR-027): canonical content hashes of this stage's transitive prerequisite artifacts,
+    // captured at stamp. Binds a dependent to upstream CONTENT (not the upstream proof object), so a real
+    // upstream edit stales it while a no-content re-stamp does not. Null on proofs from a pre-FR-027 runner.
+    IReadOnlyList<string>? PrerequisiteArtifactHashes = null);
 
 /// <summary>
 /// The persistent doti cycle state (<c>.doti/cycle-state.json</c>, gitignored). Tracks the active

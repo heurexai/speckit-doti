@@ -1,4 +1,3 @@
-using Hx.Runner.Core.Io;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Cycle.Core;
@@ -18,8 +17,11 @@ public sealed partial class CycleService
         string resolvedBaseRef = baseRef ?? existing?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
         EnsurePrerequisitesFresh(stage);
         string? prerequisiteProofHash = CycleStageProofHasher.HashPrerequisites(existing, stage.Prereqs);
+        IReadOnlyList<string> prerequisiteArtifactHashes =
+            CanonicalArtifactHasher.PrerequisiteArtifactHashes(_repositoryRoot, _stageModel, stage.Id, resolvedFeature);
         string identity = ChangeSetIdentity.Of(_repositoryRoot, resolvedBaseRef, "HEAD");
-        CycleStageProof proof = CreateStageProof(stage, resolvedFeature, identity, prerequisiteProofHash);
+        CycleStageProof proof = CreateStageProof(
+            stage, resolvedFeature, identity, prerequisiteProofHash, prerequisiteArtifactHashes);
         var state = new CycleState(
             JsonContractDefaults.SchemaVersion,
             resolvedFeature,
@@ -155,14 +157,16 @@ public sealed partial class CycleService
         CycleStage stage,
         string resolvedFeature,
         string identity,
-        string? prerequisiteProofHash) =>
+        string? prerequisiteProofHash,
+        IReadOnlyList<string> prerequisiteArtifactHashes) =>
         new(
             stage.Id,
             CycleStageOutcome.Stamped,
             identity,
             ArtifactHashes(stage, resolvedFeature),
             GitRefs.TryHeadSha(_repositoryRoot),
-            prerequisiteProofHash);
+            prerequisiteProofHash,
+            prerequisiteArtifactHashes);
 
     private IReadOnlyList<string> ArtifactHashes(CycleStage stage, string resolvedFeature)
     {
@@ -173,7 +177,9 @@ public sealed partial class CycleService
 
         string artifactPath = FreshnessEvaluator.ResolveProduces(pattern, resolvedFeature);
         string full = Path.GetFullPath(Path.Combine(_repositoryRoot, artifactPath.Replace('/', Path.DirectorySeparatorChar)));
-        return File.Exists(full) ? [FileHashing.Sha256OfFile(full)] : [];
+        // Canonical (FR-027): EOL/checkbox/hash-marker-insensitive, so checking task boxes during
+        // /07-implement does not stale the doc stage that produced the tasks file.
+        return File.Exists(full) ? [CanonicalArtifactHasher.CanonicalHashOfFile(full)] : [];
     }
 
     private string CurrentStageAfterStamp(CycleState? existing, CycleStage stampedStage)
