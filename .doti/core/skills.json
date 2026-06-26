@@ -83,6 +83,15 @@
         "Drives BOTH update planes. Plane A updates the hx tool on this machine — `dotnet tool update -g Heurex.SpeckitDoti` for the NuGet global-tool channel, or the Microsoft Store for an MSIX install. Plane B reconciles THIS repo's `.doti` via `hx doti install --repo .`: the version-aware reconciliation preserves operator-modified managed files (a modified asset is kept and the bundled version is staged as a `.new` sidecar; an operator-deleted asset is not resurrected without `--force`; a repo whose payload is ahead of the bundled one is refused). Report the tool vX->vY transition (or 'already current') and the repo install/migrate/preserve/block result, flagging any `.new` sidecars to merge."
       ],
       "nextStage": "Resume your active cycle stage, or start a feature with `/01-doti-specify`."
+    },
+    {
+      "name": "doti-bug",
+      "description": "Run a bug fix as an enforced mini-cycle: assess (read-only) -> fix (bound to the assessment) -> test (honest). Utility — runs anytime, outside the feature cycle.",
+      "argumentHint": "[bug summary or id]",
+      "highlights": [
+        "ENFORCED assess -> fix -> test via `hx doti bug assess|fix|test`, recorded under `.doti/bugs/<bugId>/`. assess is read-only (verdict/severity/remediation contract; writes no code); fix is the only writer and fails closed unless bound to a CONFIRMED assessment (`bug-assessment-missing` / `bug-fix-unbound`); test is an honest verification where a `pass` requires evidence (an evidence-free pass is downgraded — no over-claiming). Each stage is proof-bound: the fix binds to the assessment's content hash, the test to the fix's. Per-stage detail: `extensions/bug/commands/speckit.bug.{assess,fix,test}.md`."
+      ],
+      "nextStage": "A passing test closes the bug. Resume your active cycle stage, or start a feature with `/01-doti-specify`."
     }
   ]
 }
