@@ -56,7 +56,8 @@ public static class CliApp
         RootCommand root,
         CliMeta meta,
         IReadOnlyList<ErrorCodeEntry> errorCodes,
-        CliDescribeWorkflow? workflow = null)
+        CliDescribeWorkflow? workflow = null,
+        DistributionChannelInfo? channel = null)
     {
         Option<bool> jsonOption = JsonOption();
         Command describe = new("describe",
@@ -64,7 +65,7 @@ public static class CliApp
         describe.Options.Add(jsonOption);
         describe.SetAction(parseResult => CliHost.Run(meta, "describe",
             () => CliResults.Ok(meta, "describe", $"{meta.Tool} capability description.",
-                DescribeWalker.Describe(meta, root, errorCodes, workflow)),
+                DescribeWalker.Describe(meta, root, errorCodes, workflow, channel)),
             forceJson: ForceJson(parseResult, jsonOption)));
         root.Subcommands.Add(describe);
     }

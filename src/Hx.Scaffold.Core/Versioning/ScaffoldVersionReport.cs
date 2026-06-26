@@ -103,6 +103,7 @@ public static class ScaffoldVersionReporter
             "hx-scaffold",
             executablePath: executablePath,
             applicationDirectory: applicationDirectory);
+        DistributionChannelInfo channel = InstalledPayload.ResolveChannel();
         if (string.IsNullOrWhiteSpace(repoRoot))
         {
             return new ScaffoldVersionReport(
@@ -112,7 +113,8 @@ public static class ScaffoldVersionReporter
                 ScaffoldVersionRelation.Unknown,
                 null,
                 [],
-                prerequisites);
+                prerequisites,
+                channel);
         }
 
         string root = Path.GetFullPath(repoRoot);
@@ -130,7 +132,8 @@ public static class ScaffoldVersionReporter
             relation,
             managed,
             diagnostics,
-            prerequisites);
+            prerequisites,
+            channel);
     }
 
     private static ScaffoldVersionIdentity? ReadStamp(string repoRoot, List<string> diagnostics)

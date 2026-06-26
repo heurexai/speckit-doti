@@ -145,4 +145,26 @@ public sealed class PayloadRootTests
         }
         finally { Directory.Delete(payload, recursive: true); }
     }
+
+    [Fact]
+    public void ResolveChannel_MapsGlobalTool_Msix_AndSource() // T012, FR-021/FR-022
+    {
+        DistributionChannelInfo gt = InstalledPayload.ResolveChannel(PayloadResolution.Success("root",
+            new PayloadDescriptor(PayloadDescriptor.CurrentSchemaVersion, "8", "0.9.1",
+                DistributionChannelId.GlobalTool, CommandMode.Installed, []), overrideActive: false));
+        Assert.Equal(DistributionChannelId.GlobalTool, gt.Channel);
+        Assert.Equal(CommandMode.Installed, gt.Mode);
+        Assert.Contains("dotnet tool update", gt.UpdateCommand!);
+
+        DistributionChannelInfo msix = InstalledPayload.ResolveChannel(PayloadResolution.Success("root",
+            new PayloadDescriptor(PayloadDescriptor.CurrentSchemaVersion, "8", "0.9.1",
+                DistributionChannelId.Msix, CommandMode.Installed, []), overrideActive: false));
+        Assert.Equal("Microsoft Store", msix.UpdateAuthority);
+
+        // No payload (a source/dev build) → source / source-developer.
+        DistributionChannelInfo src = InstalledPayload.ResolveChannel(
+            PayloadResolution.Fail(PayloadFailureKind.RootMissing, "no manifest", overrideActive: false));
+        Assert.Equal(DistributionChannelId.Source, src.Channel);
+        Assert.Equal(CommandMode.SourceDeveloper, src.Mode);
+    }
 }

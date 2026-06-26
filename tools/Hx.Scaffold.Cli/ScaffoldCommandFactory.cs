@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Hx.Cli.Kernel;
+using Hx.Scaffold.Core;
 using Hx.Scaffold.Core.Configuration;
 using Hx.Tooling.Contracts;
 
@@ -19,7 +20,7 @@ public static class ScaffoldCommandFactory
         AddRelease(rootCommand, meta, configurationDirectory);
         AddPrereq(rootCommand, meta, configurationDirectory);
         AddDoti(rootCommand, meta, configurationDirectory);
-        CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All);
+        CliApp.AddDescribe(rootCommand, meta, ErrorCodes.All, channel: InstalledPayload.ResolveChannel());
         return rootCommand;
     }
 

@@ -1,3 +1,5 @@
+using Hx.Tooling.Contracts;
+
 namespace Hx.Scaffold.Core;
 
 /// <summary>
@@ -37,4 +39,30 @@ public static class InstalledPayload
         throw new InvalidOperationException(
             resolution.FailureReason ?? "could not resolve the installed payload root");
     }
+
+    /// <summary>The active distribution channel + command-mode + update mechanism of the running <c>hx</c>
+    /// (FR-013/FR-021/FR-022): read from the installed payload descriptor, or the source/developer build when no
+    /// payload is present beside the executable. Read-only and source-free — never requires a source checkout.</summary>
+    public static DistributionChannelInfo ResolveChannel() => ResolveChannel(PayloadRoot.Resolve());
+
+    /// <summary>Map a payload resolution to its channel info (explicit input for testability).</summary>
+    public static DistributionChannelInfo ResolveChannel(PayloadResolution resolution) =>
+        resolution.Ok
+            ? ChannelInfoFor(resolution.Descriptor!.Channel, resolution.Descriptor.Mode)
+            : new DistributionChannelInfo(
+                DistributionChannelId.Source, CommandMode.SourceDeveloper,
+                InstallCommand: null, UpdateCommand: null, UpdateAuthority: "source checkout (self-host/dev build)");
+
+    private static DistributionChannelInfo ChannelInfoFor(string channel, string mode) => channel switch
+    {
+        DistributionChannelId.GlobalTool => new(channel, mode,
+            "dotnet tool install -g Heurex.SpeckitDoti",
+            "dotnet tool update -g Heurex.SpeckitDoti",
+            "dotnet tool"),
+        DistributionChannelId.Msix => new(channel, mode,
+            InstallCommand: null,
+            UpdateCommand: "the Microsoft Store updates the MSIX automatically",
+            UpdateAuthority: "Microsoft Store"),
+        _ => new(channel, mode, null, null, null),
+    };
 }
