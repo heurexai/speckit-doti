@@ -37,7 +37,24 @@ public sealed class DotiReconciliationTests
         { "selfHostingStatus": { "commandAvailabilityFootnote": "Footnote text.", "rootMaturityNote": "Maturity note." } }
         """;
 
+    // A REALISTIC operator edit: a valid skills.json variant (still renderable — same skill name/template), but with
+    // a changed description so its canonical hash differs from the bundled baseline (-> Modified -> preserved).
+    private const string OperatorSkillsEdit =
+        """
+        {
+          "schemaVersion": 1,
+          "maturity": "command-aware-advisory",
+          "commandTemplateDir": ".doti/core/templates/commands",
+          "agentContextRef": ".doti/agent-context.md",
+          "introTemplate": "Read `{agentContextRef}`, then follow `{commandTemplate}`.",
+          "skills": [
+            { "name": "doti-specify", "description": "Operator customized spec.", "argumentHint": "[goal]", "highlights": [], "nextStage": "Run `/doti-clarify`." }
+          ]
+        }
+        """;
+
     private static readonly string SkillsRelative = Path.Combine(".doti", "core", "skills.json");
+    private static readonly string ConstitutionRelative = Path.Combine(".doti", "memory", "constitution.md");
 
     [Fact]
     public void Repo_payload_newer_than_bundled_is_refused()
@@ -86,13 +103,12 @@ public sealed class DotiReconciliationTests
         {
             f.StampRepo("2.0.0");
             string skills = Path.Combine(f.Target, SkillsRelative);
-            string operatorEdit = "{ \"schemaVersion\": 1, \"operator\": \"do-not-clobber\" }\n";
-            File.WriteAllText(skills, operatorEdit);
+            File.WriteAllText(skills, OperatorSkillsEdit);
 
             DotiInstallResult result = DotiInstaller.Install(f.Source, f.Target, DotiAgentTarget.All, "equal-repo");
 
             // The operator's edit is preserved; the bundled version lands in a `.new` sidecar (never blind-overwritten).
-            Assert.Equal(operatorEdit, File.ReadAllText(skills));
+            Assert.Equal(OperatorSkillsEdit, File.ReadAllText(skills));
             Assert.True(File.Exists(skills + ".new"), "bundled managed asset should be staged as a .new sidecar");
             Assert.Equal(SkillsJson, File.ReadAllText(skills + ".new").TrimEnd());
             Assert.Contains(result.Preserved, e => e.Path.Replace('\\', '/') == ".doti/core/skills.json");
@@ -114,12 +130,11 @@ public sealed class DotiReconciliationTests
         {
             string skills = Path.Combine(target, SkillsRelative);
             Directory.CreateDirectory(Path.GetDirectoryName(skills)!);
-            string operatorContent = "{ \"schemaVersion\": 1, \"operator\": \"brownfield\" }\n";
-            File.WriteAllText(skills, operatorContent);
+            File.WriteAllText(skills, OperatorSkillsEdit);
 
             DotiInstaller.Install(source, target, DotiAgentTarget.All, "brownfield-repo");
 
-            Assert.Equal(operatorContent, File.ReadAllText(skills));
+            Assert.Equal(OperatorSkillsEdit, File.ReadAllText(skills));
             Assert.True(File.Exists(skills + ".new"), "brownfield install should stage the bundled asset as .new, not clobber");
         }
         finally
@@ -136,14 +151,15 @@ public sealed class DotiReconciliationTests
         try
         {
             f.StampRepo("2.0.0");
-            string skills = Path.Combine(f.Target, SkillsRelative);
-            File.Delete(skills); // operator intentionally removed a managed asset
+            // A non-render-critical managed asset the operator intentionally removed.
+            string constitution = Path.Combine(f.Target, ConstitutionRelative);
+            File.Delete(constitution);
 
             DotiInstaller.Install(f.Source, f.Target, DotiAgentTarget.All, "deleted-repo");
-            Assert.False(File.Exists(skills), "an operator-deleted managed asset must not be resurrected without --force");
+            Assert.False(File.Exists(constitution), "an operator-deleted managed asset must not be resurrected without --force");
 
             DotiInstaller.Install(f.Source, f.Target, DotiAgentTarget.All, "deleted-repo", force: true);
-            Assert.True(File.Exists(skills), "--force re-installs the deleted managed asset");
+            Assert.True(File.Exists(constitution), "--force re-installs the deleted managed asset");
         }
         finally
         {
@@ -168,6 +184,25 @@ public sealed class DotiReconciliationTests
         finally
         {
             f.Dispose();
+        }
+    }
+
+    [Fact]
+    public void Install_stamps_repo_payload_version_verbatim_from_the_bundled_descriptor()
+    {
+        // T030 invariant: .doti/payload.json's payloadVersion equals the bundled descriptor's, copied verbatim
+        // (the pre-release suffix is preserved, not normalized away).
+        string source = NewSource("7.3.1-rc.4");
+        string target = NewTempDir();
+        try
+        {
+            DotiInstaller.Install(source, target, DotiAgentTarget.All, "stamp-repo");
+            Assert.Equal("7.3.1-rc.4", ReadRepoVersion(target));
+        }
+        finally
+        {
+            ForceDelete(source);
+            ForceDelete(target);
         }
     }
 
@@ -218,24 +253,26 @@ public sealed class DotiReconciliationTests
         public void StampRepo(string version) =>
             WriteRepoStamp(Target, version);
 
-        public string? RepoVersion()
-        {
-            string path = Path.Combine(Target, ".doti", "payload.json");
-            if (!File.Exists(path))
-            {
-                return null;
-            }
-
-            RepoPayloadStamp? stamp = JsonSerializer.Deserialize<RepoPayloadStamp>(
-                File.ReadAllText(path), JsonContractSerializerOptions.Create());
-            return stamp?.PayloadVersion;
-        }
+        public string? RepoVersion() => ReadRepoVersion(Target);
 
         public void Dispose()
         {
             ForceDelete(Source);
             ForceDelete(Target);
         }
+    }
+
+    private static string? ReadRepoVersion(string target)
+    {
+        string path = Path.Combine(target, ".doti", "payload.json");
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        RepoPayloadStamp? stamp = JsonSerializer.Deserialize<RepoPayloadStamp>(
+            File.ReadAllText(path), JsonContractSerializerOptions.Create());
+        return stamp?.PayloadVersion;
     }
 
     private static void WriteRepoStamp(string target, string version)

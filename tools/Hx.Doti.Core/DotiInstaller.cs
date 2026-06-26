@@ -16,7 +16,7 @@ public static class DotiInstaller
     private static readonly string[] StaticDotiSubdirectories = ["core", "profiles", "templates", "memory", "workflows", "integrations"];
 
     public static DotiInstallResult Install(
-        string sourceRepoRoot,
+        string payloadRoot,
         string targetRepoRoot,
         IReadOnlyList<DotiAgentTarget> agents,
         string repoName,
@@ -26,15 +26,30 @@ public static class DotiInstaller
         bool targetCreated = !classification.Exists;
         Directory.CreateDirectory(targetRepoRoot);
 
-        string sourceDoti = Path.Combine(sourceRepoRoot, ".doti");
-        if (!File.Exists(Path.Combine(sourceDoti, "core", "skills.json")))
+        string payloadDoti = Path.Combine(payloadRoot, ".doti");
+        if (!File.Exists(Path.Combine(payloadDoti, "core", "skills.json")))
         {
             throw new DirectoryNotFoundException(
-                $"Doti source is missing at '{Path.Combine(sourceDoti, "core", "skills.json")}'; run install from the scaffold repo root.");
+                $"Doti payload is missing at '{Path.Combine(payloadDoti, "core", "skills.json")}'; the installed hx payload beside the executable is incomplete.");
         }
 
-        // 1. Copy the supported .doti payload. agent-context.md + skills are rendered (step 2);
-        //    integration.json / init-options.json are repo-specific (step 4).
+        // 007 T030: version-aware reconciliation. Refuse a repo whose recorded .doti payload is AHEAD of the bundled
+        // payload (no silent downgrade); absent/equal/older all run the conflict-aware forward copy below.
+        string? bundledVersion = ReadBundledPayloadVersion(payloadRoot);
+        string? repoVersion = ReadRepoPayloadVersion(targetRepoRoot);
+        if (bundledVersion is not null && repoVersion is not null
+            && ComparePayloadVersions(repoVersion, bundledVersion) > 0)
+        {
+            throw new InvalidOperationException(
+                $"Doti repo payload version '{repoVersion}' is ahead of the bundled payload version '{bundledVersion}'; " +
+                "refusing to downgrade this repo's .doti assets (Integrity_DotiRepoPayloadAhead).");
+        }
+
+        // The existing managed-asset baseline drives per-file preservation; scanning it fails closed on an escaping path.
+        IReadOnlyDictionary<string, ManagedAssetStatus> managed = ScanExistingManagedAssets(targetRepoRoot);
+
+        // 1. Reconcile the supported .doti payload into the target (operator edits preserved, never blind-overwritten).
+        //    agent-context.md + skills are rendered (step 2); integration.json / init-options.json are repo-specific.
         var copied = new List<string>();
         var installed = new List<DotiInstallPathEffect>();
         var preserved = new List<DotiInstallPathEffect>();
@@ -44,12 +59,16 @@ public static class DotiInstaller
 
         foreach (string sub in StaticDotiSubdirectories)
         {
-            string from = Path.Combine(sourceRepoRoot, ".doti", sub);
+            string from = Path.Combine(payloadRoot, ".doti", sub);
             if (Directory.Exists(from))
             {
-                CopyDirectory(from, Path.Combine(targetRepoRoot, ".doti", sub));
+                int installedCount = ReconcileManagedTree(
+                    payloadRoot, targetRepoRoot, from, managed, force, installed, preserved, skipped, blocked);
                 copied.Add($".doti/{sub}");
-                installed.Add(new DotiInstallPathEffect($".doti/{sub}", "managed Doti static asset set installed"));
+                if (installedCount > 0)
+                {
+                    installed.Add(new DotiInstallPathEffect($".doti/{sub}", "managed Doti static asset set installed"));
+                }
             }
         }
 
@@ -61,7 +80,7 @@ public static class DotiInstaller
         WriteMetadata(targetRepoRoot, repoName, agents, classification.Classification);
         installed.Add(new DotiInstallPathEffect(".doti/integration.json", "repo-specific Doti integration metadata written"));
         installed.Add(new DotiInstallPathEffect(".doti/init-options.json", "repo-specific Doti init options written"));
-        CopyPrerequisitePolicy(sourceRepoRoot, targetRepoRoot);
+        CopyPrerequisitePolicy(payloadRoot, targetRepoRoot);
         IReadOnlyList<string> gitIgnoreWrites = DotiGitIgnore.Ensure(targetRepoRoot);
 
         IReadOnlyList<ManagedAssetHashEntry> obsoleteAssets = RemoveObsoleteLegacyDotiAssets(
@@ -71,6 +90,14 @@ public static class DotiInstaller
         installed.Add(new DotiInstallPathEffect(ManagedAssetManifestStore.RelativePath, "canonical managed-asset baseline written"));
         copied.AddRange(gitIgnoreWrites);
         installed.AddRange(gitIgnoreWrites.Select(path => new DotiInstallPathEffect(path, "Doti runtime state ignore entries ensured")));
+
+        // 007 T030: stamp .doti/payload.json with the bundled payload version (verbatim from the descriptor) so the
+        // next install can branch absent/equal/older/newer. Written atomically so a crash re-runs to a clean state.
+        if (bundledVersion is not null)
+        {
+            StampRepoPayload(targetRepoRoot, bundledVersion, ReadBundledToolVersion(payloadRoot) ?? bundledVersion);
+            installed.Add(new DotiInstallPathEffect(".doti/payload.json", "repo payload version stamped from the bundled descriptor"));
+        }
 
         string? nextStep = classification.Classification is DotiInstallClassification.InstalledNewTarget
             or DotiInstallClassification.InstalledEmptyTarget
@@ -153,9 +180,9 @@ public static class DotiInstaller
         }
     }
 
-    private static void CopyPrerequisitePolicy(string sourceRepoRoot, string targetRepoRoot)
+    private static void CopyPrerequisitePolicy(string payloadRoot, string targetRepoRoot)
     {
-        string source = Path.Combine(sourceRepoRoot, ".doti", "core", "prerequisites.json");
+        string source = Path.Combine(payloadRoot, ".doti", "core", "prerequisites.json");
         if (!File.Exists(source))
         {
             return;
@@ -266,17 +293,162 @@ public static class DotiInstaller
         return full;
     }
 
-    private static void CopyDirectory(string sourceDir, string targetDir)
+    /// <summary>
+    /// 007 T030 (FR-015, SC-007/018): reconcile one bundled <c>.doti</c> subtree into the target. Every managed write
+    /// routes through <see cref="ResolveInside"/> (fail-closed on escape). A managed asset the operator MODIFIED (per
+    /// the baseline) or a pre-existing file with no baseline entry is preserved and the bundled version is staged as a
+    /// <c>.new</c> sidecar; an operator-DELETED managed asset is not resurrected without <paramref name="force"/>; a
+    /// modified template/skill blocks unless forced; clean / new files are installed. Returns the install count.
+    /// </summary>
+    private static int ReconcileManagedTree(
+        string payloadRoot,
+        string targetRepoRoot,
+        string sourceDir,
+        IReadOnlyDictionary<string, ManagedAssetStatus> managed,
+        bool force,
+        List<DotiInstallPathEffect> installed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> skipped,
+        List<DotiInstallPathEffect> blocked)
     {
-        Directory.CreateDirectory(targetDir);
-        foreach (string file in Directory.GetFiles(sourceDir))
+        string payloadDoti = Path.Combine(payloadRoot, ".doti");
+        int installedCount = 0;
+        foreach (string sourceFile in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
         {
-            File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)), overwrite: true);
+            string rel = ".doti/" + Path.GetRelativePath(payloadDoti, sourceFile).Replace('\\', '/');
+            string dest = ResolveInside(targetRepoRoot, rel);
+            bool exists = File.Exists(dest);
+            managed.TryGetValue(rel, out ManagedAssetStatus? status);
+
+            if (status?.State == ManagedAssetState.Modified && !force)
+            {
+                if (status.UpdateConflictPolicy == "managed-replace-preserve-live-config")
+                {
+                    StageSidecar(targetRepoRoot, rel, sourceFile);
+                    preserved.Add(new DotiInstallPathEffect(rel, "operator-modified managed asset preserved; bundled version staged as .new"));
+                    continue;
+                }
+
+                blocked.Add(new DotiInstallPathEffect(rel, "modified managed template/skill blocked; rerun with --force to overwrite"));
+                continue;
+            }
+
+            if (status?.State == ManagedAssetState.Missing && !force)
+            {
+                skipped.Add(new DotiInstallPathEffect(rel, "operator-deleted managed asset not resurrected without --force"));
+                continue;
+            }
+
+            if (status is null && exists)
+            {
+                // Pre-existing operator/foreign content with no managed baseline (brownfield): never blind-overwrite.
+                StageSidecar(targetRepoRoot, rel, sourceFile);
+                preserved.Add(new DotiInstallPathEffect(rel, "pre-existing operator content preserved; bundled version staged as .new"));
+                continue;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+            File.Copy(sourceFile, dest, overwrite: true);
+            installedCount++;
         }
 
-        foreach (string sub in Directory.GetDirectories(sourceDir))
+        return installedCount;
+    }
+
+    private static void StageSidecar(string targetRepoRoot, string rel, string sourceFile)
+    {
+        string sidecar = ResolveInside(targetRepoRoot, rel + ".new");
+        Directory.CreateDirectory(Path.GetDirectoryName(sidecar)!);
+        File.Copy(sourceFile, sidecar, overwrite: true);
+    }
+
+    private static IReadOnlyDictionary<string, ManagedAssetStatus> ScanExistingManagedAssets(string targetRepoRoot)
+    {
+        if (ManagedAssetManifestStore.Read(targetRepoRoot) is null)
         {
-            CopyDirectory(sub, Path.Combine(targetDir, Path.GetFileName(sub)));
+            return new Dictionary<string, ManagedAssetStatus>(StringComparer.OrdinalIgnoreCase);
         }
+
+        // Scan fails closed on a managed path that escapes the repository root (SC-018).
+        ManagedAssetScanResult scan = ManagedAssetScanner.Scan(targetRepoRoot);
+        return scan.Assets.ToDictionary(s => s.Path.Replace('\\', '/'), s => s, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string? ReadBundledPayloadVersion(string payloadRoot) =>
+        ReadPayloadDescriptor(payloadRoot)?.PayloadVersion is { Length: > 0 } v ? v : null;
+
+    private static string? ReadBundledToolVersion(string payloadRoot) =>
+        ReadPayloadDescriptor(payloadRoot)?.ToolVersion is { Length: > 0 } v ? v : null;
+
+    private static PayloadDescriptor? ReadPayloadDescriptor(string payloadRoot)
+    {
+        string manifest = Path.Combine(payloadRoot, "payload.manifest.json");
+        if (!File.Exists(manifest))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<PayloadDescriptor>(File.ReadAllText(manifest), JsonContractSerializerOptions.Create());
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string? ReadRepoPayloadVersion(string targetRepoRoot)
+    {
+        string path = Path.Combine(targetRepoRoot, ".doti", "payload.json");
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            RepoPayloadStamp? stamp = JsonSerializer.Deserialize<RepoPayloadStamp>(
+                File.ReadAllText(path), JsonContractSerializerOptions.Create());
+            return stamp?.PayloadVersion is { Length: > 0 } v ? v : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static void StampRepoPayload(string targetRepoRoot, string payloadVersion, string toolVersion)
+    {
+        string path = ResolveInside(targetRepoRoot, ".doti/payload.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        JsonSerializerOptions options = JsonContractSerializerOptions.Create();
+        options.WriteIndented = true;
+        string json = JsonSerializer.Serialize(
+            new RepoPayloadStamp(RepoPayloadStamp.CurrentSchemaVersion, payloadVersion, toolVersion), options);
+
+        string temp = path + ".tmp-" + Guid.NewGuid().ToString("n");
+        File.WriteAllText(temp, json);
+        File.Move(temp, path, overwrite: true);
+    }
+
+    // Compare payload versions by their numeric major.minor.patch core, tie-breaking on the full string so a
+    // pre-release/build suffix still orders deterministically.
+    private static int ComparePayloadVersions(string a, string b)
+    {
+        int core = VersionCore(a).CompareTo(VersionCore(b));
+        return core != 0 ? core : string.CompareOrdinal(a, b);
+    }
+
+    private static Version VersionCore(string value)
+    {
+        string core = value;
+        int cut = core.IndexOfAny(['-', '+']);
+        if (cut >= 0)
+        {
+            core = core[..cut];
+        }
+
+        return Version.TryParse(core, out Version? parsed) ? parsed : new Version(0, 0, 0, 0);
     }
 }

@@ -32,7 +32,7 @@ public static partial class ScaffoldCommands
                 [
                     new CliNextAction(
                         "Repair hx installation",
-                        "Re-run the verified Velopack installer so .doti assets are installed beside hx.exe.")
+                        "Reinstall the hx global tool (dotnet tool update -g Heurex.SpeckitDoti) or the Microsoft Store package so the .doti payload is present beside the executable.")
                 ]);
         }
 
