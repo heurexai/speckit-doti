@@ -63,6 +63,22 @@ public static class DotiWorkflowRegistry
     public static bool IsNormalCommand(string commandName) =>
         Stages.Any(s => string.Equals(s.CommandName, commandName, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// 007 T032: resolve the rendered identity for a skill. A numbered cycle stage (specify..release) keeps its
+    /// <c>NN-</c> ordinal SkillId, command name, and next-step from the registry. A UTILITY skill that is not a cycle
+    /// stage (e.g. <c>doti-upgrade</c>, invoked anytime, never transitioned through) renders UNNUMBERED — its SkillId
+    /// is the bare command name and its next-step comes from the skills.json entry — so it never pollutes the cycle.
+    /// </summary>
+    public static (string SkillId, string CommandName, string NextStep) ResolveSkillIdentity(
+        string commandName, string fallbackNextStep)
+    {
+        DotiWorkflowStage? stage = Stages.FirstOrDefault(
+            s => string.Equals(s.CommandName, commandName, StringComparison.OrdinalIgnoreCase));
+        return stage is not null
+            ? (stage.SkillId, stage.CommandName, stage.NextStep)
+            : (commandName, commandName, fallbackNextStep);
+    }
+
     private static DotiWorkflowStage Stage(
         int ordinal,
         string stageId,

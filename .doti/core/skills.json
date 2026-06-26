@@ -74,6 +74,15 @@
       "argumentHint": "[release intent]",
       "highlights": [],
       "nextStage": "Cycle complete. Start the next feature with `/01-doti-specify`."
+    },
+    {
+      "name": "doti-upgrade",
+      "description": "Upgrade the installed hx tool and reconcile this repo's Doti assets in one operator action (utility — runs anytime, outside the cycle).",
+      "argumentHint": "[optional]",
+      "highlights": [
+        "Drives BOTH update planes. Plane A updates the hx tool on this machine — `dotnet tool update -g Heurex.SpeckitDoti` for the NuGet global-tool channel, or the Microsoft Store for an MSIX install. Plane B reconciles THIS repo's `.doti` via `hx doti install --repo .`: the version-aware reconciliation preserves operator-modified managed files (a modified asset is kept and the bundled version is staged as a `.new` sidecar; an operator-deleted asset is not resurrected without `--force`; a repo whose payload is ahead of the bundled one is refused). Report the tool vX->vY transition (or 'already current') and the repo install/migrate/preserve/block result, flagging any `.new` sidecars to merge."
+      ],
+      "nextStage": "Resume your active cycle stage, or start a feature with `/01-doti-specify`."
     }
   ]
 }

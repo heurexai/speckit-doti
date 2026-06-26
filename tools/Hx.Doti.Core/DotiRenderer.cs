@@ -55,11 +55,11 @@ public static class DotiRenderer
 
         foreach (DotiSkillEntry skill in manifest.Skills)
         {
-            DotiWorkflowStage stage = DotiWorkflowRegistry.FindByCommandName(skill.Name);
+            (string skillId, _, _) = DotiWorkflowRegistry.ResolveSkillIdentity(skill.Name, skill.NextStage);
             foreach (DotiAgentTarget agent in agents)
             {
                 string content = SkillMarkdownRenderer.Render(manifest, skill, agent, footnote);
-                targets.Add(new DotiRenderTarget($"{agent.SkillsRoot}/{stage.SkillId}/SKILL.md", content));
+                targets.Add(new DotiRenderTarget($"{agent.SkillsRoot}/{skillId}/SKILL.md", content));
             }
         }
 
