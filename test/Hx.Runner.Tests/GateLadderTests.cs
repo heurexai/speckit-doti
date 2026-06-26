@@ -120,6 +120,36 @@ public sealed class GateLadderTests
     }
 
     [Fact]
+    public void EnforcedGate_MissingOrMalformedConfig_IsDetected_NoBypass_FR030()
+    {
+        string repo = NewRepo();
+        try
+        {
+            // An enforced opinionated gate whose config is absent (the delete-config bypass) is detected.
+            Assert.NotNull(GateConfigRequirements.MissingOrMalformedConfig(repo, "sentrux-check"));
+            Assert.NotNull(GateConfigRequirements.MissingOrMalformedConfig(repo, "architecture-test"));
+            Assert.Null(GateConfigRequirements.MissingOrMalformedConfig(repo, "hygiene")); // non-config-bearing
+
+            // Present + valid → satisfied.
+            Directory.CreateDirectory(Path.Combine(repo, ".sentrux"));
+            File.WriteAllText(Path.Combine(repo, ".sentrux", "rules.toml"), "[layers]\n");
+            Assert.Null(GateConfigRequirements.MissingOrMalformedConfig(repo, "sentrux-check"));
+            Directory.CreateDirectory(Path.Combine(repo, "rules"));
+            File.WriteAllText(Path.Combine(repo, "rules", "architecture.json"), "{\"families\":[]}");
+            Assert.Null(GateConfigRequirements.MissingOrMalformedConfig(repo, "architecture-test"));
+
+            // Malformed JSON → detected (the malformed-config bypass is closed).
+            File.WriteAllText(Path.Combine(repo, "rules", "architecture.json"), "{ not json");
+            Assert.NotNull(GateConfigRequirements.MissingOrMalformedConfig(repo, "architecture-test"));
+
+            // Empty config → detected.
+            File.WriteAllText(Path.Combine(repo, ".sentrux", "rules.toml"), "");
+            Assert.NotNull(GateConfigRequirements.MissingOrMalformedConfig(repo, "sentrux-check"));
+        }
+        finally { Directory.Delete(repo, recursive: true); }
+    }
+
+    [Fact]
     public void Coverage_IsSortedAndRecordsModes()
     {
         var ladder = new GateLadder("dotnet-lib", new Dictionary<string, GateMode>

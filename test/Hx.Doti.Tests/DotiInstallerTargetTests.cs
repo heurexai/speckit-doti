@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Hx.Doti.Core;
 using Hx.Doti.Core.ManagedAssets;
 using Hx.Tooling.Contracts;
@@ -134,6 +135,53 @@ public sealed class DotiInstallerTargetTests
             ForceDelete(source);
             ForceDelete(target);
         }
+    }
+
+    [Fact]
+    public void Non_doti_target_gets_the_non_imposing_workflow_only_tier_FR030()
+    {
+        string source = NewSourceRepo();
+        string target = NewTempDir();
+        File.WriteAllText(Path.Combine(target, "README.md"), "# existing foreign project\n");
+        try
+        {
+            DotiInstallResult result = DotiInstaller.Install(source, target, DotiAgentTarget.All, "existing-project");
+
+            Assert.Equal(DotiInstallClassification.InstalledNonEmptyNonDotiTarget, result.Classification);
+            // FR-030: doti must not impose the Heurex (Tier-3) structure on existing foreign code.
+            Assert.Equal("workflow-only", ReadInstalledProfile(target));
+        }
+        finally
+        {
+            ForceDelete(source);
+            ForceDelete(target);
+        }
+    }
+
+    [Fact]
+    public void New_scaffold_target_gets_the_dotnet_cli_tier()
+    {
+        string source = NewSourceRepo();
+        string parent = NewTempDir();
+        string target = Path.Combine(parent, "new-target");
+        try
+        {
+            DotiInstallResult result = DotiInstaller.Install(source, target, DotiAgentTarget.All, "new-target");
+
+            Assert.Equal(DotiInstallClassification.InstalledNewTarget, result.Classification);
+            Assert.Equal("dotnet-cli", ReadInstalledProfile(target));
+        }
+        finally
+        {
+            ForceDelete(source);
+            ForceDelete(parent);
+        }
+    }
+
+    private static string? ReadInstalledProfile(string target)
+    {
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(target, ".doti", "integration.json")));
+        return doc.RootElement.TryGetProperty("profile", out JsonElement p) ? p.GetString() : null;
     }
 
     [Fact]

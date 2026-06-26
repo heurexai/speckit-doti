@@ -58,7 +58,7 @@ public static class DotiInstaller
         installed.AddRange(render.Written.Select(path => new DotiInstallPathEffect(path, "rendered from Doti workflow source")));
 
         // 3. Repo-specific metadata.
-        WriteMetadata(targetRepoRoot, repoName, agents);
+        WriteMetadata(targetRepoRoot, repoName, agents, classification.Classification);
         installed.Add(new DotiInstallPathEffect(".doti/integration.json", "repo-specific Doti integration metadata written"));
         installed.Add(new DotiInstallPathEffect(".doti/init-options.json", "repo-specific Doti init options written"));
         CopyPrerequisitePolicy(sourceRepoRoot, targetRepoRoot);
@@ -92,7 +92,8 @@ public static class DotiInstaller
             blocked);
     }
 
-    private static void WriteMetadata(string targetRepoRoot, string repoName, IReadOnlyList<DotiAgentTarget> agents)
+    private static void WriteMetadata(
+        string targetRepoRoot, string repoName, IReadOnlyList<DotiAgentTarget> agents, string classification)
     {
         JsonSerializerOptions options = JsonContractSerializerOptions.Create();
         options.WriteIndented = true;
@@ -100,16 +101,56 @@ public static class DotiInstaller
         string dotiDir = Path.Combine(targetRepoRoot, ".doti");
         Directory.CreateDirectory(dotiDir);
 
+        string profile = ResolveInstallProfile(classification, targetRepoRoot);
         var integration = new DotiIntegration(
-            JsonContractDefaults.SchemaVersion, repoName, "dotnet-cli", "command-aware-advisory",
+            JsonContractDefaults.SchemaVersion, repoName, profile, "command-aware-advisory",
             agentKeys, ".doti/agent-context.md", ".doti/workflows/doti/workflow.yml",
             ".doti/memory/constitution.md", new DotiGeneratedBy(8, "scaffold-cli-new"));
         File.WriteAllText(Path.Combine(dotiDir, "integration.json"), JsonSerializer.Serialize(integration, options));
 
         var init = new DotiInitOptions(
-            JsonContractDefaults.SchemaVersion, "dotnet-cli", agentKeys, "command-aware-advisory",
-            ".doti/profiles/dotnet-cli/profile.json");
+            JsonContractDefaults.SchemaVersion, profile, agentKeys, "command-aware-advisory",
+            $".doti/profiles/{profile}/profile.json");
         File.WriteAllText(Path.Combine(dotiDir, "init-options.json"), JsonSerializer.Serialize(init, options));
+    }
+
+    /// <summary>
+    /// FR-030: <c>doti install --repo</c> must not impose the Heurex (Tier-3) structure on existing foreign code.
+    /// An existing non-Doti repo gets the non-imposing <c>workflow-only</c> tier; an upgrade preserves the repo's
+    /// already-declared tier; a new/empty scaffold target adopts the full <c>dotnet-cli</c> (Tier-3) tier.
+    /// </summary>
+    internal static string ResolveInstallProfile(string classification, string targetRepoRoot)
+    {
+        if (classification == DotiInstallClassification.InstalledNonEmptyNonDotiTarget)
+        {
+            return "workflow-only";
+        }
+
+        if (classification == DotiInstallClassification.UpgradedExistingDotiRepo)
+        {
+            return ReadExistingProfile(targetRepoRoot) ?? "dotnet-cli";
+        }
+
+        return "dotnet-cli";
+    }
+
+    private static string? ReadExistingProfile(string targetRepoRoot)
+    {
+        string path = Path.Combine(targetRepoRoot, ".doti", "integration.json");
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));
+            return doc.RootElement.TryGetProperty("profile", out JsonElement p) ? p.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static void CopyPrerequisitePolicy(string sourceRepoRoot, string targetRepoRoot)

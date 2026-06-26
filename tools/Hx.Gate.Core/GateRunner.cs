@@ -44,17 +44,17 @@ public static class GateRunner
 
         Emit(HygieneStep(repositoryRoot, lane));
         Emit(GitleaksVerifyStep(repositoryRoot));
-        Emit(ApplyTier(ladder, "sentrux-verify", () => SentruxVerifyStep(repositoryRoot)));
+        Emit(ApplyTier(ladder, repositoryRoot, "sentrux-verify", () => SentruxVerifyStep(repositoryRoot)));
         AffectedGatePlan affected = AffectedChangeStep(repositoryRoot);
         Emit(affected.Step);
         TaskCompletionProof taskCompletionProof = DotiTaskCompletion.CreateActiveFeatureProof(repositoryRoot);
         Emit(TaskCompletionStep(taskCompletionProof));
         BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, affected.Plan);
         Emit(buildAndTest.Step);
-        Emit(ApplyTier(ladder, "architecture-test", () => ArchitectureStep(repositoryRoot)));
+        Emit(ApplyTier(ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
         Emit(SkillDriftStep(repositoryRoot));
         Emit(DotiPayloadStep(repositoryRoot));
-        Emit(ApplyTier(ladder, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
+        Emit(ApplyTier(ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
         Emit(VersionStep(repositoryRoot, lane));
         Emit(SecurityStep(repositoryRoot, lane));
         ReleaseDocumentationProof? documentationProof = null;
@@ -80,14 +80,24 @@ public static class GateRunner
     }
 
     // Apply the tier's mode to an opinionated gate step (FR-029): Skip → do not run; Advisory → run but never
-    // fail the gate; Enforced (the default for an undeclared step) → run fail-closed as today.
-    private static GateStep ApplyTier(GateLadder ladder, string stepName, Func<GateStep> run)
+    // fail the gate; Enforced (the default for an undeclared step) → run fail-closed as today. Bypass-safety
+    // (FR-030): when the tier ENFORCES a gate but its config is missing/malformed, fail closed — no
+    // delete-config bypass — instead of letting the underlying gate silently skip.
+    private static GateStep ApplyTier(GateLadder ladder, string repositoryRoot, string stepName, Func<GateStep> run)
     {
         GateMode mode = ladder.ModeFor(stepName);
         if (mode == GateMode.Skip)
         {
             return new GateStep(stepName, StageOutcome.Skipped,
                 [new GateEvidence(stepName, $"skipped by tier '{ladder.Tier}'")]);
+        }
+
+        if (mode == GateMode.Enforced
+            && GateConfigRequirements.MissingOrMalformedConfig(repositoryRoot, stepName) is { } missing)
+        {
+            return new GateStep(stepName, StageOutcome.Fail,
+                [new GateEvidence($"{stepName}.profile-gate-missing-config",
+                    $"tier '{ladder.Tier}' enforces '{stepName}' but its config is missing or malformed: {missing} — no delete-config bypass (FR-030)")]);
         }
 
         GateStep step = run();
