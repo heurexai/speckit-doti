@@ -33,20 +33,57 @@ public static class CliApp
         parseResult.GetValue(jsonOption) ? true : null;
 
     /// <summary>
-    /// The thin entry point each tool's <c>Program.cs</c> calls instead of <c>root.Parse(args).Invoke()</c>:
-    /// renders the Heurex-branded help for root and subcommands from one shared renderer, and otherwise dispatches
-    /// to System.CommandLine.
+    /// The hardened entry point each tool's <c>Program.cs</c> calls instead of <c>root.Parse(args).Invoke()</c>
+    /// (FR-017/FR-018): the kernel owns ALL help, <c>--version</c>, and parse-error rendering through the shared
+    /// branded renderer / <c>CliResult</c> envelope, so NO command surface falls through to System.CommandLine's
+    /// default help/version/error output. The interception happens before <c>Invoke()</c> (parsing renders
+    /// nothing; only <c>Invoke()</c> would run SCL's default help/version/error actions), so by branding those
+    /// cases and only invoking a real command action, the SCL defaults are never reached.
     /// </summary>
-    public static int Invoke(RootCommand root, CliMeta meta, string[] args, string banner, string tagline)
+    public static int Harden(
+        RootCommand root, CliMeta meta, string[] args, string banner, string tagline, Stream? output = null)
     {
+        // 1. Help (any form, any level) → branded help.
         if (CliHelpRequestParser.TryParse(root, args) is { } help)
         {
             CliRenderer.WriteHelp(root, help.Command, help.Path, meta, banner, tagline, help.Mode);
             return (int)ExitClass.Success;
         }
 
-        return root.Parse(args).Invoke();
+        ParseResult parse = root.Parse(args);
+        bool? forceJson = args.Contains("--json", StringComparer.Ordinal) ? true : null;
+
+        // 2. Root --version → branded CliResult (never SCL's default version line).
+        if (IsRootVersionRequest(root, parse, args))
+        {
+            return CliHost.Run(meta, "version",
+                () => CliResults.Ok(meta, "version", $"{meta.Tool} {meta.Version}",
+                    new { tool = meta.Tool, version = meta.Version }),
+                output, forceJson: forceJson);
+        }
+
+        // 3. Parse errors (unknown command/option, unknown subcommand, missing required arg) → branded Usage
+        //    CliResult (never SCL's default unbranded error text).
+        if (parse.Errors.Count > 0)
+        {
+            string detail = string.Join("; ", parse.Errors.Select(e => e.Message));
+            return CliHost.Run(meta, "usage",
+                () => CliResults.Fail(meta, "usage", ExitClass.Usage,
+                    [Diag.Of(ErrorCodes.Usage_InvalidArguments, detail)]),
+                output, forceJson: forceJson);
+        }
+
+        // 4. A real command → execute; its own action renders its CliResult.
+        return parse.Invoke();
     }
+
+    /// <summary>Back-compat alias — delegates to <see cref="Harden"/> so existing roots harden without churn.</summary>
+    public static int Invoke(RootCommand root, CliMeta meta, string[] args, string banner, string tagline) =>
+        Harden(root, meta, args, banner, tagline);
+
+    private static bool IsRootVersionRequest(RootCommand root, ParseResult parse, string[] args) =>
+        args.Any(a => string.Equals(a, "--version", StringComparison.OrdinalIgnoreCase))
+        && ReferenceEquals(parse.CommandResult.Command, root);
 
     /// <summary>
     /// Adds a kernel-generated <c>describe</c> subcommand that emits the capability model for <paramref name="root"/>
