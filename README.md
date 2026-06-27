@@ -39,7 +39,8 @@ If you already know GitHub Spec Kit, think of speckit-doti as the same spec-firs
 | Familiar Spec Kit idea | Original Spec Kit | speckit-doti |
 | --- | --- | --- |
 | Project start | `specify init` installs Spec Kit workflow assets into a project. | `hx new` creates a compiling .NET repo, or `hx doti install --repo <path>` adds Doti to an existing repo. |
-| Workflow shape | `constitution`, `specify`, `clarify`, `plan`, `tasks`, `analyze`, `implement`, with optional `checklist`, `converge`, and `taskstoissues`. | `specify`, `clarify`, `plan`, `tasks`, `analyze`, plus Doti-only `arch-review`, `drift-review`, and `release`. |
+| Workflow shape | `constitution`, `specify`, `clarify`, `plan`, `tasks`, `analyze`, `implement`, with optional `checklist`, `converge`, and `taskstoissues`. | `specify`, `clarify`, `plan`, `tasks`, `analyze`, plus Doti-only `arch-review`, `drift-review`, and `release`; the project `constitution` is an unnumbered `/doti-constitution` skill that `plan` and `arch-review` consume. |
+| Constitution | A single constitution document, SemVer-versioned with a Sync Impact Report on each amendment. | **Two layers** — **§1** inherited doti invariants (cited, already gate/ArchUnit/Sentrux/GitVersion-enforced, never re-declared) + **§2** project declarations (the only operator-authored content) — re-injected **fresh** into `plan` and `arch-review` via `hx doti constitution`; amendments are tracked by the cycle + git, with **no** SemVer doc-version line or Sync Impact Report ritual. |
 | Enforcement model | Agent prompts, templates, scripts, review gates, and checklists guide the process. | CLI-backed stage proofs, freshness checks, task hashes, pre-release gates, and fail-closed transition checks enforce the process. |
 | Architecture | Technology-independent; architecture depends on the plan and project conventions. | Opinionated .NET architecture is generated and checked with ArchUnitNET, Sentrux, analyzers, and rule files. |
 | Agent integration | Broad integration ecosystem for many agents and IDEs. | Focused rendered skills for Codex and Claude today, with JSON-first `hx` commands that agents can drive directly. |
@@ -140,15 +141,18 @@ Doti keeps the useful shape of GitHub Spec Kit, then adds enforcement.
 
 Each stage is stamped through `hx doti cycle`. Later stages check that prerequisites are present, fresh, and valid. The result is a workflow an agent can follow, but not quietly skip.
 
+Alongside the numbered stages, the unnumbered `/doti-constitution` skill maintains the project **constitution** — **§1** inherited doti invariants (the codified givens) plus **§2** project declarations (tech stack, coding style, domain) — which `plan` and `arch-review` re-read fresh via `hx doti constitution`, so the agent always reviews against the current rules rather than a stale snapshot.
+
 ---
 
 ## Proofs, gates, and recovery
 
-The main branch now includes the 007/008 release-train work: source-free installed `hx`, tiered Doti install, review recovery, deterministic change context, and advisory local semantic drift candidates.
+The main branch now includes the 007–011 work: source-free installed `hx`, tiered Doti install, review recovery, deterministic change context, advisory local semantic drift candidates, and the project constitution stage.
 
 Key capabilities:
 
-- **Source-free workflow surface** - installed `hx` exposes `gate run`, `architecture test`, `sentrux verify/check`, `hygiene scan`, `security scan`, `version calculate`, `doti cycle`, `doti render-skills`, `doti install`, `doti payload check`, `doti install-hooks`, and `impact plan`.
+- **Source-free workflow surface** - installed `hx` exposes `gate run`, `architecture test`, `sentrux verify/check`, `hygiene scan`, `security scan`, `version calculate`, `doti cycle`, `doti constitution`, `doti render-skills`, `doti install`, `doti payload check`, `doti install-hooks`, and `impact plan`.
+- **Always-fresh constitution** - `hx doti constitution` emits the project's §1/§2 constitution; `plan` and `arch-review` evaluate against fresh §2, with delivery code-enforced and evaluation agent-judged (the deterministic gate is unchanged).
 - **Tiered adoption** - install Doti into different repo shapes without pretending every repo is the Heurex scaffold.
 - **Task-hash completion** - checked tasks must carry canonical `doti-task-hash` markers; stale or missing hashes fail the gate.
 - **Review recovery** - `hx doti cycle refresh-plan` and `refresh --apply-safe` show exactly which stale proofs can be safely reinterpreted and which stages must rerun.
@@ -187,6 +191,7 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx doti cycle refresh --apply-safe` | Rebind only safe-to-reinterpret stale proofs. |
 | `hx doti task-hash stamp` | Stamp canonical hashes for completed tasks. |
 | `hx doti review-context` | Emit deterministic review context for the current change set. |
+| `hx doti constitution` | Emit the project constitution (§2 declarations) for fresh plan and arch-review context. |
 | `hx doti drift-candidates` | Run advisory local semantic drift search. |
 | `hx doti bug assess/fix/test` | Run the enforced bug mini-cycle. |
 | `hx doti converge` | Compare feature prose and tasks for requirement coverage. |
@@ -223,7 +228,7 @@ Doti is generated from repo-owned source assets. Edit the source, then render an
 | --- | --- |
 | Workflow stages and agent skill text | `.doti/core/skills.json` and `.doti/core/templates/` |
 | Stage order and produced artifacts | `.doti/core/workflows/doti/workflow.yml` |
-| Repo principles | `.doti/core/memory/constitution.md` |
+| Repo principles (the constitution) | `.doti/memory/constitution.md` |
 | Architecture gates | `rules/architecture.json` and architecture tests |
 | Sentrux boundaries | `.sentrux/rules.toml` |
 | Doti tier | `.doti/integration.json` and `.doti/profiles/` |
@@ -245,7 +250,7 @@ hx gate run --repo . --profile normal --json
 - Semantic drift candidates are advisory only. A clean candidate list is not proof.
 - `workflow-only` can help non-.NET repos adopt the Doti process, but the full scaffold value is .NET-focused.
 - Current main includes release-train work beyond the older public release notes. Check [CHANGELOG.md](CHANGELOG.md) for what is published vs. unreleased.
-- Latest unreleased cycles: `009-constitution-stage-and-fresh-context` — a project constitution stage (§1 inherited invariants + §2 project declarations), always-fresh §2 injection at plan and architecture review, and a .NET-tuned advisory drift finder; and `010-single-source-constitution` — the constitution single-sourced at `.doti/memory/constitution.md` (the redundant `.doti/core/memory` twin removed). See [CHANGELOG.md](CHANGELOG.md) for the full notes.
+- Latest unreleased cycles: `009-constitution-stage-and-fresh-context` — a project constitution stage (§1 inherited invariants + §2 project declarations), always-fresh §2 injection at plan and architecture review, and a .NET-tuned advisory drift finder; `010-single-source-constitution` — the constitution single-sourced at `.doti/memory/constitution.md` (the redundant `.doti/core/memory` twin removed); and `011-readme-accuracy-and-constitution` — this README corrected and the Spec Kit comparison updated to show doti's two-layer constitution. See [CHANGELOG.md](CHANGELOG.md) for the full notes.
 
 ---
 
