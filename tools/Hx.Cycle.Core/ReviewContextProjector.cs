@@ -61,46 +61,39 @@ public sealed class ReviewContextProjector
             escalations.ToList());
     }
 
+    // Ordered dispatch (first match wins). Each compound test is a named predicate so this method stays a flat, low-
+    // complexity router — the boolean fan-out lives in the helpers, not here.
     private ReviewCategory Categorize(string path)
     {
         string normalized = path.Replace('\\', '/');
-        string[] segments = normalized.Split('/');
-        string file = segments[^1];
+        string file = normalized.Split('/')[^1];
 
-        if (segments.Any(s => s is "bin" or "obj"))
+        if (IsGenerated(normalized))
         {
             return ReviewCategory.Generated;
         }
 
-        // Generated-code templates are CODE — they become a real repo, so they run the code lenses.
-        if (normalized.StartsWith("scaffold/templates/", StringComparison.OrdinalIgnoreCase))
+        if (IsGeneratedTemplate(normalized))
         {
             return ReviewCategory.GeneratedTemplate;
         }
 
-        // A project / solution change is a dependency-edge / layering surface (FR-027, SC-013).
-        if (file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
-            || file.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
-            || file.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+        if (IsDependencyEdge(file))
         {
             return ReviewCategory.DependencyEdge;
         }
 
-        // Contracts layer + the append-only error-code registry.
-        if (string.Equals(_layers.LayerOf(normalized), "contracts", StringComparison.OrdinalIgnoreCase)
-            || normalized.StartsWith("errorcodes/", StringComparison.OrdinalIgnoreCase))
+        if (IsContract(normalized))
         {
             return ReviewCategory.Contract;
         }
 
-        // Doti prose: command templates, skills, agent-context, the .doti tree's non-code assets.
-        if (normalized.StartsWith(".doti/", StringComparison.OrdinalIgnoreCase) && !IsCodeExtension(file))
+        if (IsDotiProse(normalized, file))
         {
             return ReviewCategory.DotiProse;
         }
 
-        if (file.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
-            || normalized.StartsWith("docs/", StringComparison.OrdinalIgnoreCase))
+        if (IsDocs(normalized, file))
         {
             return ReviewCategory.DocsOnly;
         }
@@ -110,16 +103,46 @@ public sealed class ReviewContextProjector
             return ReviewCategory.Broad;
         }
 
-        if (IsCodeExtension(file)
-            && (normalized.StartsWith("src/", StringComparison.OrdinalIgnoreCase)
-                || normalized.StartsWith("tools/", StringComparison.OrdinalIgnoreCase)
-                || normalized.StartsWith("test/", StringComparison.OrdinalIgnoreCase)))
+        if (IsRuntimeCode(normalized, file))
         {
             return ReviewCategory.RuntimeCode;
         }
 
         return ReviewCategory.Unknown;
     }
+
+    // bin/obj output is generated, never reviewed.
+    private static bool IsGenerated(string normalized) =>
+        normalized.Split('/').Any(s => s is "bin" or "obj");
+
+    // Generated-code templates are CODE — they become a real repo, so they run the code lenses.
+    private static bool IsGeneratedTemplate(string normalized) =>
+        normalized.StartsWith("scaffold/templates/", StringComparison.OrdinalIgnoreCase);
+
+    // A project / solution change is a dependency-edge / layering surface (FR-027, SC-013).
+    private static bool IsDependencyEdge(string file) =>
+        file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
+        || file.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)
+        || file.EndsWith(".sln", StringComparison.OrdinalIgnoreCase);
+
+    // Contracts layer + the append-only error-code registry.
+    private bool IsContract(string normalized) =>
+        string.Equals(_layers.LayerOf(normalized), "contracts", StringComparison.OrdinalIgnoreCase)
+        || normalized.StartsWith("errorcodes/", StringComparison.OrdinalIgnoreCase);
+
+    // Doti prose: command templates, skills, agent-context, the .doti tree's non-code assets.
+    private static bool IsDotiProse(string normalized, string file) =>
+        normalized.StartsWith(".doti/", StringComparison.OrdinalIgnoreCase) && !IsCodeExtension(file);
+
+    private static bool IsDocs(string normalized, string file) =>
+        file.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
+        || normalized.StartsWith("docs/", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRuntimeCode(string normalized, string file) =>
+        IsCodeExtension(file)
+        && (normalized.StartsWith("src/", StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith("tools/", StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith("test/", StringComparison.OrdinalIgnoreCase));
 
     private static IReadOnlyList<string> LensesFor(ReviewCategory category) => category switch
     {
