@@ -38,10 +38,11 @@ public static class ImpactCommandFactory
         Option<string> planConfiguration = new("--configuration") { Description = "Build configuration for the emitted test commands.", DefaultValueFactory = _ => "Release" };
         Option<string> planFor = new("--for")
         {
-            Description = "Audience: 'tests' (default — affected test scope) or 'arch-review' (changed-files context for /06-doti-arch-review).",
+            Description = "Audience: 'tests' (default — affected test scope), 'arch-review' (changed-files context for /06), or 'change-context' (status-rich change set for /08-drift-review).",
             DefaultValueFactory = _ => ImpactCommands.AudienceTests,
         };
-        planFor.AcceptOnlyFromAmong(ImpactCommands.AudienceTests, ImpactCommands.AudienceArchReview);
+        planFor.AcceptOnlyFromAmong(
+            ImpactCommands.AudienceTests, ImpactCommands.AudienceArchReview, ImpactCommands.AudienceChangeContext);
         Option<bool> planJson = CliApp.JsonOption();
         planCommand.Options.Add(planRepo);
         planCommand.Options.Add(planBase);

@@ -47,3 +47,9 @@ packages/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 008 FR-030: the Sentrux two-try optimization log (local gate telemetry).
+.doti/sentrux-optimization-log.json
+
+# 008 FR-014: .doti/templates is materialized from .doti/core/templates (single source); never committed.
+.doti/templates/

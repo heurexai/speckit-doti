@@ -22,5 +22,11 @@
     <ProjectReference Include="..\..\tools\Hx.Impact.Cli\Hx.Impact.Cli.csproj" />
     <ProjectReference Include="..\..\tools\Hx.Runner.Core\Hx.Runner.Core.csproj" />
     <ProjectReference Include="..\..\tools\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+    <!-- 008 H-3: the semantic stack assemblies, registered so the FR-040/FR-021/FR-020 boundary rules below
+         load real subjects rather than passing vacuously. Hx.Semantic.Cli is a separate exe (not referenced
+         transitively by the runner), so it needs a direct edge. -->
+    <ProjectReference Include="..\..\tools\Hx.Embedding.Core\Hx.Embedding.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Semantic.Core\Hx.Semantic.Core.csproj" />
+    <ProjectReference Include="..\..\tools\Hx.Semantic.Cli\Hx.Semantic.Cli.csproj" />
   </ItemGroup>
 </Project>

@@ -20,5 +20,10 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.3" />
+    <!-- 008 Phase 5 (FR-039): the local-CPU dual-engine embedding stack (ported from polaris-core). -->
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />
+    <PackageVersion Include="BlingFireNuget" Version="0.1.8" />
+    <PackageVersion Include="LLamaSharp" Version="0.27.0" />
+    <PackageVersion Include="LLamaSharp.Backend.Cpu" Version="0.27.0" />
   </ItemGroup>
 </Project>

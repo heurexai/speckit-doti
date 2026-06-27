@@ -6,6 +6,8 @@ using Hx.Runner.Core.Process;
 using Hx.Runner.Core.Repository;
 using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
+// Disambiguate the established hygiene type from the new Hx.Tooling.Contracts.ChangedFile (change-set context).
+using ChangedFile = Hx.Runner.Core.Git.ChangedFile;
 
 namespace Hx.Runner.Core.Hygiene;
 

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 008 M-5: the DEV-ONLY semantic entry (not a second shipped tool). The operator surface is `hx doti
+       drift-candidates`, composed into the packed tool over Hx.Semantic.Core. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Hx.Semantic.Cli</AssemblyName>
+    <RootNamespace>Hx.Semantic.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hx.Semantic.Core\Hx.Semantic.Core.csproj" />
+    <ProjectReference Include="..\Hx.Cli.Kernel\Hx.Cli.Kernel.csproj" />
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+  </ItemGroup>
+</Project>

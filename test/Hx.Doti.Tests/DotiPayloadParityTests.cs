@@ -27,22 +27,36 @@ public sealed class DotiPayloadParityTests
         Assert.Contains("hx.config.json", File.ReadAllText(Path.Combine(repo, ".doti", "agent-context.md")));
     }
 
+    // T032 (FR-017, SC-006/007): with the committed `.doti/templates` twin ABSENT (gitignored), the MATERIALIZED
+    // copy must equal `.doti/core/templates` byte-for-byte — proving core/templates is the single source and the
+    // materializer (the sole writer) is correct.
     [Fact]
-    public void Install_templates_mirror_core_templates_byte_for_byte()
+    public void Materialized_templates_match_core_templates_byte_for_byte()
     {
         string repo = FindRepoRoot();
         string coreRoot = Path.Combine(repo, ".doti", "core", "templates");
-        string installRoot = Path.Combine(repo, ".doti", "templates");
-
-        string[] coreFiles = RelativeFiles(coreRoot);
-        string[] installFiles = RelativeFiles(installRoot);
-
-        Assert.Equal(coreFiles, installFiles);
-        foreach (string relative in coreFiles)
+        string temp = Path.Combine(Path.GetTempPath(), "doti-materialize-" + Guid.NewGuid().ToString("N"));
+        try
         {
-            string coreFile = Path.Combine(coreRoot, relative.Replace('/', Path.DirectorySeparatorChar));
-            string installFile = Path.Combine(installRoot, relative.Replace('/', Path.DirectorySeparatorChar));
-            Assert.Equal(File.ReadAllBytes(coreFile), File.ReadAllBytes(installFile));
+            string target = Path.Combine(temp, ".doti", "templates");
+            IReadOnlyList<string> written = DotiTemplateMaterializer.MaterializeFromTo(coreRoot, target);
+
+            Assert.NotEmpty(written);
+            string[] coreFiles = RelativeFiles(coreRoot);
+            Assert.Equal(coreFiles, RelativeFiles(target));
+            foreach (string relative in coreFiles)
+            {
+                string coreFile = Path.Combine(coreRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+                string materializedFile = Path.Combine(target, relative.Replace('/', Path.DirectorySeparatorChar));
+                Assert.Equal(File.ReadAllBytes(coreFile), File.ReadAllBytes(materializedFile));
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(temp))
+            {
+                Directory.Delete(temp, recursive: true);
+            }
         }
     }
 

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 008 FR-018/019/020: the advisory semantic drift finder. Refs the standalone embedding library + the change-set
+       engine + contracts. NEVER referenced by Hx.Gate.Core / Hx.Cycle.Core (the compile-checked never-gating boundary,
+       FR-020/SC-009) — so semantic output can never reach a proof. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Hx.Embedding.Core\Hx.Embedding.Core.csproj" />
+    <ProjectReference Include="..\Hx.Impact.Core\Hx.Impact.Core.csproj" />
+    <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+  </ItemGroup>
+</Project>

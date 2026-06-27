@@ -46,7 +46,8 @@ public static partial class SentruxChecker
 
         StageOutcome outcome = Worst(verification.Outcome, rules.Outcome, regression.Outcome);
         return Build(outcome, verification, rules.Outcome, rules.Violations,
-            rules.QualitySignal, regression.BaselineSignal, policy.SignalToleranceBand, regression.Outcome, regression.Notes, advisory);
+            rules.QualitySignal, regression.BaselineSignal, policy.SignalToleranceBand, regression.Outcome, regression.Notes, advisory,
+            SentruxRegression.Id(regression.Verdict));
     }
 
 }

@@ -3,14 +3,19 @@ using Hx.Runner.Core.Io;
 
 namespace Hx.Cycle.Core;
 
-/// <summary>The staged/unstaged shape of the working tree for the codified commit's scope check.</summary>
+/// <summary>The staged/unstaged shape of the working tree for the codified commit's scope check.
+/// <see cref="UntrackedPaths"/> / <see cref="UnstagedTrackedPaths"/> carry the actual paths (not just the
+/// booleans) so a new-feature start can subtract the incoming feature's owned paths from the prior feature's
+/// readiness rejection (FR-038/BL-2).</summary>
 public sealed record CommitScope(
     bool HasStaged,
     bool HasUnstagedTrackedChanges,
     bool HasUntrackedChanges,
     int StagedCount,
     string StagedTreeId,
-    IReadOnlyList<string> StagedPaths);
+    IReadOnlyList<string> StagedPaths,
+    IReadOnlyList<string> UntrackedPaths,
+    IReadOnlyList<string> UnstagedTrackedPaths);
 
 /// <summary>
 /// Inspects <c>git status --porcelain=v1 -z</c> to decide whether the tree is a clean, deliberate scope
@@ -35,13 +40,17 @@ public static class CommitScopeInspector
             parsed.HasUntrackedChanges,
             parsed.StagedCount,
             ComputeStagedTreeId(repositoryRoot, parsed.StagedPaths ?? []),
-            parsed.StagedPaths ?? []);
+            parsed.StagedPaths ?? [],
+            parsed.UntrackedPaths ?? [],
+            parsed.UnstagedTrackedPaths ?? []);
     }
 
     private static ParsedScope ParseStatus(string porcelain)
     {
         var parsed = new ParsedScope();
         var stagedPaths = new List<string>();
+        var untrackedPaths = new List<string>();
+        var unstagedTrackedPaths = new List<string>();
         string[] tokens = porcelain.Split('\0', StringSplitOptions.RemoveEmptyEntries);
         for (int i = 0; i < tokens.Length; i++)
         {
@@ -59,6 +68,7 @@ public static class CommitScopeInspector
 
             if (parsedEntry.IsUntracked)
             {
+                untrackedPaths.Add(parsedEntry.Path);
                 parsed = parsed with { HasUntrackedChanges = true };
                 continue;
             }
@@ -71,11 +81,17 @@ public static class CommitScopeInspector
 
             if (parsedEntry.HasUnstagedTrackedChange)
             {
+                unstagedTrackedPaths.Add(parsedEntry.Path);
                 parsed = parsed with { HasUnstagedTrackedChanges = true };
             }
         }
 
-        return parsed with { StagedPaths = stagedPaths };
+        return parsed with
+        {
+            StagedPaths = stagedPaths,
+            UntrackedPaths = untrackedPaths,
+            UnstagedTrackedPaths = unstagedTrackedPaths,
+        };
     }
 
     private static string ComputeStagedTreeId(string repositoryRoot, IEnumerable<string> paths)
@@ -96,7 +112,9 @@ public static class CommitScopeInspector
         bool HasUnstagedTrackedChanges = false,
         bool HasUntrackedChanges = false,
         int StagedCount = 0,
-        IReadOnlyList<string>? StagedPaths = null);
+        IReadOnlyList<string>? StagedPaths = null,
+        IReadOnlyList<string>? UntrackedPaths = null,
+        IReadOnlyList<string>? UnstagedTrackedPaths = null);
 
     private sealed record PorcelainEntry(char Index, char Worktree, string Path)
     {

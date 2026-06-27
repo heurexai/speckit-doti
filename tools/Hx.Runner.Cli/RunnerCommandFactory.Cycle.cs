@@ -11,7 +11,41 @@ public static partial class RunnerCommandFactory
         AddCycleStamp(cycleCommand, meta);
         AddCycleStatus(cycleCommand, meta);
         AddCycleCheck(cycleCommand, meta);
+        AddCycleRefreshPlan(cycleCommand, meta);
+        AddCycleRefresh(cycleCommand, meta);
         dotiCommand.Subcommands.Add(cycleCommand);
+    }
+
+    private static void AddCycleRefreshPlan(Command cycleCommand, CliMeta meta)
+    {
+        Command command = new("refresh-plan", "Read-only: show how to recover a target stage's freshness (what is stale, why, and the next command).");
+        Option<string> target = new("--target") { Description = "Stage id to recover (its stale prerequisites are planned).", DefaultValueFactory = _ => "" };
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(target);
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti cycle refresh-plan",
+            () => RunnerCommands.CycleRefreshPlan(meta, parseResult.GetValue(repo)!, parseResult.GetValue(target)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        cycleCommand.Subcommands.Add(command);
+    }
+
+    private static void AddCycleRefresh(Command cycleCommand, CliMeta meta)
+    {
+        Command command = new("refresh", "Recover a target stage: with --apply-safe, re-stamp only the safe-to-reinterpret stale prerequisites (runner/binding migrations); a real input change still requires re-running the stage.");
+        Option<string> target = new("--target") { Description = "Stage id to recover.", DefaultValueFactory = _ => "" };
+        Option<bool> applySafe = new("--apply-safe") { Description = "Re-stamp the SafeReinterpret stale prerequisites (the only mutating refresh path). Without it, refresh is a dry run.", DefaultValueFactory = _ => false };
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(target);
+        command.Options.Add(applySafe);
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti cycle refresh",
+            () => RunnerCommands.CycleRefresh(meta, parseResult.GetValue(repo)!, parseResult.GetValue(target)!, parseResult.GetValue(applySafe)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        cycleCommand.Subcommands.Add(command);
     }
 
     private static void AddCycleStamp(Command cycleCommand, CliMeta meta)

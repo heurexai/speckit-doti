@@ -38,7 +38,10 @@ public sealed partial class CycleService
                     $"Cannot start feature '{suppliedFeature}' from stage '{existing.CurrentStage}'. Complete drift-review before beginning another specification.");
             }
 
-            CycleTransitionRecord transition = CommitStageTransition(existing, target.Id, releaseIntent);
+            // FR-038/BL-2: exclude the incoming feature's owned paths so its just-written spec is not read as the
+            // prior feature's dirty tree (the transition still rebases the prior proofs — only the pre-check over-reads).
+            CycleTransitionRecord transition = CommitStageTransition(
+                existing, target.Id, releaseIntent, FeatureArtifactScope.OwnedPaths(_stageModel, suppliedFeature!));
             CycleCompletionRecord completed = CompletionFromTransition(transition, existing);
             CycleState nextTrain = RebaseStateAfterTransition(existing, transition) with
             {
@@ -72,10 +75,11 @@ public sealed partial class CycleService
         return RebaseStateAfterTransition(existing, direct);
     }
 
-    private CycleTransitionRecord CommitStageTransition(CycleState state, string nextStage, string? releaseIntent)
+    private CycleTransitionRecord CommitStageTransition(
+        CycleState state, string nextStage, string? releaseIntent, IReadOnlyList<string>? excludedOwnedPaths = null)
     {
         CycleStage current = _stageModel.Find(state.CurrentStage);
-        TransitionReadiness readiness = ValidateTransitionReadiness(state, current);
+        TransitionReadiness readiness = ValidateTransitionReadiness(state, current, excludedOwnedPaths);
         if (readiness.Reasons.Count > 0)
         {
             throw new InvalidOperationException(

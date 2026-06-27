@@ -4,10 +4,14 @@ namespace Hx.Cycle.Core;
 
 public sealed partial class CycleService
 {
-    private TransitionReadiness ValidateTransitionReadiness(CycleState state, CycleStage current)
+    private TransitionReadiness ValidateTransitionReadiness(
+        CycleState state, CycleStage current, IReadOnlyList<string>? excludedOwnedPaths = null)
     {
         var reasons = new List<string>();
         CommitScope scope = CommitScopeInspector.Inspect(_repositoryRoot);
+        // FR-038/BL-2: on a new-feature start, the incoming feature's OWN paths (e.g. its just-written spec) are
+        // not the PRIOR feature's dirty tree — subtract them by exact path (never prefix; a stray sibling still blocks).
+        var excluded = new HashSet<string>(excludedOwnedPaths ?? [], StringComparer.OrdinalIgnoreCase);
         if (!IsReleaseStageRecovery(state, current, scope))
         {
             CycleCheckReport check = Check(current.Id);
@@ -48,15 +52,16 @@ public sealed partial class CycleService
             {
                 reasons.AddRange(GateProofValidator.ValidateAffectedTestProof(_repositoryRoot, gateProof));
                 reasons.AddRange(GateProofValidator.ValidateLadderCoverage(_repositoryRoot, gateProof));
+                reasons.AddRange(GateProofValidator.ValidateScope(_repositoryRoot, gateProof));
             }
         }
 
-        if (scope.HasUnstagedTrackedChanges)
+        if (scope.UnstagedTrackedPaths.Any(p => !excluded.Contains(p)))
         {
             reasons.Add("unstaged tracked changes present; stage or revert them for a deliberate transition scope");
         }
 
-        if (scope.HasUntrackedChanges)
+        if (scope.UntrackedPaths.Any(p => !excluded.Contains(p)))
         {
             reasons.Add("untracked changes present; add, ignore, or remove them for a clean transition scope");
         }

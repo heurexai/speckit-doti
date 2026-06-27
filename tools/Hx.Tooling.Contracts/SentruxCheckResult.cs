@@ -16,4 +16,8 @@ public sealed record SentruxCheckResult(
     int SignalToleranceBand,
     StageOutcome RegressionOutcome,
     IReadOnlyList<string> Notes,
-    IReadOnlyList<string> AdvisoryGaps);
+    IReadOnlyList<string> AdvisoryGaps,
+    // 008 FR-030: the three-state quality-signal verdict (pass | escalation-band | fail). EscalationBand fails the
+    // gate closed (RegressionOutcome=Fail) but the cycle's two-try log reads THIS to count optimization attempts.
+    // "pass" on a pre-FR-030 proof.
+    string RegressionVerdict = "pass");

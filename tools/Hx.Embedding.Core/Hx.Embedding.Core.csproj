@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- FR-040: the standalone local-CPU embedding library — ZERO Hx.* project references (reusable by the scaffolded
+       app), depending only on the CPU embedding runtimes. FR-021: local-only; the ArchUnit rule forbids System.Net.*.
+       Ported from polaris-core (re-namespaced to Hx.Embedding.*) + customized: EngineSelector fallback (M-3) and
+       ModelManifestValidator hash-verify-before-load (BL-4). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <!-- BlingFire (the BGE-M3 XLM-R tokenizer, H-2): exclude its contentFiles (the wrapper .cs lacks
+         DefaultDllImportSearchPaths → CA5392); we hand-roll the P/Invoke (BlingFireNative) and re-add the native
+         dll as a Content item below (flows transitively via CopyToOutput). -->
+    <PackageReference Include="BlingFireNuget" GeneratePathProperty="true">
+      <ExcludeAssets>contentFiles</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="LLamaSharp" />
+    <PackageReference Include="LLamaSharp.Backend.Cpu" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The per-RID native tokenizer dlls copied to output (advisory on Linux/macOS, matching the cross-platform stance). -->
+    <Content Include="$(PkgBlingFireNuget)\contentFiles\cs\any\blingfiretokdll.dll"
+             Link="blingfiretokdll.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+    <Content Include="$(PkgBlingFireNuget)\contentFiles\cs\any\libblingfiretokdll.so"
+             Link="libblingfiretokdll.so" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+    <Content Include="$(PkgBlingFireNuget)\contentFiles\cs\any\libblingfiretokdll.dylib"
+             Link="libblingfiretokdll.dylib" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+</Project>

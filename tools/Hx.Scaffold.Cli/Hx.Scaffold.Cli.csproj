@@ -78,13 +78,19 @@
 
     <!-- 2. The .doti workflow assets (minus gitignored runtime state). -->
     <ItemGroup>
-      <_HxDoti Include="$(RepoRoot).doti/**/*" Exclude="$(RepoRoot).doti/cycle-state.json;$(RepoRoot).doti/gate-proof.json" />
+      <!-- H-6 (FR-016): EXCLUDE .doti/templates from the filesystem glob — it is gitignored + materialized below
+           from .doti/core/templates (the single source), so a stale local copy can never leak into the anchored payload. -->
+      <_HxDoti Include="$(RepoRoot).doti/**/*" Exclude="$(RepoRoot).doti/cycle-state.json;$(RepoRoot).doti/gate-proof.json;$(RepoRoot).doti/sentrux-optimization-log.json;$(RepoRoot).doti/templates/**" />
+      <_HxCoreTemplates Include="$(RepoRoot).doti/core/templates/**/*" />
       <!-- 3. The tool manifests + grammars (NOT the per-RID bin/ binaries — fetched per T022). -->
       <_HxGitleaks Include="$(RepoRoot)tools/gitleaks/**/*" Exclude="$(RepoRoot)tools/gitleaks/bin/**" />
       <_HxSentrux Include="$(RepoRoot)tools/sentrux/**/*" Exclude="$(RepoRoot)tools/sentrux/bin/**" />
       <_HxGitversion Include="$(RepoRoot)tools/gitversion/**/*" Exclude="$(RepoRoot)tools/gitversion/bin/**" />
     </ItemGroup>
     <Copy SourceFiles="@(_HxDoti)" DestinationFiles="@(_HxDoti->'$(HxPayloadStaging).doti/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <!-- FR-016: materialize .doti/templates from .doti/core/templates into the staged payload BEFORE the manifest is
+         generated (step 5), so the FR-003 payload anchor covers the materialized templates. Single source: core/templates. -->
+    <Copy SourceFiles="@(_HxCoreTemplates)" DestinationFiles="@(_HxCoreTemplates->'$(HxPayloadStaging).doti/templates/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_HxGitleaks)" DestinationFiles="@(_HxGitleaks->'$(HxPayloadStaging)tools/gitleaks/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_HxSentrux)" DestinationFiles="@(_HxSentrux->'$(HxPayloadStaging)tools/sentrux/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_HxGitversion)" DestinationFiles="@(_HxGitversion->'$(HxPayloadStaging)tools/gitversion/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />

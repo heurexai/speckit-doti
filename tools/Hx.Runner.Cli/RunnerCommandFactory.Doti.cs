@@ -12,12 +12,54 @@ public static partial class RunnerCommandFactory
         AddDotiInstall(dotiCommand, meta);
         AddDotiPayload(dotiCommand, meta);
         AddDotiCycle(dotiCommand, meta);
+        AddDotiReviewContext(dotiCommand, meta);
+        AddDotiDriftCandidates(dotiCommand, meta);
         AddDotiTaskHash(dotiCommand, meta);
         AddDotiInstallHooks(dotiCommand, meta);
         AddDotiQuestion(dotiCommand, meta);
         AddDotiBug(dotiCommand, meta);
         AddDotiConverge(dotiCommand, meta);
         rootCommand.Subcommands.Add(dotiCommand);
+    }
+
+    // 008 FR-025: project the change set into arch-review lens applicability (change/review context).
+    private static void AddDotiReviewContext(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("review-context",
+            "Project the change set into arch-review lens applicability (FR-025): change categories + which lenses apply vs skip.");
+        Option<string> baseRef = new("--base") { Description = "Base ref for the change set (default: the cycle base, else HEAD).", DefaultValueFactory = _ => "" };
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(baseRef);
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti review-context",
+            () => RunnerCommands.DotiReviewContext(meta, parseResult.GetValue(repo)!, parseResult.GetValue(baseRef)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
+    }
+
+    // 008 M-5/FR-042: the advisory semantic drift finder, composed into the packed tool (mirroring `hx impact`).
+    // Never gating — when no model/engine is provisioned it skips.
+    private static void AddDotiDriftCandidates(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("drift-candidates",
+            "Advisory semantic drift candidates over the change set (FR-042; never gating). Reports the active engine; absence of candidates is NOT a clean-bill signal.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<string> baseRef = new("--base") { Description = "Base ref for the change set (default: HEAD).", DefaultValueFactory = _ => "HEAD" };
+        Option<string> modelRoot = new("--model-root") { Description = "Local LLM model root (else config.llmModelRoot, else HEUREX_LLM_ROOT).", DefaultValueFactory = _ => "" };
+        Option<double> threshold = new("--threshold") { Description = "Cosine threshold (else the engine default).", DefaultValueFactory = _ => 0 };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(baseRef);
+        command.Options.Add(modelRoot);
+        command.Options.Add(threshold);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti drift-candidates",
+            () => RunnerCommands.DotiDriftCandidates(meta, parseResult.GetValue(repo)!, parseResult.GetValue(baseRef)!,
+                parseResult.GetValue(modelRoot)!, parseResult.GetValue(threshold)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
     }
 
     // 007 T038 (FR-039): brownfield/drift reconciliation — report the requirement coverage gap.

@@ -54,6 +54,11 @@ public static class ErrorCodes
     public const string Validation_BugFixUnbound = "VAL0025";
     public const string Validation_BugAssessmentMissing = "VAL0026";
     public const string Validation_ConvergeInput = "VAL0027";
+    public const string Validation_CycleRefreshRerunRequired = "VAL0028";
+    public const string Validation_CycleRefreshNotBound = "VAL0029";
+    public const string Validation_SentruxStructuralReviewRequired = "VAL0030";
+    public const string Validation_SentruxRebaselineRefused = "VAL0031";
+    public const string Validation_ReleaseTrainDrift = "VAL0032";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -148,5 +153,15 @@ public static class ErrorCodes
             "The bug-cycle assessment for this bug is missing.", "Run `doti bug assess` to produce the read-only verdict/remediation contract before the fix or test stage."),
         new("VAL0027", "validation", "VAL", 27, Severity.Error, ExitClass.Validation, "validation.converge-input",
             "The converge command's required inputs (spec/plan/tasks) are missing or invalid.", "Ensure the active feature's spec, plan, and tasks exist before running `doti converge`."),
+        new("VAL0028", "validation", "VAL", 28, Severity.Error, ExitClass.Validation, "validation.cycle-refresh-rerun-required",
+            "A stale stage cannot be safely re-stamped because a real input changed; its stage command must be re-run.", "Re-run the stage's command (e.g. re-clarify/re-plan/re-analyze) to regenerate its artifact, then stamp it."),
+        new("VAL0029", "validation", "VAL", 29, Severity.Error, ExitClass.Validation, "validation.cycle-refresh-not-bound",
+            "A stale stage cannot be re-stamped because its produced artifact is absent.", "Re-run the stage's command to produce its artifact before stamping; refresh refuses to bind an absent artifact."),
+        new("VAL0030", "validation", "VAL", 30, Severity.Error, ExitClass.Validation, "validation.sentrux-structural-review-required",
+            "Two Sentrux optimization attempts stayed in the escalation band.", "Stop blind optimization; run a structural architecture review (/06-doti-arch-review) to decide functionality-driven growth (evidence-gated rebaseline) vs wrong architecture (refactor)."),
+        new("VAL0031", "validation", "VAL", 31, Severity.Error, ExitClass.Validation, "validation.sentrux-rebaseline-refused",
+            "A Sentrux rebaseline was refused.", "A rebaseline needs explicit operator intent AND a change-set-fresh arch-review record classifying the growth as functionality-driven; refactor instead if the architecture is wrong."),
+        new("VAL0032", "validation", "VAL", 32, Severity.Error, ExitClass.Validation, "validation.release-train-drift",
+            "A later release-train feature changed paths an earlier completed-unreleased feature owns or documents.", "Reconcile the cross-feature drift before release: update the earlier feature's spec/docs/code (or the later feature's), so the release train is internally consistent."),
     ];
 }

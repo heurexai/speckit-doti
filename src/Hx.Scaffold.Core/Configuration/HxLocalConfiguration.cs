@@ -10,6 +10,13 @@ public sealed class HxLocalConfiguration
 
     public HxLocalReleaseOutputConfiguration LocalReleaseOutput { get; set; } = new();
 
+    /// <summary>
+    /// 008 FR-041: the local LLM model root for the advisory semantic drift finder. Optional — when set it WINS over the
+    /// <c>HEUREX_LLM_ROOT</c> environment variable; when neither is provided the finder has no engine and skips
+    /// (advisory only, never gating).
+    /// </summary>
+    public string? LlmModelRoot { get; set; }
+
     public string SourcePath { get; set; } = "";
 
     public string Source => FileName;

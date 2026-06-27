@@ -4,3 +4,11 @@ scaffold/templates/
 # Local packaging/publish output is a test or release artifact, not source.
 artifacts/
 publish/
+
+# 008 FR-029/SC-016 — Sentrux measures CODE complexity/architecture, not prose. Docs, Doti prose (command
+# templates, rendered skills, agent-context), and payload metadata are out of the source scope (the floor):
+*.md
+docs/
+.doti/
+.agents/
+.claude/

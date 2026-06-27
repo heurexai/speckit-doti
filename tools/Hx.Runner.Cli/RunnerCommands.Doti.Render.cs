@@ -46,8 +46,8 @@ public static partial class RunnerCommands
         foreach (string relativePath in new[]
         {
             ".doti/core",
+            ".doti/core/templates", // FR-017: the single template source (the materialized .doti/templates may be absent)
             ".doti/profiles",
-            ".doti/templates",
             ".doti/memory",
             ".doti/workflows",
             ".doti/integrations"

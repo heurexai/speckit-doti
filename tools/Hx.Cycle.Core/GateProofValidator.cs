@@ -132,6 +132,34 @@ public static class GateProofValidator
         return reasons;
     }
 
+    /// <summary>
+    /// FR-028 (M-1) scope guard: recompute the docs-only scope from the CURRENT change set and verify the proof's
+    /// recorded scope matches. A scope skip (architecture + Sentrux not run) can never be minted for a change that is
+    /// not docs-only — distinct from the tier-ladder check, recomputed separately, provable-not-bypassed. A pre-FR-028
+    /// proof (no scope dimension) is not blocked here; its test scope is still gated by the affected-test proof.
+    /// </summary>
+    public static IReadOnlyList<string> ValidateScope(string repositoryRoot, PersistedGateProof persisted)
+    {
+        GateProof proof = persisted.Proof;
+        if (proof.Scope is null || proof.AffectedTestProof is null)
+        {
+            return [];
+        }
+
+        try
+        {
+            GateScope expected = GateScopeResolver.Resolve(
+                repositoryRoot, persisted.BaseRef, "HEAD", proof.AffectedTestProof.Plan);
+            return proof.Scope.DocsOnly == expected.DocsOnly
+                ? []
+                : [$"gate proof records scope docsOnly={proof.Scope.DocsOnly} but the current change set is docsOnly={expected.DocsOnly} — a docs-only scope skip cannot be minted for a code change (FR-028)"];
+        }
+        catch (Exception ex)
+        {
+            return ["could not recompute gate scope: " + ex.Message];
+        }
+    }
+
     private static bool CoverageEqual(IReadOnlyList<GateLadderEntry> recorded, IReadOnlyList<GateLadderEntry> expected)
     {
         if (recorded.Count != expected.Count)

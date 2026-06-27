@@ -18,6 +18,9 @@ public static class DotiGitIgnore
     [
         ".doti/cycle-state.json",
         ".doti/gate-proof.json",
+        ".doti/sentrux-optimization-log.json",
+        // FR-014: .doti/templates is materialized from .doti/core/templates at install — generated, never committed.
+        ".doti/templates/",
     ];
 
     public static DotiGitIgnorePlan Plan(string repositoryRoot)

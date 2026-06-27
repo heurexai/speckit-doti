@@ -16,6 +16,10 @@
     <ProjectReference Include="..\Hx.Version.Core\Hx.Version.Core.csproj" />
     <ProjectReference Include="..\Hx.Security.Core\Hx.Security.Core.csproj" />
     <ProjectReference Include="..\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
+    <!-- 008 M-5/FR-042: the operator surface `hx doti drift-candidates` is composed here (mirroring `hx impact`)
+         over the advisory semantic finder. The packed hx ships the ML stack transitively through this edge; the
+         Gate/Cycle Cores never reference Hx.Semantic.* (FR-020, ArchUnit-enforced). -->
+    <ProjectReference Include="..\Hx.Semantic.Core\Hx.Semantic.Core.csproj" />
     <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
   </ItemGroup>
 </Project>

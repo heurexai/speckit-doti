@@ -29,13 +29,15 @@ public static partial class RunnerCommandFactory
 
     private static void AddSentruxBaseline(Command sentruxCommand, CliMeta meta)
     {
-        Command command = new("baseline", "Create the Sentrux baseline (first smoke / explicit operator action).");
+        Command command = new("baseline", "Raise the Sentrux baseline (explicit operator rebaseline). Refused without --authorize-rebaseline + a change-set-fresh arch-review classifying the growth as functionality-driven (FR-031).");
         Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> authorize = new("--authorize-rebaseline") { Description = "Explicit operator intent to RAISE the baseline (the gate path never sets this; first-scaffold creation runs elsewhere).", DefaultValueFactory = _ => false };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
+        command.Options.Add(authorize);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "sentrux baseline",
-            () => RunnerCommands.SentruxBaseline(meta, parseResult.GetValue(repo)!),
+            () => RunnerCommands.SentruxBaseline(meta, parseResult.GetValue(repo)!, parseResult.GetValue(authorize)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         sentruxCommand.Subcommands.Add(command);
     }

@@ -1,5 +1,6 @@
 using Hx.Cli.Kernel;
 using Hx.Impact.Core;
+using Hx.Impact.Core.ChangeDetection;
 using Hx.Impact.Core.Planning;
 using Hx.Tooling.Contracts;
 
@@ -24,9 +25,35 @@ public static class ImpactCommands
     /// <summary>The <c>/06-doti-arch-review</c> audience: the changed-files + affected-projects review context.</summary>
     public const string AudienceArchReview = "arch-review";
 
-    /// <summary>Run the deterministic planner for a change set and wrap the plan in the envelope for the given audience.</summary>
-    public static CliResult Plan(CliMeta meta, string repo, string baseRef, string headRef, string configuration, string audience) =>
-        FromPlan(meta, "plan", new AffectedTestPlanner().Plan(Path.GetFullPath(repo), baseRef, headRef, configuration), audience);
+    /// <summary>The <c>/08-doti-drift-review</c> audience (FR-010): the status-rich change context (each file's
+    /// Added/Modified/Deleted/Renamed status + rename old-path) so the removed/renamed-symbol worklist is data-driven.</summary>
+    public const string AudienceChangeContext = "change-context";
+
+    /// <summary>Run the deterministic planner for a change set and wrap the plan in the envelope for the given audience.
+    /// The <c>change-context</c> audience emits the rich <see cref="ChangeSetContext"/> (status per file) instead of the
+    /// affected-test plan — drift-review reads <c>data.files</c> as its diff worklist.</summary>
+    public static CliResult Plan(CliMeta meta, string repo, string baseRef, string headRef, string configuration, string audience)
+    {
+        if (audience == AudienceChangeContext)
+        {
+            ChangeSetContext context = new ChangeSetContextBuilder().BuildForRepo(Path.GetFullPath(repo), baseRef, headRef);
+            return context.RefsResolved
+                ? CliResults.Ok(meta, "plan",
+                    $"Change context: {context.Files.Count} changed file(s), {context.AffectedSourceProjects.Count} affected source project(s).",
+                    context,
+                    nextActions:
+                    [
+                        new CliNextAction(
+                            "Drive drift-review from the change context",
+                            "Use data.files (path + Added/Modified/Deleted/Renamed status + rename old-path) as the worklist; a Deleted/Renamed symbol must survive in NO doc, skill, or help string."),
+                    ])
+                : CliResults.Fail(meta, "plan", ExitClass.Validation,
+                    [Diag.Of(ErrorCodes.Validation_Failed, context.UnresolvedReason ?? "Could not resolve the change set.", target: "--base")],
+                    "Could not resolve the change set for the change context.");
+        }
+
+        return FromPlan(meta, "plan", new AffectedTestPlanner().Plan(Path.GetFullPath(repo), baseRef, headRef, configuration), audience);
+    }
 
     /// <summary>Emit the placeholder full plan (smoke / bootstrap) in the envelope.</summary>
     public static CliResult BootstrapPlan(CliMeta meta) =>

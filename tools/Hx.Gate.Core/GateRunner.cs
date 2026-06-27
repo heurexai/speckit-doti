@@ -45,19 +45,24 @@ public static class GateRunner
 
         Emit(HygieneStep(repositoryRoot, lane));
         Emit(GitleaksVerifyStep(repositoryRoot));
-        Emit(ApplyTier(ladder, repositoryRoot, "sentrux-verify", () => SentruxVerifyStep(repositoryRoot)));
+        // Compute the affected plan + the change SCOPE (FR-028) before the architecture/Sentrux steps so a docs-only
+        // change can scope-skip them. Release always runs everything (scope never skips at release lane).
         AffectedGatePlan affected = AffectedChangeStep(repositoryRoot);
         Emit(affected.Step);
+        GateScope scope = lane == Lane.Release
+            ? new GateScope(JsonContractDefaults.SchemaVersion, false, "scope: release lane runs every gate", [])
+            : GateScopeResolver.Resolve(repositoryRoot, affected.BaseRef, affected.HeadRef, affected.Plan);
+        Emit(ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-verify", () => SentruxVerifyStep(repositoryRoot)));
         TaskCompletionProof taskCompletionProof = DotiTaskCompletion.CreateActiveFeatureProof(repositoryRoot);
         Emit(TaskCompletionStep(taskCompletionProof));
         BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, affected.Plan);
         Emit(buildAndTest.Step);
-        Emit(ApplyTier(ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
+        Emit(ScopeOrTier(scope, ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
         Emit(NoVelopackStep(repositoryRoot)); // FR-007/SC-005: always enforced — a hard product invariant, not tier-downgradable
         Emit(NoSourceStep(repositoryRoot)); // FR-006/SC-004: no tool build tree in the staged release layout
-        Emit(SkillDriftStep(repositoryRoot));
+        Emit(SkillDriftStep(repositoryRoot)); // render/payload/skill-drift stay ENFORCED — never scope-skipped (SC-011)
         Emit(DotiPayloadStep(repositoryRoot));
-        Emit(ApplyTier(ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
+        Emit(ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
         Emit(VersionStep(repositoryRoot, lane));
         Emit(SecurityStep(repositoryRoot, lane));
         ReleaseDocumentationProof? documentationProof = null;
@@ -79,7 +84,21 @@ public static class GateRunner
             taskCompletionProof,
             documentationProof,
             ladder.Tier,
-            ladder.Coverage());
+            ladder.Coverage(),
+            scope);
+    }
+
+    // FR-028 (M-1): a docs-only change SCOPE-skips architecture + Sentrux with a scope reason — distinct from a tier
+    // skip and from a missing-config Fail. The scope skip is a SEPARATE dimension from ApplyTier's tier modes; a
+    // non-docs-only change falls through to the normal tier handling.
+    private static GateStep ScopeOrTier(GateScope scope, GateLadder ladder, string repositoryRoot, string stepName, Func<GateStep> run)
+    {
+        if (scope.DocsOnly && scope.ScopeSkippedSteps.Contains(stepName, StringComparer.Ordinal))
+        {
+            return new GateStep(stepName, StageOutcome.Skipped, [new GateEvidence($"{stepName}.scope", scope.Reason)]);
+        }
+
+        return ApplyTier(ladder, repositoryRoot, stepName, run);
     }
 
     // Apply the tier's mode to an opinionated gate step (FR-029): Skip → do not run; Advisory → run but never
@@ -186,8 +205,26 @@ public static class GateRunner
     private static GateStep SentruxCheckStep(string repositoryRoot)
     {
         SentruxCheckResult sentruxCheck = SentruxChecker.Check(repositoryRoot);
-        return Step("sentrux-check", sentruxCheck.Outcome,
-            $"signal={sentruxCheck.QualitySignal}; regression={sentruxCheck.RegressionOutcome}");
+        var evidence = new List<GateEvidence>
+        {
+            new("sentrux-check", $"signal={sentruxCheck.QualitySignal}; regression={sentruxCheck.RegressionOutcome}; verdict={sentruxCheck.RegressionVerdict}"),
+        };
+
+        // FR-030/SC-014: count the two optimization attempts when a run lands in the escalation band (and clear the
+        // tally on a non-band verdict). After the second band attempt, surface the structural-architecture-review
+        // next action instead of another blind optimization pass. Keyed by the active feature.
+        string? feature = new CycleStateStore(repositoryRoot).Read()?.Feature;
+        if (!string.IsNullOrWhiteSpace(feature))
+        {
+            SentruxOptimizationResult optimization =
+                SentruxOptimizationTracker.Record(repositoryRoot, feature, sentruxCheck.RegressionVerdict);
+            if (optimization.NextAction is not null)
+            {
+                evidence.Add(new GateEvidence("sentrux-check.optimization", optimization.NextAction));
+            }
+        }
+
+        return new GateStep("sentrux-check", sentruxCheck.Outcome, evidence);
     }
 
     private static GateStep TaskCompletionStep(TaskCompletionProof proof)

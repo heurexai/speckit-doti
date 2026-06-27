@@ -29,6 +29,11 @@ public sealed class ArchitectureTests
                 typeof(ToolStore).Assembly,                                    // Hx.Runner.Core
                 typeof(Hx.Scaffold.Core.ToolVendor).Assembly,                  // Hx.Scaffold.Core
                 typeof(Hx.Impact.Core.Planning.AffectedTestPlanner).Assembly,  // Hx.Impact.Core
+                typeof(Hx.Cycle.Core.CycleStateStore).Assembly,                // Hx.Cycle.Core
+                typeof(Hx.Gate.Core.GateRunner).Assembly,                      // Hx.Gate.Core
+                typeof(Hx.Embedding.ModelLocator).Assembly,                    // 008 H-3: Hx.Embedding.Core
+                typeof(Hx.Semantic.DriftCandidateRunner).Assembly,             // 008 H-3: Hx.Semantic.Core
+                typeof(Hx.Semantic.Cli.SemanticCommandFactory).Assembly,       // 008 H-3: Hx.Semantic.Cli
                 typeof(CliResult).Assembly,                                    // Hx.Tooling.Contracts
                 typeof(System.CommandLine.RootCommand).Assembly)
             .Build();
@@ -50,7 +55,14 @@ public sealed class ArchitectureTests
             .AndShould().NotHaveNameEndingWith("Runner")
             .AndShould().NotHaveNameEndingWith("Resolver")
             .AndShould().NotHaveNameEndingWith("Engine")
-            .AndShould().NotHaveNameEndingWith("Provider");
+            .AndShould().NotHaveNameEndingWith("Provider")
+            // 008 BL-5: the 008 substrate adds *Planner/*Classifier/*Projector/*Detector logic types; confine them to
+            // *.Core so a future CLI can never inline the recovery planner, restamp classifier, review projector, or
+            // release-train detector.
+            .AndShould().NotHaveNameEndingWith("Planner")
+            .AndShould().NotHaveNameEndingWith("Classifier")
+            .AndShould().NotHaveNameEndingWith("Projector")
+            .AndShould().NotHaveNameEndingWith("Detector");
         Assert.True(rule.HasNoViolations(Arch));
     }
 
@@ -60,6 +72,19 @@ public sealed class ArchitectureTests
         // *Service / *Runner / *Resolver types exist in core, so asserting they live in the CLI MUST report
         // violations — proving the suffix matcher is real, not vacuously satisfied by an empty set.
         IArchRule wrong = Classes().That().HaveNameEndingWith("Runner").Or().HaveNameEndingWith("Resolver")
+            .Should().ResideInNamespaceMatching(CliNs);
+        Assert.False(wrong.HasNoViolations(Arch));
+    }
+
+    [Fact]
+    public void Negative_cli_confinement_covers_the_008_suffixes()
+    {
+        // 008 BL-5 guard: *Planner/*Classifier/*Projector/*Detector types live in core (CycleRecoveryPlanner,
+        // RestampSafetyClassifier, ReviewContextProjector, ReleaseTrainDriftDetector, AffectedTestPlanner) — asserting
+        // they reside in a CLI namespace MUST report violations, proving the new suffix matchers are real.
+        IArchRule wrong = Classes().That()
+            .HaveNameEndingWith("Planner").Or().HaveNameEndingWith("Classifier")
+            .Or().HaveNameEndingWith("Projector").Or().HaveNameEndingWith("Detector")
             .Should().ResideInNamespaceMatching(CliNs);
         Assert.False(wrong.HasNoViolations(Arch));
     }
@@ -80,6 +105,68 @@ public sealed class ArchitectureTests
         Assert.Contains(Arch.Types, t =>
             t.FullName.Contains(".Cli.", System.StringComparison.Ordinal)
             && t.FullName.EndsWith("Commands", System.StringComparison.Ordinal));
+    }
+
+    // 008 semantic-stack namespaces. Hx.Embedding.Core lives under Hx.Embedding, Hx.Semantic.Core/Cli under Hx.Semantic.
+    private const string EmbeddingNs = @"^Hx\.Embedding";
+    private const string SemanticStackNs = @"^Hx\.(Embedding|Semantic)";
+
+    // FR-040 / FR-021 (H-7 broadened): Hx.Embedding.Core is a self-contained, OFFLINE ML port — it depends on no
+    // Hx.* assembly except Hx.Tooling.Contracts, and on nothing under System.Net.*. Either dependency would couple
+    // the advisory finder to the workflow substrate or the network, both forbidden for a deterministic local port.
+    [Fact]
+    public void Embedding_core_depends_on_no_hx_assembly_except_contracts()
+    {
+        IArchRule rule = Types().That().ResideInNamespaceMatching(EmbeddingNs)
+            .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(@"^Hx\.")
+                .And().DoNotResideInNamespaceMatching(EmbeddingNs)
+                .And().DoNotResideInNamespaceMatching(@"^Hx\.Tooling\.Contracts"));
+        Assert.True(rule.HasNoViolations(Arch));
+    }
+
+    [Fact]
+    public void Semantic_stack_has_no_network_dependency()
+    {
+        // H-7 (FR-021 broadened): the entire semantic stack is offline/local — no System.Net.* (no HTTP, no sockets).
+        IArchRule rule = Types().That().ResideInNamespaceMatching(SemanticStackNs)
+            .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(@"^System\.Net"));
+        Assert.True(rule.HasNoViolations(Arch));
+    }
+
+    [Fact]
+    public void Embedding_namespace_has_real_subjects()
+    {
+        // Guard: the FR-040/FR-021 rules above must load real Hx.Embedding types, not pass over an empty set.
+        Assert.Contains(Arch.Types, t => t.FullName.StartsWith("Hx.Embedding.", System.StringComparison.Ordinal));
+    }
+
+    // FR-020 / SC-009: the deterministic Gate/Cycle Cores MUST NOT depend on the advisory semantic stack — the
+    // semantic finder is never a gate or proof input. Compile-checked: a stray reference fails the build's test gate.
+    [Fact]
+    public void Gate_and_cycle_cores_do_not_depend_on_the_semantic_stack()
+    {
+        IArchRule rule = Types().That().ResideInNamespaceMatching(@"^Hx\.(Gate|Cycle)\.Core")
+            .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(SemanticStackNs));
+        Assert.True(rule.HasNoViolations(Arch));
+    }
+
+    // M-8: the gate-proof hashers project canonical proof inputs only — ChangeSetContext is a REVIEW context (arch-review
+    // lens applicability, drift candidates), never a proof input. A *ProofHasher depending on it would let the advisory
+    // change context leak into a deterministic proof hash. Compile-checked.
+    [Fact]
+    public void Gate_proof_hashers_do_not_depend_on_change_set_context()
+    {
+        IArchRule rule = Classes().That().HaveNameEndingWith("ProofHasher")
+            .Should().NotDependOnAny(Types().That().HaveFullNameContaining("ChangeSetContext"));
+        Assert.True(rule.HasNoViolations(Arch));
+    }
+
+    [Fact]
+    public void Proof_hashers_and_change_set_context_are_both_loaded()
+    {
+        // Guard: the M-8 rule must have a real subject (a *ProofHasher) and a real forbidden target (ChangeSetContext).
+        Assert.Contains(Arch.Types, t => t.Name.EndsWith("ProofHasher", System.StringComparison.Ordinal));
+        Assert.Contains(Arch.Types, t => t.Name.Equals("ChangeSetContext", System.StringComparison.Ordinal));
     }
 
     [Fact]

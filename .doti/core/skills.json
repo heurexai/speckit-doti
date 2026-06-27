@@ -108,6 +108,24 @@
         "Find the requirement coverage gap deterministically with `hx doti converge --spec docs/specs/<NNN-slug>.md --tasks docs/tasks/<NNN-slug>-tasks.md` — it reports every FR-###/SC-### the spec defines that NO task covers (fails closed `converge-input` if a file is missing). For each uncovered requirement, ASSESS it against the codebase (genuinely unbuilt vs already-built-but-unmapped — read/reproduce, don't assume), then append the genuinely-missing work as new tasks in the right phase (the spec's declared Priority Mode order — MVP-first for code, truth-first for docs, safety-first for workflow), mapped `[covers FR-/SC-]`. converge never rewrites the ledger for you; you append and the ordered-task gate keeps the order honest. Ties to `/08-doti-drift-review` (spec->tasks gap vs source->installed gap)."
       ],
       "nextStage": "Continue with `/07-doti-implement` to build the appended tasks, or `/08-doti-drift-review` to reconcile installed assets."
+    },
+    {
+      "name": "doti-amend",
+      "description": "Amend an already-stamped cycle stage after an approved artifact change and reconcile cycle state honestly via the recovery plan. Utility — runs inside the active cycle, never reorders /01–/09.",
+      "argumentHint": "[stage or note]",
+      "highlights": [
+        "Reconcile, never guess. Classify what changed with `hx doti review-context --repo .` (change categories + which arch-review lenses the edit touches), then derive the recovery plan with `hx doti cycle refresh-plan --target <stage>` — per transitively-required stage it reports `SafeReinterpret` (artifact unchanged under canonical hashing → the stamp can be re-bound to the new change set), `RerunRequired` (artifact changed → re-run that stage's `/0N` skill), or `NotBound`. `hx doti cycle refresh --target <stage> --apply-safe` re-binds ONLY the safe stages and never fabricates a stamp for a `RerunRequired` one; re-run those by hand so their proof is earned. Finish on a green `hx doti cycle check` (every transitive prerequisite stamped + fresh). amend reconciles within the cycle — it never invents a stage or changes the `/01`–`/09` order."
+      ],
+      "nextStage": "Resume your active cycle stage; if the amendment touched code already under review, run `/08-doti-drift-review`."
+    },
+    {
+      "name": "doti-drift-fix",
+      "description": "Patch a drift `/08-doti-drift-review` surfaced by correcting the WRONG side (code, never the spec) and reconciling cycle state. Utility — runs inside the active cycle, never reorders /01–/09.",
+      "argumentHint": "[drift finding]",
+      "highlights": [
+        "The spec is the source of truth: close a spec↔code gap by fixing the CODE in-cycle, never by downgrading or deferring the spec. Classify blast radius with `hx doti review-context --repo .`; take the ADVISORY semantic hint from `hx doti drift-candidates --repo .` (changed-code chunks semantically close to a doc/skill/help section — drift the deterministic grep can miss; it reports the active engine and skips when no model is provisioned). CRUCIAL: an empty candidate list is NOT a clean-bill signal — only the deterministic `/08-doti-drift-review` axes clear drift, so confirm or dismiss every candidate deterministically. Fix the wrong side modularly (as `/07-doti-implement` requires), then reconcile with `hx doti cycle refresh-plan`/`refresh --apply-safe` and a green `hx doti cycle check` — leaving the spec untouched."
+      ],
+      "nextStage": "Re-run `/08-doti-drift-review` to confirm the diff now matches the approved design, then resume your cycle."
     }
   ]
 }

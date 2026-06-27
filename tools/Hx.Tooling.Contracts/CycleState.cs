@@ -123,4 +123,15 @@ public sealed record CycleReleaseTrain(
     int SchemaVersion,
     bool Valid,
     IReadOnlyList<CycleReleaseTrainFeature> Features,
-    IReadOnlyList<string> Blockers);
+    IReadOnlyList<string> Blockers,
+    // 008 FR-037: cross-feature release-train drift — a later feature changed a path an earlier completed-unreleased
+    // feature owns/documents. Additive nullable trailing (null on a pre-FR-037 train; M-10).
+    IReadOnlyList<ReleaseTrainDriftFinding>? DriftFindings = null);
+
+/// <summary>FR-037/SC-019: a later release-train feature changed paths an earlier completed-unreleased feature owns
+/// or documents — a cross-feature drift that must be reconciled before the train is released.</summary>
+public sealed record ReleaseTrainDriftFinding(
+    string EarlierFeature,
+    string LaterFeature,
+    IReadOnlyList<string> ConflictingPaths,
+    string Reason);

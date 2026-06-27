@@ -44,12 +44,13 @@ public static partial class SentruxChecker
     private static SentruxCheckResult Build(
         StageOutcome outcome, ToolVerificationResult verification, StageOutcome rulesOutcome,
         IReadOnlyList<string> violations, int? quality, int? baseline, int toleranceBand,
-        StageOutcome regressionOutcome, IReadOnlyList<string> notes, IReadOnlyList<string> advisory)
+        StageOutcome regressionOutcome, IReadOnlyList<string> notes, IReadOnlyList<string> advisory,
+        string regressionVerdict = "pass")
     {
         int? delta = quality is not null && baseline is not null ? quality - baseline : null;
         return new SentruxCheckResult(
             JsonContractDefaults.SchemaVersion, outcome, verification, rulesOutcome, violations,
-            quality, baseline, delta, toleranceBand, regressionOutcome, notes, advisory);
+            quality, baseline, delta, toleranceBand, regressionOutcome, notes, advisory, regressionVerdict);
     }
 
     private static StageOutcome Worst(params StageOutcome[] outcomes)

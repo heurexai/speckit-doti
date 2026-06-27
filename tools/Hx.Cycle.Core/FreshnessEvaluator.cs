@@ -9,8 +9,28 @@ public enum StageFreshness
     Completed,
 }
 
-/// <summary>Per-stage freshness verdict computed at read time (never stored).</summary>
-public sealed record StageFreshnessResult(string Stage, StageFreshness Freshness, string? Reason);
+/// <summary>
+/// The category of a stale verdict (FR-005/006/007) — the machine-readable "why" the restamp-safety classifier
+/// (1a) consumes, so refresh can never disagree with this evaluator: <see cref="ChangeSetDiffers"/> (code moved),
+/// <see cref="OwnArtifactChanged"/> (the stage's own artifact content changed), <see cref="NotProduced"/> (its
+/// produced artifact is absent), <see cref="MissingArtifactBinding"/> (the produced artifact is present but the
+/// proof has no bound hash — the produces-binding migration, a safe re-stamp), <see cref="MissingBinding"/> (a
+/// runner/schema bump left the prerequisite-artifact binding null — also a safe re-stamp), and
+/// <see cref="PrereqArtifactChanged"/> (an upstream artifact's content changed — a real input change).
+/// </summary>
+public enum StaleReason
+{
+    ChangeSetDiffers,
+    OwnArtifactChanged,
+    PrereqArtifactChanged,
+    MissingArtifactBinding,
+    MissingBinding,
+    NotProduced,
+}
+
+/// <summary>Per-stage freshness verdict computed at read time (never stored). <see cref="StaleReason"/> is the
+/// machine-readable category when <see cref="Freshness"/> is <see cref="StageFreshness.Stale"/>; null otherwise.</summary>
+public sealed record StageFreshnessResult(string Stage, StageFreshness Freshness, string? Reason, StaleReason? StaleReason = null);
 
 /// <summary>
 /// Re-derives whether a stamped stage is still fresh. Code-bound stages must keep the same change-set
@@ -38,7 +58,8 @@ public sealed class FreshnessEvaluator
             && !string.Equals(proof.ChangeSetId, currentIdentity, StringComparison.Ordinal))
         {
             return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
-                "change-set identity differs from the current diff (code changed since stamp)");
+                "change-set identity differs from the current diff (code changed since stamp)",
+                StaleReason.ChangeSetDiffers);
         }
 
         CycleStage stage = _stageModel.Find(proof.Stage);
@@ -46,11 +67,27 @@ public sealed class FreshnessEvaluator
         {
             string artifactPath = StageModel.ResolveProduces(pattern, feature);
             string full = Path.GetFullPath(Path.Combine(_repositoryRoot, artifactPath.Replace('/', Path.DirectorySeparatorChar)));
-            string current = File.Exists(full) ? CanonicalArtifactHasher.CanonicalHashOfFile(full) : "absent";
-            if (proof.ArtifactHashes.Count == 0 || !proof.ArtifactHashes.Contains(current))
+            bool present = File.Exists(full);
+            if (!present)
             {
                 return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
-                    $"artifact '{artifactPath}' changed since stamp");
+                    $"artifact '{artifactPath}' is absent (never produced)", StaleReason.NotProduced);
+            }
+
+            if (proof.ArtifactHashes.Count == 0)
+            {
+                // Present but never bound: the produces-binding migration (a stage stamped before it had a
+                // produces pattern). Re-stamping safely binds the current content — not a content change.
+                return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
+                    $"artifact '{artifactPath}' is present but unbound; re-stamp with the current runner",
+                    StaleReason.MissingArtifactBinding);
+            }
+
+            string current = CanonicalArtifactHasher.CanonicalHashOfFile(full);
+            if (!proof.ArtifactHashes.Contains(current))
+            {
+                return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
+                    $"artifact '{artifactPath}' changed since stamp", StaleReason.OwnArtifactChanged);
             }
         }
 
@@ -65,13 +102,15 @@ public sealed class FreshnessEvaluator
             if (proof.PrerequisiteArtifactHashes is null)
             {
                 return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
-                    "missing prerequisite artifact binding; re-stamp with the current runner");
+                    "missing prerequisite artifact binding; re-stamp with the current runner",
+                    StaleReason.MissingBinding);
             }
 
             if (!proof.PrerequisiteArtifactHashes.SequenceEqual(currentPrereqs, StringComparer.Ordinal))
             {
                 return new StageFreshnessResult(proof.Stage, StageFreshness.Stale,
-                    "a prerequisite artifact changed since stamp; re-clarify/re-analyze the dependent");
+                    "a prerequisite artifact changed since stamp; re-clarify/re-analyze the dependent",
+                    StaleReason.PrereqArtifactChanged);
             }
         }
 

@@ -31,10 +31,12 @@ stages:
   - id: analyze
     command: 05-doti-analyze
     kind: review
+    produces: docs/reviews/{feature}-analyze-report.md
     prereqs: [tasks]
   - id: arch-review
     command: 06-doti-arch-review
     kind: review
+    produces: docs/reviews/{feature}-arch-review.md
     prereqs: [analyze]
   - id: implement
     command: 07-doti-implement
@@ -43,6 +45,7 @@ stages:
   - id: drift-review
     command: 08-doti-drift-review
     kind: review
+    produces: docs/reviews/{feature}-drift-review.md
     prereqs: [implement]
     next: [release, specify]
   - id: release

@@ -147,7 +147,8 @@ public static class ManagedAssetScanner
         [
             Path.Combine(repoRoot, ".doti", "core"),
             Path.Combine(repoRoot, ".doti", "profiles"),
-            Path.Combine(repoRoot, ".doti", "templates"),
+            // .doti/templates is MATERIALIZED from .doti/core/templates (FR-014) — a generated asset, not a Doti
+            // SOURCE the baseline tracks; so the source repo's install/check passes with the twin absent.
             Path.Combine(repoRoot, ".doti", "memory"),
             Path.Combine(repoRoot, ".doti", "integrations"),
             Path.Combine(repoRoot, ".doti", "workflows"),

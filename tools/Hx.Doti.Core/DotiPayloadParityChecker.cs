@@ -41,6 +41,19 @@ public static class DotiPayloadParityChecker
     {
         foreach (string subdirectory in StaticDotiSubdirectories)
         {
+            // FR-017: `.doti/templates` is MATERIALIZED from `.doti/core/templates` — validate the installed
+            // materialized copy against `core/templates` (the source of truth), even with the committed twin absent.
+            // This closes the silently-skipped hole: it never depends on a source `.doti/templates` directory existing.
+            if (string.Equals(subdirectory, "templates", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (DotiPayloadFileStatus status in CheckMaterializedTemplates(source, target))
+                {
+                    yield return status;
+                }
+
+                continue;
+            }
+
             string sourceRoot = Path.Combine(source, ".doti", subdirectory);
             if (!Directory.Exists(sourceRoot))
             {
@@ -53,6 +66,24 @@ public static class DotiPayloadParityChecker
                 string installed = Path.Combine(target, relative.Replace('/', Path.DirectorySeparatorChar));
                 yield return CompareFile(sourceFile, installed, relative, relative, "static-doti");
             }
+        }
+    }
+
+    private static IEnumerable<DotiPayloadFileStatus> CheckMaterializedTemplates(string source, string target)
+    {
+        string coreTemplates = Path.Combine(source, ".doti", "core", "templates");
+        if (!Directory.Exists(coreTemplates))
+        {
+            yield break;
+        }
+
+        foreach (string coreFile in Directory.EnumerateFiles(coreTemplates, "*", SearchOption.AllDirectories))
+        {
+            string relativeToCore = Path.GetRelativePath(coreTemplates, coreFile).Replace('\\', '/');
+            string installedRelative = ".doti/templates/" + relativeToCore;
+            string installed = Path.Combine(target, installedRelative.Replace('/', Path.DirectorySeparatorChar));
+            yield return CompareFile(
+                coreFile, installed, ".doti/core/templates/" + relativeToCore, installedRelative, "materialized-doti");
         }
     }
 

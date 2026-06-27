@@ -4,6 +4,10 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/Hx.Impact.Tests/Hx.Impact.Tests.csproj" />
+    <Project Path="test/Hx.Cycle.Tests/Hx.Cycle.Tests.csproj" />
+    <Project Path="test/Hx.Sentrux.Tests/Hx.Sentrux.Tests.csproj" />
+    <Project Path="test/Hx.Embedding.Tests/Hx.Embedding.Tests.csproj" />
+    <Project Path="test/Hx.Semantic.Tests/Hx.Semantic.Tests.csproj" />
     <Project Path="test/Hx.Runner.Tests/Hx.Runner.Tests.csproj" />
     <Project Path="test/Hx.Scaffold.Tests/Hx.Scaffold.Tests.csproj" />
     <Project Path="test/Hx.Doti.Tests/Hx.Doti.Tests.csproj" />
@@ -24,6 +28,9 @@
     <Project Path="tools/Hx.Security.Core/Hx.Security.Core.csproj" />
     <Project Path="tools/Hx.Cycle.Core/Hx.Cycle.Core.csproj" />
     <Project Path="tools/Hx.Cli.Kernel/Hx.Cli.Kernel.csproj" />
+    <Project Path="tools/Hx.Embedding.Core/Hx.Embedding.Core.csproj" />
+    <Project Path="tools/Hx.Semantic.Core/Hx.Semantic.Core.csproj" />
+    <Project Path="tools/Hx.Semantic.Cli/Hx.Semantic.Cli.csproj" />
     <Project Path="tools/Hx.Tooling.Contracts/Hx.Tooling.Contracts.csproj" />
   </Folder>
   <Folder Name="/scaffold/">

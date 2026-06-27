@@ -59,6 +59,13 @@ public static class DotiInstaller
 
         foreach (string sub in StaticDotiSubdirectories)
         {
+            // FR-014/016: `.doti/templates` is MATERIALIZED from `.doti/core/templates` (single source), not copied
+            // from a committed twin — handled after the obsolete-asset sweep so it is never reconciled or removed.
+            if (string.Equals(sub, "templates", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             string from = Path.Combine(payloadRoot, ".doti", sub);
             if (Directory.Exists(from))
             {
@@ -99,6 +106,8 @@ public static class DotiInstaller
             installed.Add(new DotiInstallPathEffect(".doti/payload.json", "repo payload version stamped from the bundled descriptor"));
         }
 
+        MaterializeRepoTemplates(payloadRoot, targetRepoRoot, copied, installed);
+
         string? nextStep = classification.Classification is DotiInstallClassification.InstalledNewTarget
             or DotiInstallClassification.InstalledEmptyTarget
             ? "Run `hx new --output <target> --name <project-name>` or the scaffold creation command for this repository."
@@ -117,6 +126,24 @@ public static class DotiInstaller
             removed,
             skipped,
             blocked);
+    }
+
+    /// <summary>
+    /// FR-016: materialize <c>.doti/templates</c> from the payload's single-source <c>.doti/core/templates</c>, run
+    /// AFTER the obsolete-asset sweep so the just-materialized copy is never removed. Installed repos keep
+    /// <c>.doti/templates</c>; recorded as a copied + installed effect when any file is written.
+    /// </summary>
+    private static void MaterializeRepoTemplates(
+        string payloadRoot, string targetRepoRoot, List<string> copied, List<DotiInstallPathEffect> installed)
+    {
+        IReadOnlyList<string> materialized = DotiTemplateMaterializer.MaterializeFromTo(
+            Path.Combine(payloadRoot, ".doti", "core", "templates"),
+            Path.Combine(targetRepoRoot, ".doti", "templates"));
+        if (materialized.Count > 0)
+        {
+            copied.Add(".doti/templates");
+            installed.Add(new DotiInstallPathEffect(".doti/templates", "materialized from .doti/core/templates"));
+        }
     }
 
     private static void WriteMetadata(

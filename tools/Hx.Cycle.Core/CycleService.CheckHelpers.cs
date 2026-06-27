@@ -69,7 +69,7 @@ public sealed partial class CycleService
         if (freshness.Freshness == StageFreshness.Stale)
         {
             evaluating.Remove(prereqId);
-            return new StagePrereqResult(prereqId, "stale", false, freshness.Reason);
+            return new StagePrereqResult(prereqId, "stale", false, freshness.Reason, freshness.StaleReason);
         }
 
         string? openMarker = OpenClarificationMarker(prereqId, state.Feature);

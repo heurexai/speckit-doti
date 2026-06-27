@@ -68,7 +68,8 @@ public static partial class RunnerCommands
             return Usage(meta, "doti cycle check", "--stage is required.");
         }
 
-        CycleCheckReport report = new CycleService(repo).Check(stage);
+        var service = new CycleService(repo);
+        CycleCheckReport report = service.Check(stage);
         if (report.Passed)
         {
             return CycleCheckPassed(meta, stage, report);
@@ -78,9 +79,85 @@ public static partial class RunnerCommands
             .Where(p => !p.Ok)
             .Select(p => Diag.Of(ErrorCodes.Validation_Failed, $"{p.Stage}: {p.Status}" + (p.Reason is { } r ? $" ({r})" : ""), target: p.Stage))
             .ToList();
+        // FR-002: every failure carries the single recommended next command (a safe refresh, or re-running the stage).
+        List<CliNextAction> nextActions = service.RecoveryPlanFor(report).Steps
+            .Select(s => new CliNextAction($"Recover '{s.Stage}'", s.Reason ?? s.Status, s.NextCommand))
+            .ToList();
         return CliResults.Fail(meta, "doti cycle check", ExitClass.Validation, errors,
-            $"Prerequisites for '{stage}' are not all fresh.", report);
+            $"Prerequisites for '{stage}' are not all fresh.", report, nextActions: nextActions);
     }
+
+    public static CliResult CycleRefreshPlan(CliMeta meta, string repo, string target)
+    {
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return Usage(meta, "doti cycle refresh-plan", "--target is required.");
+        }
+
+        CycleRecoveryPlan plan = new CycleService(repo).RecoveryPlan(target);
+        string summary = plan.Steps.Count == 0
+            ? $"'{target}' prerequisites are all fresh."
+            : plan.Recoverable
+                ? $"{plan.Steps.Count} stale step(s) for '{target}', all safely refreshable (`doti cycle refresh --apply-safe`)."
+                : $"{plan.Steps.Count} stale step(s) for '{target}'; some require re-running the stage.";
+        return CliResults.Ok(meta, "doti cycle refresh-plan", summary, plan,
+            nextActions: plan.Steps
+                .Select(s => new CliNextAction($"Recover '{s.Stage}'", s.Reason ?? s.Status, s.NextCommand))
+                .ToList());
+    }
+
+    public static CliResult CycleRefresh(CliMeta meta, string repo, string target, bool applySafe)
+    {
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return Usage(meta, "doti cycle refresh", "--target is required.");
+        }
+
+        CycleRefreshResult result = new CycleService(repo).Refresh(target, applySafe);
+        List<StageRecoveryStep> blockers = result.Remaining
+            .Where(s => s.Safety != RestampSafety.SafeReinterpret)
+            .ToList();
+        List<StageRecoveryStep> safe = result.Remaining
+            .Where(s => s.Safety == RestampSafety.SafeReinterpret)
+            .ToList();
+        List<CliNextAction> nextActions = result.Remaining
+            .Select(s => new CliNextAction($"Recover '{s.Stage}'", s.Reason ?? s.Status, s.NextCommand))
+            .ToList();
+
+        // Dry run (no --apply-safe): informational preview, never a failure.
+        if (!applySafe)
+        {
+            string summary = result.Remaining.Count == 0
+                ? $"'{target}' prerequisites are all fresh."
+                : $"{safe.Count} step(s) safely refreshable (`doti cycle refresh --target {target} --apply-safe`), {blockers.Count} need re-running.";
+            return CliResults.Ok(meta, "doti cycle refresh", summary, result, nextActions: nextActions);
+        }
+
+        if (blockers.Count == 0)
+        {
+            string okSummary = result.Refreshed.Count > 0
+                ? $"Refreshed {result.Refreshed.Count} stage(s); '{target}' is recoverable."
+                : $"Nothing to refresh; '{target}' prerequisites are fresh.";
+            return CliResults.Ok(meta, "doti cycle refresh", okSummary, result);
+        }
+
+        List<Diagnostic> errors = blockers
+            .Select(b => Diag.Of(RefreshBlockerCode(b.Safety),
+                $"{b.Stage}: {b.Status}" + (b.Reason is { } r ? $" ({r})" : ""), target: b.Stage))
+            .ToList();
+        return CliResults.Fail(meta, "doti cycle refresh", ExitClass.Validation, errors,
+            $"Refreshed {result.Refreshed.Count} stage(s); {blockers.Count} step(s) require a re-run for '{target}'.",
+            result, nextActions: blockers
+                .Select(b => new CliNextAction($"Re-run '{b.Stage}'", b.Reason ?? "Stage requires re-running.", b.NextCommand))
+                .ToList());
+    }
+
+    private static string RefreshBlockerCode(RestampSafety? safety) => safety switch
+    {
+        RestampSafety.NotBound => ErrorCodes.Validation_CycleRefreshNotBound,
+        RestampSafety.RerunRequired => ErrorCodes.Validation_CycleRefreshRerunRequired,
+        _ => ErrorCodes.Validation_Failed, // a missing/invalid prerequisite (not stamped / open marker)
+    };
 
     private static CliResult CycleCheckPassed(CliMeta meta, string stage, CycleCheckReport report) =>
         report.Completion is not null
