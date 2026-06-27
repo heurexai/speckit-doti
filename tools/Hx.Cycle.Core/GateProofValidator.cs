@@ -150,15 +150,26 @@ public static class GateProofValidator
         {
             GateScope expected = GateScopeResolver.Resolve(
                 repositoryRoot, persisted.BaseRef, "HEAD", proof.AffectedTestProof.Plan);
-            return proof.Scope.DocsOnly == expected.DocsOnly
+            return ScopeIsValid(proof.Scope.DocsOnly, expected.DocsOnly)
                 ? []
-                : [$"gate proof records scope docsOnly={proof.Scope.DocsOnly} but the current change set is docsOnly={expected.DocsOnly} — a docs-only scope skip cannot be minted for a code change (FR-028)"];
+                : [$"gate proof records a docs-only scope skip (architecture + Sentrux not run) but the current change set is NOT docs-only — a scope skip cannot be minted for a code change (FR-028)"];
         }
         catch (Exception ex)
         {
             return ["could not recompute gate scope: " + ex.Message];
         }
     }
+
+    /// <summary>
+    /// FR-028 (M-1) scope validity (pure): a recorded gate scope is valid against the change set's ACTUAL docs-only
+    /// status iff it does not claim a docs-only SKIP for a non-docs-only change. A full-gate proof
+    /// (<paramref name="recordedDocsOnly"/> false) ran architecture + Sentrux, so it is valid for ANY change — including
+    /// a docs-only one (over-strict, never a forged skip; this is what lets a docs-only release validate against the
+    /// always-full release lane). A docs-only skip (<paramref name="recordedDocsOnly"/> true) is valid ONLY when the
+    /// change is genuinely docs-only — a code change can never inherit the skip.
+    /// </summary>
+    public static bool ScopeIsValid(bool recordedDocsOnly, bool actualDocsOnly) =>
+        !recordedDocsOnly || actualDocsOnly;
 
     private static bool CoverageEqual(IReadOnlyList<GateLadderEntry> recorded, IReadOnlyList<GateLadderEntry> expected)
     {

@@ -44,6 +44,23 @@ public sealed class GateScopeTests
         Assert.False(GateScopeResolver.IsDocsOnly(Plan(AffectedOutcome.NoTestsRequired), Review("tools/Hx.Cycle.Core/X.cs")));
     }
 
+    // FR-028 scope-validity is ASYMMETRIC: a full-gate proof is valid for any change, but a docs-only skip is valid
+    // only for a genuinely docs-only change. Exact equality wrongly rejected a docs-only release against the
+    // always-full release lane (which records DocsOnly=false).
+    [Fact]
+    public void Full_gate_proof_validates_any_change_including_docs_only()
+    {
+        Assert.True(GateProofValidator.ScopeIsValid(recordedDocsOnly: false, actualDocsOnly: false)); // full gate, code
+        Assert.True(GateProofValidator.ScopeIsValid(recordedDocsOnly: false, actualDocsOnly: true));  // full gate, docs-only (release lane)
+    }
+
+    [Fact]
+    public void Docs_only_skip_is_valid_only_for_a_docs_only_change()
+    {
+        Assert.True(GateProofValidator.ScopeIsValid(recordedDocsOnly: true, actualDocsOnly: true));   // legit skip
+        Assert.False(GateProofValidator.ScopeIsValid(recordedDocsOnly: true, actualDocsOnly: false)); // forged skip for code — rejected
+    }
+
     [Fact]
     public void Skippable_steps_are_architecture_and_sentrux_only()
     {
