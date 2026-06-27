@@ -312,13 +312,26 @@ public static class GateRunner
         }
     }
 
-    // Diff against the integration branch when it exists; otherwise HEAD. The collector also unions the
-    // working tree via `git status`, so uncommitted changes are always covered.
+    // Diff against the integration branch when it exists; otherwise HEAD. The collector also unions the working tree
+    // via `git status`, so uncommitted changes are always covered. CRUCIAL: resolve to a concrete commit SHA, NOT a
+    // symbolic ref. The affected-test proof PERSISTS this base, and a stored `"HEAD"` re-resolves to a DIFFERENT commit
+    // the moment a later transition commit advances HEAD — so the release-train validation (which runs AFTER the
+    // release transition commits) saw the symbolic base move and rejected an otherwise-valid proof ("base ref does not
+    // match"). A resolved SHA is a stable snapshot that survives subsequent commits.
     private static string ResolveBaseRef(string repositoryRoot)
     {
-        ProcessRunResult result = ProcessRunner.Run(
+        ProcessRunResult dev = ProcessRunner.Run(
             new ToolCommand("git", ["rev-parse", "--verify", "--quiet", "dev"], repositoryRoot));
-        return result.ExitCode == 0 ? "dev" : "HEAD";
+        if (dev.ExitCode == 0 && !string.IsNullOrWhiteSpace(dev.StandardOutput))
+        {
+            return dev.StandardOutput.Trim();
+        }
+
+        ProcessRunResult head = ProcessRunner.Run(
+            new ToolCommand("git", ["rev-parse", "--verify", "--quiet", "HEAD"], repositoryRoot));
+        return head.ExitCode == 0 && !string.IsNullOrWhiteSpace(head.StandardOutput)
+            ? head.StandardOutput.Trim()
+            : "HEAD";
     }
 
     private static BuildAndTestResult BuildAndTestStep(string repositoryRoot, Lane lane, AffectedPlan plan)
