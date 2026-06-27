@@ -13,6 +13,7 @@
     <Project Path="test/Hx.Doti.Tests/Hx.Doti.Tests.csproj" />
     <Project Path="test/Hx.Templates.Tests/Hx.Templates.Tests.csproj" />
     <Project Path="test/Hx.Cli.Kernel.Tests/Hx.Cli.Kernel.Tests.csproj" />
+    <Project Path="test/Hx.Gate.Tests/Hx.Gate.Tests.csproj" />
     <Project Path="test/Hx.Architecture.Tests/Hx.Architecture.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

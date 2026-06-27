@@ -183,6 +183,30 @@ public sealed class ArchitectureTests
         Assert.Contains(Arch.Types, t => t.Name.Equals("ChangeSetContext", System.StringComparison.Ordinal));
     }
 
+    // 012 M1 (the load-bearing boundary): the visibility records — GateTrace, ChangeSummary, AffectedTestInventory —
+    // are REVIEW/TELEMETRY context carried on the GateRunResult/GateProof envelope, NEVER a proof-hash input (008
+    // FR-020/SC-009). A *ProofHasher depending on any of them would let advisory change-context leak into a
+    // deterministic proof. Compile-checked, extending the M-8 pattern to the new records.
+    [Fact]
+    public void Gate_proof_hashers_do_not_depend_on_the_visibility_trace_records()
+    {
+        IArchRule rule = Classes().That().HaveNameEndingWith("ProofHasher")
+            .Should().NotDependOnAny(Types().That()
+                .HaveFullNameContaining("GateTrace")
+                .Or().HaveFullNameContaining("ChangeSummary")
+                .Or().HaveFullNameContaining("AffectedTestInventory"));
+        Assert.True(rule.HasNoViolations(Arch));
+    }
+
+    [Fact]
+    public void Visibility_trace_records_are_loaded()
+    {
+        // Guard: the M1 rule must have real forbidden targets (the three 012 visibility records).
+        Assert.Contains(Arch.Types, t => t.Name.Equals("GateTrace", System.StringComparison.Ordinal));
+        Assert.Contains(Arch.Types, t => t.Name.Equals("ChangeSummary", System.StringComparison.Ordinal));
+        Assert.Contains(Arch.Types, t => t.Name.Equals("AffectedTestInventory", System.StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Architecture_guidance_matches_declared_families()
     {

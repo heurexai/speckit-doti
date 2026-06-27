@@ -31,7 +31,10 @@ public static class GateRunner
     public static GateProof Run(string repositoryRoot, Lane lane, Action<GateStep>? onStep = null)
     {
         var steps = new List<GateStep>();
+        // 012 FR-019: time every step so the human trace can show per-step duration + total elapsed. Timing is pure
+        // telemetry stamped onto GateStep.DurationMs — never a proof input (M1).
         void Emit(GateStep step) => EmitStep(steps, onStep, step);
+        void EmitTimed(Func<GateStep> produce) => Emit(Timed(produce));
 
         // The repo's declared TIER (not the --profile lane) owns which opinionated gates run + in what mode
         // (FR-029). A step the tier does not declare defaults to Enforced — today's behavior.
@@ -43,28 +46,28 @@ public static class GateRunner
                 [new GateEvidence("tier-resolution", resolution.FailureReason ?? "could not resolve the repo's gate tier")]));
         }
 
-        Emit(HygieneStep(repositoryRoot, lane));
-        Emit(GitleaksVerifyStep(repositoryRoot));
+        EmitTimed(() => HygieneStep(repositoryRoot, lane));
+        EmitTimed(() => GitleaksVerifyStep(repositoryRoot));
         // Compute the affected plan + the change SCOPE (FR-028) before the architecture/Sentrux steps so a docs-only
         // change can scope-skip them. Release always runs everything (scope never skips at release lane).
-        AffectedGatePlan affected = AffectedChangeStep(repositoryRoot);
-        Emit(affected.Step);
+        AffectedGatePlan affected = Timed(() => AffectedChangeStep(repositoryRoot), out long affectedMs);
+        Emit(affected.Step with { DurationMs = affectedMs });
         GateScope scope = lane == Lane.Release
             ? new GateScope(JsonContractDefaults.SchemaVersion, false, "scope: release lane runs every gate", [])
             : GateScopeResolver.Resolve(repositoryRoot, affected.BaseRef, affected.HeadRef, affected.Plan);
-        Emit(ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-verify", () => SentruxVerifyStep(repositoryRoot)));
+        EmitTimed(() => ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-verify", () => SentruxVerifyStep(repositoryRoot)));
         TaskCompletionProof taskCompletionProof = DotiTaskCompletion.CreateActiveFeatureProof(repositoryRoot);
-        Emit(TaskCompletionStep(taskCompletionProof));
-        BuildAndTestResult buildAndTest = BuildAndTestStep(repositoryRoot, lane, affected.Plan);
-        Emit(buildAndTest.Step);
-        Emit(ScopeOrTier(scope, ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
-        Emit(NoVelopackStep(repositoryRoot)); // FR-007/SC-005: always enforced — a hard product invariant, not tier-downgradable
-        Emit(NoSourceStep(repositoryRoot)); // FR-006/SC-004: no tool build tree in the staged release layout
-        Emit(SkillDriftStep(repositoryRoot)); // render/payload/skill-drift stay ENFORCED — never scope-skipped (SC-011)
-        Emit(DotiPayloadStep(repositoryRoot));
-        Emit(ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
-        Emit(VersionStep(repositoryRoot, lane));
-        Emit(SecurityStep(repositoryRoot, lane));
+        EmitTimed(() => TaskCompletionStep(taskCompletionProof));
+        BuildAndTestResult buildAndTest = Timed(() => BuildAndTestStep(repositoryRoot, lane, affected.Plan), out long buildMs);
+        Emit(buildAndTest.Step with { DurationMs = buildMs });
+        EmitTimed(() => ScopeOrTier(scope, ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
+        EmitTimed(() => NoVelopackStep(repositoryRoot)); // FR-007/SC-005: always enforced — a hard product invariant, not tier-downgradable
+        EmitTimed(() => NoSourceStep(repositoryRoot)); // FR-006/SC-004: no tool build tree in the staged release layout
+        EmitTimed(() => SkillDriftStep(repositoryRoot)); // render/payload/skill-drift stay ENFORCED — never scope-skipped (SC-011)
+        EmitTimed(() => DotiPayloadStep(repositoryRoot));
+        EmitTimed(() => ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
+        EmitTimed(() => VersionStep(repositoryRoot, lane));
+        EmitTimed(() => SecurityStep(repositoryRoot, lane));
         ReleaseDocumentationProof? documentationProof = null;
         if (lane == Lane.Release)
         {
@@ -132,6 +135,27 @@ public static class GateRunner
     {
         steps.Add(step);
         onStep?.Invoke(step);
+    }
+
+    // 012 FR-019: run a step under a stopwatch and stamp its wall-clock duration. Pure telemetry — DurationMs never
+    // enters a proof hash (M1).
+    private static GateStep Timed(Func<GateStep> produce)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        GateStep step = produce();
+        stopwatch.Stop();
+        return step with { DurationMs = stopwatch.ElapsedMilliseconds };
+    }
+
+    // Overload for the two multi-value steps (affected plan, build+test): time the producing call and surface the
+    // elapsed ms so the caller can stamp the step it extracts from the result.
+    private static T Timed<T>(Func<T> produce, out long elapsedMs)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        T value = produce();
+        stopwatch.Stop();
+        elapsedMs = stopwatch.ElapsedMilliseconds;
+        return value;
     }
 
     private static GateStep GitleaksVerifyStep(string repositoryRoot)

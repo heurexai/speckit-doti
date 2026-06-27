@@ -26,13 +26,15 @@ public static partial class RunnerCommandFactory
         Command runCommand = new("run", "Run the gate ladder for a lane and emit a fail-closed GateProof.");
         Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
         Option<string> profile = new("--profile") { Description = "Lane profile: auto|advisory|normal|release.", DefaultValueFactory = _ => "auto" };
-        Option<bool> stream = new("--stream") { Description = "Stream NDJSON phase events as the ladder runs (JSON sink only).", DefaultValueFactory = _ => false };
+        Option<bool> stream = new("--stream") { Description = "Stream NDJSON phase events as the ladder runs (JSON sink); the final envelope carries the gate trace.", DefaultValueFactory = _ => false };
         Option<bool> json = CliApp.JsonOption();
         runCommand.Options.Add(repo);
         runCommand.Options.Add(profile);
         runCommand.Options.Add(stream);
         runCommand.Options.Add(json);
-        runCommand.SetAction(parseResult => CliHost.RunStreaming(meta, "gate run",
+        // 012 (WI-3 + WI-5): the human TTY gets the outcome-aware live-progress bars + the gate-trace summary panel;
+        // JSON (incl. --stream) gets the NDJSON phases + the final envelope with GateRunResult.Trace.
+        runCommand.SetAction(parseResult => CliHost.RunStreamingWithProgress(meta, "gate run",
             emit => RunnerCommands.GateRun(meta, parseResult.GetValue(repo)!,
                 parseResult.GetValue(profile)!, emit),
             forceJson: CliApp.ForceJson(parseResult, json),

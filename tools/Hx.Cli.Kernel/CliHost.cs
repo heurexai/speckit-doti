@@ -39,6 +39,20 @@ public static class CliHost
             ? CliRenderer.RunWithLiveProgress(meta, command, body)
             : Execute(meta, command, body, output, forceJson, streamEvents: false);
 
+    /// <summary>
+    /// 012 (FR-014/016): a streaming command that ALSO drives the Heurex live progress display in human mode. On a
+    /// human TTY the body's emitted <see cref="CliEvent"/> steps drive the outcome-aware progress bars and the final
+    /// <see cref="CliRenderer.WriteSummary"/> renders the gate trace panel; in JSON mode it is identical to
+    /// <see cref="RunStreaming"/> (NDJSON phases when <paramref name="streamEvents"/>, then the final envelope), so
+    /// the agent contract is unchanged. The one host that satisfies both WI-3 (--stream NDJSON) and WI-5 (human trace).
+    /// </summary>
+    public static int RunStreamingWithProgress(
+        CliMeta meta, string command, Func<Action<CliEvent>, CliResult> body, Stream? output = null,
+        bool? forceJson = null, bool streamEvents = false) =>
+        CliWriter.PreferHuman(forceJson)
+            ? CliRenderer.RunWithLiveProgress(meta, command, body)
+            : Execute(meta, command, body, output, forceJson, streamEvents);
+
     private static int Execute(
         CliMeta meta, string command, Func<Action<CliEvent>, CliResult> body, Stream? output, bool? forceJson,
         bool streamEvents)

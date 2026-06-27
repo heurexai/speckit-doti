@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Diagnostics;
+using System.Text.Json;
 using Hx.Tooling.Contracts;
 using Spectre.Console;
 
@@ -243,7 +244,10 @@ public static class CliRenderer
                     }
                     else
                     {
-                        Complete(task);
+                        // 012 FR-016: the streamed status IS the outcome — color the bar by it and surface the reason
+                        // so a scope-skipped or failed step is visually distinct, not just "done". The reason is the
+                        // step's first evidence message, carried on CliEvent.Message.
+                        CompleteWithOutcome(task, e);
                     }
                 }
 
@@ -281,6 +285,26 @@ public static class CliRenderer
         }
     }
 
+    // 012 FR-016: complete a step bar carrying its outcome — a skipped step is muted with its reason, a failed step
+    // is red with its reason, a passed step keeps the gold bar. The reason (CliEvent.Message) is capped so the live
+    // line never wraps into a dump.
+    private static void CompleteWithOutcome(ProgressTask task, CliEvent e)
+    {
+        string label = Label(e.Name);
+        string? reason = Cap(e.Message, 60);
+        string description = e.Status switch
+        {
+            "skipped" => $"[{MutedHex}]{Markup.Escape(label)}[/] [{MutedHex}]skipped{ReasonSuffix(reason)}[/]",
+            "fail" or "blocked" => $"[red]{Markup.Escape(label)}  fail{ReasonSuffix(reason)}[/]",
+            _ => $"[{LightHex}]{Markup.Escape(label)}[/]",
+        };
+        task.Description = description;
+        Complete(task);
+    }
+
+    private static string ReasonSuffix(string? reason) =>
+        string.IsNullOrWhiteSpace(reason) ? string.Empty : $" — {Markup.Escape(reason)}";
+
     private static void WriteSummary(IAnsiConsole c, CliResult result)
     {
         var lines = new List<string>
@@ -306,6 +330,142 @@ public static class CliRenderer
             .BorderColor(result.Ok ? Gold : Fail)
             .Padding(1, 0, 1, 0));
         c.WriteLine();
+
+        // 012 (FR-014/015/017): when the envelope carries a gate trace, render the operator-facing scope + change
+        // summary + per-step ladder from that SAME trace the JSON exposes (one source of truth). Bounded, never a dump.
+        if (GateTraceFrom(result) is { } trace)
+        {
+            WriteGateSummary(c, trace);
+        }
+    }
+
+    /// <summary>
+    /// 012 (FR-014/015/018/019): render the gate's effective-scope summary, the two-tier change summary, the
+    /// per-step ladder (icon · name · duration · terse reason), and the total elapsed — all bounded/capped. Derived
+    /// solely from the <see cref="GateTrace"/> the JSON carries, so the human surface matches the proof (FR-017).
+    /// </summary>
+    public static void WriteGateSummary(IAnsiConsole c, GateTrace trace)
+    {
+        var lines = new List<string> { ScopeLine(trace) };
+        lines.Add(BasicChangeLine(trace.Change));
+        if (trace.Change.ClassesIncluded || trace.Tests is not null)
+        {
+            lines.Add(DetailedChangeLine(trace));
+        }
+
+        lines.Add(string.Empty);
+        foreach (GateStep step in trace.Steps)
+        {
+            lines.Add(LadderLine(step));
+        }
+
+        lines.Add(string.Empty);
+        lines.Add($"[{MutedHex}]total:[/] [{LightHex}]{trace.TotalMs} ms[/]");
+
+        c.Write(new Panel(new Markup(string.Join("\n", lines)))
+            .Header($"[{GoldHex}]gate trace[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderColor(Navy)
+            .Padding(1, 0, 1, 0));
+        c.WriteLine();
+    }
+
+    private static string ScopeLine(GateTrace trace)
+    {
+        string scope = trace.Scope.DocsOnly ? "docs-only" : "code";
+        string mode = trace.Scope.DocsOnly ? "no tests required" : $"affected-test mode: {trace.EffectiveMode}";
+        return $"[{GoldHex}]scope:[/] [{LightHex}]{Markup.Escape(scope)}[/] [{MutedHex}]· {Markup.Escape(mode)}[/]";
+    }
+
+    private static string BasicChangeLine(ChangeSummary change)
+    {
+        string counts = $"src {change.Source} · test {change.Test} · docs {change.Docs} · other {change.Other}";
+        string files = change.Files.Count == 0
+            ? "no files"
+            : string.Join(", ", change.Files.Select(Markup.Escape));
+        return $"[{GoldHex}]changed:[/] [{LightHex}]{Markup.Escape(counts)}[/] " +
+               $"[{MutedHex}](+{change.LinesAdded}/-{change.LinesRemoved})[/]\n" +
+               $"[{MutedHex}]  files:[/] [{LightHex}]{files}[/]";
+    }
+
+    private static string DetailedChangeLine(GateTrace trace)
+    {
+        var parts = new List<string>();
+        if (trace.Change.ClassesIncluded)
+        {
+            string classes = trace.Change.ClassesTouched.Count == 0
+                ? "none"
+                : string.Join(", ", trace.Change.ClassesTouched.Select(Markup.Escape));
+            parts.Add($"[{MutedHex}]  classes:[/] [{LightHex}]{classes}[/]");
+        }
+
+        if (trace.Tests is { } tests)
+        {
+            parts.Add($"[{MutedHex}]  tests:[/] [{LightHex}]{tests.SelectedProjects}/{tests.TotalProjects} project(s)[/]"
+                + CaseClassSuffix(tests));
+        }
+
+        return string.Join("\n", parts);
+    }
+
+    private static string CaseClassSuffix(AffectedTestInventory tests)
+    {
+        if (tests.SelectedClasses is { } classes && tests.SelectedCases is { } cases)
+        {
+            string total = tests.TotalClasses is { } tc && tests.TotalCases is { } tcase
+                ? $" of {tc} class(es)/{tcase} case(s)"
+                : tests.UnknownReason is { } reason ? $" [{MutedHex}](total unknown: {Markup.Escape(Cap(reason, 50)!)})[/]" : string.Empty;
+            return $" [{MutedHex}]· {classes} class(es)/{cases} case(s) selected{total}[/]";
+        }
+
+        return tests.UnknownReason is { } r ? $" [{MutedHex}](class/case counts unknown: {Markup.Escape(Cap(r, 50)!)})[/]" : string.Empty;
+    }
+
+    private static string LadderLine(GateStep step)
+    {
+        (string glyph, string word, string color) = step.Outcome switch
+        {
+            StageOutcome.Pass => ("ok", "pass", GoldHex),
+            StageOutcome.Skipped => ("--", "skipped", MutedHex),
+            _ => ("XX", "fail", "red"),
+        };
+        string duration = step.DurationMs is { } ms ? $" [{MutedHex}]{ms} ms[/]" : string.Empty;
+        string reason = step.Outcome is StageOutcome.Skipped or StageOutcome.Fail or StageOutcome.Blocked
+            ? ReasonSuffix(Cap(step.Evidence.FirstOrDefault()?.Message, 70))
+            : string.Empty;
+        return $"[{color}]{glyph}[/] [{LightHex}]{Markup.Escape(Label(step.Name))}[/] " +
+               $"[{color}]{word}[/]{duration}{reason}";
+    }
+
+    // Deserialize the trace from the envelope's JsonNode data — one source of truth with the JSON, no separate
+    // human-only computation (FR-017). Any shape mismatch yields null (the panel-only render).
+    private static GateTrace? GateTraceFrom(CliResult result)
+    {
+        if (result.Data is not { } data)
+        {
+            return null;
+        }
+
+        try
+        {
+            GateRunResult? run = data.Deserialize<GateRunResult>(JsonContractSerializerOptions.Create());
+            return run?.Trace;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string? Cap(string? text, int max)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+
+        string single = text.ReplaceLineEndings(" ").Trim();
+        return single.Length <= max ? single : single[..(max - 1)] + "…";
     }
 
     private static string Label(string stepName) => stepName.Replace('-', ' ');
