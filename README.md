@@ -245,6 +245,7 @@ hx gate run --repo . --profile normal --json
 - Semantic drift candidates are advisory only. A clean candidate list is not proof.
 - `workflow-only` can help non-.NET repos adopt the Doti process, but the full scaffold value is .NET-focused.
 - Current main includes release-train work beyond the older public release notes. Check [CHANGELOG.md](CHANGELOG.md) for what is published vs. unreleased.
+- Latest unreleased cycle: `009-constitution-stage-and-fresh-context` — a project constitution stage (§1 inherited invariants + §2 project declarations), always-fresh §2 injection at plan and architecture review, and a .NET-tuned advisory drift finder. See [CHANGELOG.md](CHANGELOG.md) for the full note.
 
 ---
 
