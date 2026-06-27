@@ -15,7 +15,7 @@ Improve the Doti cycle so architecture review, drift review, template packaging,
 - **P2 — reusable deterministic change/review context:** change-set context (FR-008–FR-011); the review-context command (FR-025); arch-review + drift-review consume it and constrain scope (FR-010, FR-026, FR-027); scoped gate/Sentrux (FR-028–FR-032).
 - **P3 — release-train completeness:** per-feature gate-proof reporting (FR-036) and cross-feature release-train drift (FR-037). *(FR-033/034/035 already exist — see Release-train validation.)*
 - **P4 — single-source templates:** `.doti/core/templates` authoritative + materialized-payload parity (FR-014–FR-017).
-- **P5 — advisory ergonomics (last, never gating):** semantic candidate finder (FR-018–FR-021, FR-039–FR-041); unnumbered utility skills (FR-022–FR-024); `nextActions` hints (FR-002).
+- **P5 — advisory ergonomics (last, never gating):** semantic candidate finder (FR-018–FR-021, FR-039–FR-042); unnumbered utility skills (FR-022–FR-024); `nextActions` hints (FR-002).
 
 ## Scope
 
@@ -56,10 +56,11 @@ Out of scope:
 - **FR-018**: The system MAY provide a read-only semantic candidate finder for drift/review narrowing.
 - **FR-019**: Semantic candidates MUST include evidence snippets, confidence, affected axes, and suggested deterministic checks.
 - **FR-020**: Absence of semantic candidates MUST NOT be treated as proof that review is clean.
-- **FR-021**: Semantic retrieval MUST be **local/private only** — it runs an on-machine model via the **ONNX runtime on CPU** and MUST NOT send source code, docs, or secrets to any external provider. This feature defines no redaction or external-approval path; an external provider, if ever wanted, is a separate future cycle with its own design.
-- **FR-039**: The local semantic embedding model MUST run as ONNX on CPU, be pinned + hash-verified like the other vendored tools, and be selected to maximize semantic-capture quality within CPU-runnable latency bounds. **Target: Qwen3-Embedding-0.6B** (code-aware), with **BGE-M3** as the fallback; the exact model is confirmed in `/03-plan` via a feasibility spike (ONNX export + C# tokenizer + CPU latency), leveraging and customising the existing ONNX implementation in `polaris-core` (`Hx.Semantic.Core` / `Hx.Discriminate.Core`).
-- **FR-040**: The ONNX model loader/runner MUST be a **standalone library**, decoupled from the doti CLI and workflow code, so it is independently reusable — including potential reuse by the scaffolded app.
+- **FR-021**: Semantic retrieval MUST be **local/private only** — it runs an on-machine model on **CPU** and MUST NOT send source code, docs, or secrets to any external provider. This feature defines no redaction or external-approval path; an external provider, if ever wanted, is a separate future cycle with its own design.
+- **FR-039**: The local semantic embedding model runs on **CPU**, pinned + hash-verified like the other vendored tools. The **primary engine is Qwen3-Embedding-0.6B via LLamaSharp/GGUF** (the stronger, code-aware model — leveraging polaris-core's existing `Qwen3Embedder`); the **fallback engine is BGE-M3 via the ONNX runtime** (polaris-core's `BgeM3Embedder`). The system MUST fall back to BGE-M3 when the Qwen3/GGUF model or engine is unavailable.
+- **FR-040**: The embedding loader/runner MUST be a **standalone library**, decoupled from the doti CLI and workflow code, supporting **both engines** (LLamaSharp/GGUF and ONNX) behind a common `IEmbedder` abstraction, so it is independently reusable — including potential reuse by the scaffolded app.
 - **FR-041**: The local model-store root MUST NOT be hardcoded. It MUST be resolved from **local configuration** or the **`HEUREX_LLM_ROOT`** environment variable; when both are present, **configuration wins**; when neither is present, resolution MUST **fail hard** (fail-closed).
+- **FR-042**: `hx` MUST report the **active embedding engine** (model + runtime — e.g. `qwen3-gguf` primary or `bge-m3-onnx` fallback) in the semantic finder's output, so the operator can see whether retrieval is on the primary engine or has fallen back.
 - **FR-022**: Optional amendment/patch skills MUST be unnumbered utilities, not part of the normal numbered path.
 - **FR-023**: Utility skills MUST classify changes as active-feature scope, Doti prose, generated-code template, runtime code, docs-only, or future-only workflow improvement.
 - **FR-024**: Utility skills MUST use cycle recovery planning rather than guessing which stamps to refresh.
@@ -68,8 +69,8 @@ Out of scope:
 - **FR-027**: During implementation or drift patching, architecture review MUST rerun only when patches change architecture-relevant surfaces: contracts, CLI shape, dependency direction, project boundaries, layering, persistence, security boundaries, generated-code templates, or cross-module behavior.
 - **FR-028**: Gate planning SHOULD avoid full architecture/Sentrux validation for docs-only and Doti-prose-only changes where no runtime or generated code is affected.
 - **FR-029**: Sentrux checks MUST be source/code scoped by default and exclude docs, Doti prose, rendered skills, payload metadata, and non-code templates unless explicitly configured as code.
-- **FR-030**: Sentrux degradation above the hard tolerance but within an escalation band, such as 1.3x, MUST trigger structural architecture review after two documented optimization attempts.
-- **FR-031**: Sentrux rebaseline MUST require explicit operator intent plus spec/plan/arch-review evidence that the new structure is desired.
+- **FR-030**: Sentrux degradation above the hard tolerance but within the escalation band (**130 — i.e. 1.3× the tolerance band**) MUST give the agent **two documented optimization attempts** to bring it back under tolerance. The two attempts are a **diagnostic**: if they succeed, the complexity was optimizable; if they fail, that signals either legitimate functionality-driven growth or a wrong architecture the agent cannot adequately refactor — which MUST trigger **structural architecture review** to decide which (FR-031), not another blind optimization pass.
+- **FR-031**: The Sentrux baseline is **never removed** — it is the deterministic complexity/architecture anchor. **Rebaseline** (raising the baseline so legitimate, functionality-driven growth no longer exceeds tolerance) MUST require explicit operator intent plus **arch-review evidence that the new structure is desired** (functionality-driven, not architectural rot); without that classification the rebaseline is refused. This arch-review gate is the principle that lets the baseline be adjusted **up** over time **without being degraded** — a wrong-architecture degradation is refactored, not rebaselined.
 - **FR-032**: Release gates MUST remain fail-closed for unresolved Sentrux degradation unless an approved rebaseline is part of the cycle.
 
 ### Multi-Spec Release Train
@@ -106,6 +107,7 @@ The workflow MUST support completing multiple numbered Doti feature cycles befor
 - **SC-019**: If feature B changes behavior documented by feature A, release validation requires the docs/spec consistency to be repaired before release.
 - **SC-020**: Given feature A completed `drift-review`, starting feature B with B's spec already on disk succeeds in a single `specify` stamp — without staling A's `implement` (or any prior stamp) and without a manual clean-tree workaround.
 - **SC-021**: Given a runner-metadata/schema bump with unchanged inputs, `analyze` is safely re-interpreted from its durable report artifact (no manual re-stamp), exactly as `arch-review` and `drift-review` are.
+- **SC-022**: The semantic finder reports its active engine; given the Qwen3/GGUF model is absent, it falls back to BGE-M3 (ONNX) and the output states the fallback engine (e.g. `bge-m3-onnx (fallback)`).
 
 ## Key Entities
 
@@ -138,9 +140,9 @@ Planned/advisory surfaces (do NOT report as passing gates until implemented):
 - Preserve fail-closed behavior for unresolved git refs, stale proof, missing artifacts, and ambiguous recovery.
 - Update workflow metadata so review artifacts are declared consistently.
 - Update package/payload parity tests to validate materialized templates instead of committed duplication.
-- Do not create or rely on a Sentrux baseline.
+- **Never remove the Sentrux baseline** (it is the deterministic complexity/architecture anchor); the gate never AUTO-CREATES one; rebaseline is operator- + arch-review-evidence-gated (FR-031), so the baseline is adjusted **up** for legitimate growth, never degraded.
 - If semantic retrieval is added, it must be advisory, read-only, evidence-producing, and unable to bypass deterministic checks.
-- The ONNX model loader is a standalone, reusable library (decoupled from CLI/workflow), leveraging + customising `polaris-core`'s existing ONNX implementation (`Hx.Semantic.Core` / `Hx.Discriminate.Core` model-locator + engines). The model-store root resolves from config or `HEUREX_LLM_ROOT` (config wins; fail-closed when neither is set) — never hardcoded.
+- The embedding loader is a standalone, reusable library (decoupled from CLI/workflow) supporting both engines — LLamaSharp/GGUF (Qwen3 primary) and ONNX (BGE-M3 fallback) — behind a common `IEmbedder`, leveraging + customising polaris-core's `Qwen3Embedder` + `BgeM3Embedder` + `SemanticEngineFactory`. The active engine is reported (FR-042). The model-store root resolves from config or `HEUREX_LLM_ROOT` (config wins; fail-closed when neither is set) — never hardcoded.
 
 ## Release-train validation (FR-033–FR-037, evidence-backed)
 
@@ -159,7 +161,7 @@ So the release-train requirements are not re-implementing existing behavior exce
 - "Safe automatic refresh" (FR-006) covers the *runner-metadata/schema* re-stamp case observed this cycle (the analyze/arch-review "missing prerequisite artifact binding" staleness), where inputs are unchanged — never an inputs-changed restamp (FR-007).
 - The release-train requirements assume the verified existing behavior above; the new work is FR-036's gate-proof field and FR-037's cross-feature drift.
 - FR-004 (analyze artifact binding) remains open for `/02-doti-clarify`; the conservative default is to bind `analyze` to a durable report artifact only if it is a downstream proof, else mark it refresh-unsafe.
-- The semantic finder leverages and customises `polaris-core`'s existing ONNX implementation (verified present: `Hx.Semantic.Core` / `Hx.Discriminate.Core` — a model-locator + ONNX engines). The model-store root is resolved from config or `HEUREX_LLM_ROOT` (config wins; fail-closed if neither is set); the operator's `D:\LLM-Models` is supplied that way, never hardcoded.
+- The semantic finder leverages and customises `polaris-core`'s existing engines (verified present): `Qwen3Embedder` (LLamaSharp/GGUF, the primary) and `BgeM3Embedder` (ONNX, the fallback), behind `IEmbedder` + `SemanticEngineFactory`. The model-store root is resolved from config or `HEUREX_LLM_ROOT` (config wins; fail-closed if neither is set); the operator's `D:\LLM-Models` is supplied that way, never hardcoded.
 
 ## Clarifications
 
@@ -173,3 +175,8 @@ So the release-train requirements are not re-implementing existing behavior exce
 - **Analyze artifact binding (FR-004)** → **(A):** `analyze` produces a durable report artifact (anchored on the `converge` coverage output or a `{feature}-analyze-report.md`) and is bound like arch-review/drift-review, so it is safe-refreshable — added **SC-021**. Closes the `analyze` stale-loop reproduced this cycle.
 
 _All `/02-doti-clarify` markers resolved._
+
+### 2026-06-27 (`/03-doti-plan`)
+
+- **Sentrux baseline intent (corrects the earlier "do not rely on a baseline" carry-over; FR-030/031/032).** The baseline is **never removed** — it is the deterministic complexity/architecture anchor. The escalation band (**130 = 1.3× the 100 tolerance**) + **two optimization tries** is a *diagnostic*: ≤2 tries that bring degradation back under tolerance = optimizable complexity; two failed tries = either legitimate functionality-driven growth (→ evidence-gated rebaseline that raises the baseline) or a wrong architecture the agent cannot refactor (→ structural arch-review → refactor, **not** rebaseline). Rebaseline is **arch-review-evidence-gated** — the principle that lets the baseline grow with functionality without degrading the architecture. The gate never auto-creates a baseline.
+- **Semantic engine (FR-039/040/042) — primary Qwen3 via GGUF/LLamaSharp, fallback BGE-M3 via ONNX, engine reported.** The feasibility spike found Qwen3's ONNX-CPU-C# tokenizer path is not turnkey, but polaris-core already runs **Qwen3-Embedding-0.6B via LLamaSharp/GGUF** (`Qwen3Embedder`) — so the **primary engine is Qwen3 via GGUF/LLamaSharp** (the stronger code-aware model on a working impl), with **BGE-M3 via ONNX** (`BgeM3Embedder`) as the fallback. The standalone embedding library abstracts both behind `IEmbedder` (FR-040). **`hx` reports the active engine** (FR-042 / SC-022) so the operator sees whether it is on Qwen3 or fell back to BGE-M3. This revises the earlier "ONNX-on-CPU" framing in FR-021/039 to engine-agnostic local CPU inference (GGUF + ONNX).
