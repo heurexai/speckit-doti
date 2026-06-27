@@ -15,6 +15,12 @@ public enum EmbedRole
 
     /// <summary>A retrieval document — raw text, no prefix.</summary>
     Document,
+
+    /// <summary>A SYMMETRIC comparison where Qwen3 (the instruction-following decoder) applies the same instruction
+    /// prefix to BOTH sides — so <c>cosine(x,y) == cosine(y,x)</c> still holds (FR-015) — while BGE-M3 (which ignores
+    /// <see cref="EmbedTask"/>) stays instruction-free. Used by the advisory drift finder to bias Qwen3 toward
+    /// code↔docs semantics without breaking symmetry. FR-013.</summary>
+    SymmetricInstructed,
 }
 
 /// <summary>The per-text task: a role plus the optional engine-specific instruction used only by <see cref="EmbedRole.Query"/>.</summary>
@@ -28,6 +34,10 @@ public readonly record struct EmbedTask(EmbedRole Role, string? Instruction = nu
 
     /// <summary>A retrieval query carrying the engine instruction.</summary>
     public static EmbedTask Query(string instruction) => new(EmbedRole.Query, instruction);
+
+    /// <summary>A symmetric comparison carrying an instruction the instruction-following engine (Qwen3) applies to both
+    /// sides; instruction-free engines (BGE-M3) ignore it. Keeps <c>cosine(x,y) == cosine(y,x)</c>. FR-013.</summary>
+    public static EmbedTask SymmetricInstructed(string instruction) => new(EmbedRole.SymmetricInstructed, instruction);
 }
 
 /// <summary>

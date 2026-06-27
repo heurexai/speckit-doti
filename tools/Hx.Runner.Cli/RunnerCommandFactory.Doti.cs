@@ -13,6 +13,7 @@ public static partial class RunnerCommandFactory
         AddDotiPayload(dotiCommand, meta);
         AddDotiCycle(dotiCommand, meta);
         AddDotiReviewContext(dotiCommand, meta);
+        AddDotiConstitution(dotiCommand, meta);
         AddDotiDriftCandidates(dotiCommand, meta);
         AddDotiTaskHash(dotiCommand, meta);
         AddDotiInstallHooks(dotiCommand, meta);
@@ -35,6 +36,24 @@ public static partial class RunnerCommandFactory
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti review-context",
             () => RunnerCommands.DotiReviewContext(meta, parseResult.GetValue(repo)!, parseResult.GetValue(baseRef)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
+    }
+
+    // 009 FR-006: emit the project constitution (§2 by default) — the carrier for the codified plan/arch-review
+    // fresh-context injection + the on-demand agent tool. Surface-and-proceed when absent (FR-016).
+    private static void AddDotiConstitution(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("constitution",
+            "Emit the project constitution (FR-006): §2 project declarations by default, --section full for the whole file. Carrier for the codified plan/arch-review fresh-context injection + the on-demand agent tool; surface-and-proceed when absent.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<string> section = new("--section") { Description = "Which layer to emit: §2 (default) or full.", DefaultValueFactory = _ => "§2" };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(section);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti constitution",
+            () => RunnerCommands.DotiConstitution(meta, parseResult.GetValue(repo)!, parseResult.GetValue(section)!),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
     }

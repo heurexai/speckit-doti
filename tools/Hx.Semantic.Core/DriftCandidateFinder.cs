@@ -24,15 +24,19 @@ public sealed class DriftCandidateFinder
         IReadOnlyList<DriftChunk> changedCode,
         IReadOnlyList<DriftChunk> reference,
         double threshold,
-        int topN = 20)
+        int topN = 20,
+        EmbedTask? task = null)
     {
         if (changedCode.Count == 0 || reference.Count == 0)
         {
             return [];
         }
 
-        float[][] codeVectors = changedCode.Select(c => _embedder.Embed(c.Text, EmbedTask.Symmetric)).ToArray();
-        float[][] referenceVectors = reference.Select(r => _embedder.Embed(r.Text, EmbedTask.Symmetric)).ToArray();
+        // SYMMETRIC by default; the service passes SymmetricInstructed so Qwen3 (only) carries a code/.NET instruction
+        // on BOTH sides — symmetry preserved (FR-013/FR-015). BGE-M3 ignores the task and stays instruction-free.
+        EmbedTask embedTask = task ?? EmbedTask.Symmetric;
+        float[][] codeVectors = changedCode.Select(c => _embedder.Embed(c.Text, embedTask)).ToArray();
+        float[][] referenceVectors = reference.Select(r => _embedder.Embed(r.Text, embedTask)).ToArray();
 
         var candidates = new List<SemanticCandidate>();
         for (int i = 0; i < changedCode.Count; i++)

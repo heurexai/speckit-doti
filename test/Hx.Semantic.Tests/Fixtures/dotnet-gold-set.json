@@ -1,0 +1,75 @@
+{
+  "_comment": "FR-013 / SC-007 .NET code<->doc calibration gold set. Each pair is a C# member chunk and a documentation passage with a RELATIONSHIP label. 'related' = the doc passage is ABOUT this member (the band where doc-drift hides and the finder SHOULD surface a candidate); 'unrelated' = the doc passage is about a different API (the finder should NOT surface it). The drift/no-drift framing: a renamed method or a changed signature paired with a stale doc is still semantically 'related' (same intent/surface), which is exactly why the finder must flag it for a human/grep look. Documented in docs/calibration/009-dotnet-gold-set.md.",
+  "pairs": [
+    {
+      "id": "renamed-method-stale-doc",
+      "label": "related",
+      "note": "A method renamed Authenticate->SignIn; the XML-doc summary still says 'Authenticate'. Same behaviour, stale name -> drift the finder should surface.",
+      "code": "/// <summary>Authenticate the user with the supplied credentials.</summary>\npublic AuthResult SignIn(string username, string password)\n{\n    var hash = _hasher.Hash(password);\n    return _store.Verify(username, hash) ? AuthResult.Ok() : AuthResult.Denied();\n}",
+      "doc": "Call `Authenticate(username, password)` to sign a user in. It hashes the password and verifies it against the credential store, returning an AuthResult."
+    },
+    {
+      "id": "changed-signature-stale-readme",
+      "label": "related",
+      "note": "A method that gained a CancellationToken parameter; the README sentence describes the old two-arg form. Same operation, stale prose.",
+      "code": "/// <summary>Download the report and write it to <paramref name=\"destination\"/>.</summary>\npublic async Task DownloadReportAsync(Uri source, string destination, CancellationToken cancellationToken)\n{\n    using var response = await _http.GetAsync(source, cancellationToken);\n    await File.WriteAllBytesAsync(destination, await response.Content.ReadAsByteArrayAsync(cancellationToken), cancellationToken);\n}",
+      "doc": "Use DownloadReportAsync(source, destination) to fetch the report from the given URL and save it to a local file path."
+    },
+    {
+      "id": "property-semantics-shifted",
+      "label": "related",
+      "note": "A property that changed from a count to a boolean 'IsEmpty'; the doc still describes a numeric count.",
+      "code": "/// <summary>Whether the queue currently holds no items.</summary>\npublic bool IsEmpty => _items.Count == 0;",
+      "doc": "The Count property returns the number of items currently waiting in the queue."
+    },
+    {
+      "id": "matching-code-doc-add",
+      "label": "related",
+      "note": "A method whose doc STILL matches (true negative for drift, but still a 'related' pair the finder correctly surfaces as a look-here).",
+      "code": "/// <summary>Add two integers and return their sum.</summary>\npublic int Add(int a, int b) => a + b;",
+      "doc": "The Add method takes two integers and returns the sum of the two values."
+    },
+    {
+      "id": "validation-method-doc",
+      "label": "related",
+      "note": "A validation guard paired with a doc describing the same validation rule.",
+      "code": "/// <summary>Throw if the order total is negative.</summary>\npublic static void ValidateTotal(decimal total)\n{\n    if (total < 0m)\n    {\n        throw new ArgumentOutOfRangeException(nameof(total), \"Order total must not be negative.\");\n    }\n}",
+      "doc": "Order totals are validated on entry: a negative total is rejected with an ArgumentOutOfRangeException before the order is persisted."
+    },
+    {
+      "id": "retry-policy-doc",
+      "label": "related",
+      "note": "A retry helper paired with a doc that explains the retry/backoff policy.",
+      "code": "/// <summary>Retry the operation with exponential backoff, up to <paramref name=\"maxAttempts\"/> times.</summary>\npublic async Task<T> WithRetryAsync<T>(Func<Task<T>> operation, int maxAttempts)\n{\n    for (var attempt = 1; ; attempt++)\n    {\n        try { return await operation(); }\n        catch when (attempt < maxAttempts) { await Task.Delay(TimeSpan.FromMilliseconds(100 * Math.Pow(2, attempt))); }\n    }\n}",
+      "doc": "Transient failures are retried automatically with exponential backoff, doubling the delay each attempt until the configured maximum number of attempts is reached."
+    },
+    {
+      "id": "auth-code-vs-billing-doc",
+      "label": "unrelated",
+      "note": "An auth sign-in method paired with a doc passage about invoice billing — different surface entirely.",
+      "code": "public AuthResult SignIn(string username, string password)\n{\n    var hash = _hasher.Hash(password);\n    return _store.Verify(username, hash) ? AuthResult.Ok() : AuthResult.Denied();\n}",
+      "doc": "Monthly invoices are generated on the first of each month. Each invoice aggregates the customer's metered usage and applies any active discount before the dunning cycle begins."
+    },
+    {
+      "id": "math-code-vs-network-doc",
+      "label": "unrelated",
+      "note": "A pure arithmetic method paired with a doc about TLS handshake configuration.",
+      "code": "public int Add(int a, int b) => a + b;",
+      "doc": "Configure the minimum TLS version and the cipher suite ordering in the transport options so the handshake negotiates a modern, forward-secret connection."
+    },
+    {
+      "id": "queue-code-vs-logging-doc",
+      "label": "unrelated",
+      "note": "A queue property paired with a doc about structured logging sinks.",
+      "code": "public bool IsEmpty => _items.Count == 0;",
+      "doc": "Structured log events are written to the configured sinks with a correlation id, the event level, and a rendered message template for downstream aggregation."
+    },
+    {
+      "id": "validate-code-vs-cache-doc",
+      "label": "unrelated",
+      "note": "A validation guard paired with a doc about cache eviction.",
+      "code": "public static void ValidateTotal(decimal total)\n{\n    if (total < 0m)\n    {\n        throw new ArgumentOutOfRangeException(nameof(total), \"Order total must not be negative.\");\n    }\n}",
+      "doc": "The in-memory cache evicts the least-recently-used entries once the configured size budget is exceeded, keeping the hot working set resident."
+    }
+  ]
+}

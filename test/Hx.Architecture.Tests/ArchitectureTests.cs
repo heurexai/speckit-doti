@@ -31,6 +31,7 @@ public sealed class ArchitectureTests
                 typeof(Hx.Impact.Core.Planning.AffectedTestPlanner).Assembly,  // Hx.Impact.Core
                 typeof(Hx.Cycle.Core.CycleStateStore).Assembly,                // Hx.Cycle.Core
                 typeof(Hx.Gate.Core.GateRunner).Assembly,                      // Hx.Gate.Core
+                typeof(Hx.Doti.Core.DotiInstaller).Assembly,                   // 009 L3: Hx.Doti.Core (constitution)
                 typeof(Hx.Embedding.ModelLocator).Assembly,                    // 008 H-3: Hx.Embedding.Core
                 typeof(Hx.Semantic.DriftCandidateRunner).Assembly,             // 008 H-3: Hx.Semantic.Core
                 typeof(Hx.Semantic.Cli.SemanticCommandFactory).Assembly,       // 008 H-3: Hx.Semantic.Cli
@@ -147,6 +148,19 @@ public sealed class ArchitectureTests
     {
         IArchRule rule = Types().That().ResideInNamespaceMatching(@"^Hx\.(Gate|Cycle)\.Core")
             .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(SemanticStackNs));
+        Assert.True(rule.HasNoViolations(Arch));
+    }
+
+    // 009 L3: the §2 constitution composition lives in the RUNNER (RunnerCommands.Doti.ReviewContext), NEVER in
+    // Hx.Cycle.Core — so review-context carries the constitution without a Cycle→Doti core edge (Hx.Doti.Core depends
+    // ON Hx.Cycle.Core, not the reverse). Compile-checked: a stray Cycle→Doti reference fails the build's test gate.
+    [Fact]
+    public void Cycle_core_does_not_depend_on_doti_core()
+    {
+        Assert.Contains(Arch.Types, t => t.Name.Equals("DotiInstaller", System.StringComparison.Ordinal)); // real target
+        Assert.Contains(Arch.Types, t => t.Name.Equals("CycleStateStore", System.StringComparison.Ordinal)); // real subject
+        IArchRule rule = Types().That().ResideInNamespaceMatching(@"^Hx\.Cycle\.Core")
+            .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(@"^Hx\.Doti\.Core"));
         Assert.True(rule.HasNoViolations(Arch));
     }
 

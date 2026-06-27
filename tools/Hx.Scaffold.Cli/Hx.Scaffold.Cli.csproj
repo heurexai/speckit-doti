@@ -33,10 +33,20 @@
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
+  <!-- 008 fix: the committed config carries NO machine path. `hx.config.json` is gitignored (a developer's machine-
+       local config — e.g. a machine-specific localReleaseOutput.environmentVariable like HEUREX_RELEASE_ROOT); the
+       committed, portable `hx.config.template.json` (env-var fallback, no directory) is the fallback that a fresh
+       checkout / CI ships. The local file wins when present. -->
+  <PropertyGroup>
+    <HxConfigFile Condition="Exists('$(MSBuildProjectDirectory)/hx.config.json')">$(MSBuildProjectDirectory)/hx.config.json</HxConfigFile>
+    <HxConfigFile Condition="'$(HxConfigFile)' == ''">$(MSBuildProjectDirectory)/hx.config.template.json</HxConfigFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- hx.config.json ships in the publish/tool output (every operational command is wrapped in
-         WithRequiredConfiguration); it is also staged (below) so the payload manifest records its hash. -->
-    <None Include="hx.config.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+         WithRequiredConfiguration); it is also staged (below) so the payload manifest records its hash. The source is
+         the local hx.config.json when present, else the portable template — always emitted AS hx.config.json. -->
+    <None Include="$(HxConfigFile)" Link="hx.config.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <None Include="$(RepoRoot)README.md" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 
@@ -79,8 +89,12 @@
     <!-- 2. The .doti workflow assets (minus gitignored runtime state). -->
     <ItemGroup>
       <!-- H-6 (FR-016): EXCLUDE .doti/templates from the filesystem glob — it is gitignored + materialized below
-           from .doti/core/templates (the single source), so a stale local copy can never leak into the anchored payload. -->
-      <_HxDoti Include="$(RepoRoot).doti/**/*" Exclude="$(RepoRoot).doti/cycle-state.json;$(RepoRoot).doti/gate-proof.json;$(RepoRoot).doti/sentrux-optimization-log.json;$(RepoRoot).doti/templates/**" />
+           from .doti/core/templates (the single source), so a stale local copy can never leak into the anchored payload.
+           009 FR-009/010: EXCLUDE this repo's constitution (.doti/memory + .doti/core/memory) from the shipped payload —
+           a generated repo must get its OWN constitution, INITIALIZED from constitution-template.md by DotiInstaller,
+           never a copy of speckit-doti's. (The source-based `doti payload check` is unaffected — it installs from the
+           repo, where the constitution is present and reconciles to itself.) -->
+      <_HxDoti Include="$(RepoRoot).doti/**/*" Exclude="$(RepoRoot).doti/cycle-state.json;$(RepoRoot).doti/gate-proof.json;$(RepoRoot).doti/sentrux-optimization-log.json;$(RepoRoot).doti/templates/**;$(RepoRoot).doti/memory/constitution.md;$(RepoRoot).doti/core/memory/constitution.md" />
       <_HxCoreTemplates Include="$(RepoRoot).doti/core/templates/**/*" />
       <!-- 3. The tool manifests + grammars (NOT the per-RID bin/ binaries — fetched per T022). -->
       <_HxGitleaks Include="$(RepoRoot)tools/gitleaks/**/*" Exclude="$(RepoRoot)tools/gitleaks/bin/**" />
@@ -95,8 +109,9 @@
     <Copy SourceFiles="@(_HxSentrux)" DestinationFiles="@(_HxSentrux->'$(HxPayloadStaging)tools/sentrux/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(_HxGitversion)" DestinationFiles="@(_HxGitversion->'$(HxPayloadStaging)tools/gitversion/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
 
-    <!-- 4. hx.config.json (also shipped via the publish output) — staged so the manifest records its hash. -->
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/hx.config.json" DestinationFiles="$(HxPayloadStaging)hx.config.json" SkipUnchangedFiles="true" />
+    <!-- 4. hx.config.json (also shipped via the publish output) — staged so the manifest records its hash. Source is
+            the local hx.config.json when present, else the portable template (see HxConfigFile above). -->
+    <Copy SourceFiles="$(HxConfigFile)" DestinationFiles="$(HxPayloadStaging)hx.config.json" SkipUnchangedFiles="true" />
 
     <!-- 5. Generate payload.manifest.json via the just-built hx (single source of truth: PayloadManifestGenerator). -->
     <PropertyGroup>

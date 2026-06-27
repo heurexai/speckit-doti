@@ -10,13 +10,24 @@ namespace Hx.Semantic;
 /// </summary>
 public sealed class DriftCandidateService
 {
+    /// <summary>
+    /// The code/.NET-oriented instruction Qwen3 (only) applies symmetrically to both sides of the drift comparison
+    /// (FR-013). It biases the decoder toward "does this C# member's behaviour still match this prose?" — sharpening
+    /// the code↔docs signal. BGE-M3 ignores <see cref="EmbedTask"/> entirely, so it stays instruction-free.
+    /// </summary>
+    internal const string CodeDriftInstruction =
+        "Given a C#/.NET code member and a documentation passage, assess whether they describe the same behaviour, API surface, or intent.";
+
     public DriftCandidatesResult Run(
         string repositoryRoot, ChangeSetContext changeSet, EngineSelection engine, double? threshold = null)
     {
         (IReadOnlyList<DriftChunk> code, IReadOnlyList<DriftChunk> reference) = BuildChunks(repositoryRoot, changeSet);
         double effectiveThreshold = threshold ?? Thresholds.Default(engine.Active);
+
+        // Qwen3 carries the code instruction symmetrically; BGE-M3 ignores it (stays instruction-free) — FR-013.
+        EmbedTask task = EmbedTask.SymmetricInstructed(CodeDriftInstruction);
         IReadOnlyList<SemanticCandidate> candidates =
-            new DriftCandidateFinder(engine.Embedder).Find(code, reference, effectiveThreshold);
+            new DriftCandidateFinder(engine.Embedder).Find(code, reference, effectiveThreshold, task: task);
 
         return new DriftCandidatesResult(
             JsonContractDefaults.SchemaVersion,
@@ -46,7 +57,13 @@ public sealed class DriftCandidateService
 
             if (IsCode(file.Path))
             {
-                code.Add(new DriftChunk(file.Path, "runtime-code", text));
+                // FR-013: split a .cs file into one chunk per type/member (lexer-aware) so a stale doc lines up against
+                // the specific member that changed, not the whole file. A file with no splittable member falls back to
+                // a single whole-file chunk (CSharpMemberChunker returns one chunk in that case).
+                foreach (SourceChunk member in CSharpMemberChunker.Chunk(file.Path, text))
+                {
+                    code.Add(new DriftChunk(file.Path, "runtime-code", member.Text));
+                }
             }
             else if (IsProse(file.Path))
             {

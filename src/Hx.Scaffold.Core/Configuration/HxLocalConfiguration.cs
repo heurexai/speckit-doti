@@ -1,3 +1,4 @@
+using Hx.Scaffold.Core.Release;
 using Microsoft.Extensions.Configuration;
 
 namespace Hx.Scaffold.Core.Configuration;
@@ -26,7 +27,22 @@ public sealed class HxLocalReleaseOutputConfiguration
 {
     public bool Enabled { get; set; } = true;
 
+    /// <summary>
+    /// An explicit, absolute local release root. OPTIONAL — when set it WINS over any environment variable (so a
+    /// machine that wants a fixed path just sets it). When omitted, the root resolves from the environment variable
+    /// (<see cref="EnvironmentVariable"/>, else the release-target manifest's default, else <c>DOTI_RELEASE_ROOT</c>);
+    /// if that is also unset, the local copy is skipped (the tag + package proofs still run). NEVER hard-code a
+    /// machine path in a committed config — leave this null and resolve through the environment.
+    /// </summary>
     public string? Directory { get; set; }
+
+    /// <summary>
+    /// OPTIONAL machine-local override of the environment variable NAME used to resolve the release root (e.g.
+    /// <c>HEUREX_RELEASE_ROOT</c> on a specific PC). When null the release-target manifest's
+    /// <c>defaultReleaseRootEnvironmentVariable</c> applies, defaulting to <c>DOTI_RELEASE_ROOT</c>. Ignored when
+    /// <see cref="Directory"/> is set (an explicit root always wins).
+    /// </summary>
+    public string? EnvironmentVariable { get; set; }
 }
 
 public static class HxLocalConfigurationLoader
@@ -72,17 +88,21 @@ public static class HxLocalConfigurationLoader
             return;
         }
 
+        // The directory is OPTIONAL: when omitted the root resolves from the environment (so a committed config carries
+        // no machine path). When present it must be absolute.
         string? releaseDirectory = configuration.LocalReleaseOutput.Directory;
-        if (string.IsNullOrWhiteSpace(releaseDirectory))
-        {
-            throw new InvalidOperationException(
-                $"hx configuration localReleaseOutput.directory is required when localReleaseOutput.enabled is true in {DisplayPath(configuration)}.");
-        }
-
-        if (!Path.IsPathRooted(releaseDirectory))
+        if (!string.IsNullOrWhiteSpace(releaseDirectory) && !Path.IsPathRooted(releaseDirectory))
         {
             throw new InvalidOperationException(
                 $"hx configuration localReleaseOutput.directory must be an absolute path: {releaseDirectory}");
+        }
+
+        string? environmentVariable = configuration.LocalReleaseOutput.EnvironmentVariable;
+        if (!string.IsNullOrWhiteSpace(environmentVariable)
+            && !LocalReleaseRootResolver.IsValidEnvironmentVariableName(environmentVariable))
+        {
+            throw new InvalidOperationException(
+                $"hx configuration localReleaseOutput.environmentVariable '{environmentVariable}' is not a valid environment variable name in {DisplayPath(configuration)}.");
         }
     }
 

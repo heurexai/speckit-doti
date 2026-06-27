@@ -9,8 +9,9 @@ namespace Hx.Embedding.Engines;
 /// <summary>
 /// Qwen3-Embedding-0.6B via LLamaSharp over a CPU GGUF (Engine B). Last-token pooling (declared in the GGUF and
 /// forced via <see cref="LLamaPoolingType.Last"/>); EOS is auto-appended by the model's tokenizer. The
-/// <see cref="EmbedRole.Symmetric"/> role embeds raw text with no prefix (the persona use case); only
-/// <see cref="EmbedRole.Query"/> applies the instruction prefix. Result L2-normalized. Owns native resources.
+/// <see cref="EmbedRole.Symmetric"/> role embeds raw text with no prefix (the persona use case);
+/// <see cref="EmbedRole.Query"/> and <see cref="EmbedRole.SymmetricInstructed"/> apply the instruction prefix (the
+/// latter to both sides of a symmetric comparison). Result L2-normalized. Owns native resources.
 /// </summary>
 internal sealed class Qwen3Embedder : IEmbedder
 {
@@ -76,9 +77,13 @@ internal sealed class Qwen3Embedder : IEmbedder
             throw new SemanticException("Cannot embed empty or whitespace text.");
         }
 
-        string prompt = task.Role == EmbedRole.Query && !string.IsNullOrEmpty(task.Instruction)
+        // Query applies the asymmetric retrieval prefix; SymmetricInstructed (the advisory drift path, FR-013) applies
+        // the SAME prefix to both sides so the comparison stays symmetric. Plain Symmetric / Document = raw text.
+        bool instructed = task.Role is EmbedRole.Query or EmbedRole.SymmetricInstructed
+            && !string.IsNullOrEmpty(task.Instruction);
+        string prompt = instructed
             ? $"Instruct: {task.Instruction}\nQuery:{text}"
-            : text; // Symmetric / Document = raw text (no asymmetric prefix)
+            : text;
         prompt = FitToTokenBudget(prompt);
 
         var stopwatch = Stopwatch.StartNew();

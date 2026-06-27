@@ -126,6 +126,15 @@
         "The spec is the source of truth: close a spec↔code gap by fixing the CODE in-cycle, never by downgrading or deferring the spec. Classify blast radius with `hx doti review-context --repo .`; take the ADVISORY semantic hint from `hx doti drift-candidates --repo .` (changed-code chunks semantically close to a doc/skill/help section — drift the deterministic grep can miss; it reports the active engine and skips when no model is provisioned). CRUCIAL: an empty candidate list is NOT a clean-bill signal — only the deterministic `/08-doti-drift-review` axes clear drift, so confirm or dismiss every candidate deterministically. Fix the wrong side modularly (as `/07-doti-implement` requires), then reconcile with `hx doti cycle refresh-plan`/`refresh --apply-safe` and a green `hx doti cycle check` — leaving the spec untouched."
       ],
       "nextStage": "Re-run `/08-doti-drift-review` to confirm the diff now matches the approved design, then resume your cycle."
+    },
+    {
+      "name": "doti-constitution",
+      "description": "Author or amend the project constitution — the §2 project declarations (domain, tech stack, coding style, security, performance) plan + arch-review evaluate against. Utility — a project-level artifact, runs anytime outside the numbered cycle; never a per-feature stamp or a numbered stage.",
+      "argumentHint": "[what to declare or amend]",
+      "highlights": [
+        "doti's constitution has TWO layers. §1 (Inherited doti invariants) is CODIFIED — deterministic gates, library-first/pure-core, thin CLI + CliResult, GitVersion versioning, Sentrux complexity, cross-platform, hygiene/SAST, the codified cycle, engineering discipline, operator decisions — cited, NEVER re-declared, weakened, or given a placeholder (no versioning policy, no CLI/output-shape, no quality-gate/workflow rules). §2 (Project declarations) is the ONLY operator-authored content: Domain principles, Tech stack (beyond the .NET 10 baseline), Coding style, Security & compliance, Performance. Read the current constitution with `hx doti constitution --section full --repo .` (surface-and-proceed when absent); initialize a missing one from `.doti/core/templates/constitution-template.md` with the project name AUTO-derived (never a placeholder); edit §2 only and write `.doti/memory/constitution.md`. Amendments are tracked by the doti cycle + git history — no SemVer doc-version line or Sync Impact Report. Only §2 is re-injected and checked by `/03-doti-plan` and `/06-doti-arch-review`; §1 stays gate/ArchUnit/Sentrux/GitVersion-enforced."
+      ],
+      "nextStage": "Resume your active cycle stage; the next `/03-doti-plan` and `/06-doti-arch-review` evaluate against the fresh §2 automatically."
     }
   ]
 }

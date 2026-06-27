@@ -39,7 +39,10 @@ jobs:
           global-json-file: global.json
 
       - name: Pack Heurex.SpeckitDoti (framework-dependent global tool)
-        run: dotnet build tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -c Release -t:PackAnchoredTool -p:PackageOutputPath=artifacts/nuget --nologo
+        # PackageOutputPath MUST be absolute: MSBuild resolves a relative path against the PROJECT directory
+        # (tools/Hx.Scaffold.Cli/), not the repo root — so a bare `artifacts/nuget` lands beside the csproj and the
+        # smoke/upload/publish steps (which read repo-root artifacts/nuget) cannot find the package.
+        run: dotnet build tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -c Release -t:PackAnchoredTool -p:PackageOutputPath="$GITHUB_WORKSPACE/artifacts/nuget" --nologo
 
       - name: Source-free install smoke (installed hx; no source checkout on PATH)
         shell: bash

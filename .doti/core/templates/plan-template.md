@@ -12,7 +12,7 @@ Approach, stack, dependencies, and constraints relevant to scaffold-dotnet. Mark
 
 ## Constitution Check (gate)
 
-Verdict against `.doti/memory/constitution.md` (Deterministic Ownership, Bootstrap Honesty, Template Boundary, Public Hygiene, Cross-Platform, Codified Cycle, Engineering Discipline) — evaluated BEFORE design and RE-EVALUATED after design. Record PASS, or a violation justified in Complexity Tracking. Do not proceed past an unjustified violation.
+Verdict against `.doti/memory/constitution.md` — both layers: the **§1 inherited invariants** (the 9 codified principles — Deterministic Ownership, Bootstrap Honesty, Template Boundary, Public Hygiene, Cross-Platform, Engineering Discipline, Operator Decisions, Codified Cycle, Channel Independence — already gate/ArchUnit/Sentrux/GitVersion-enforced, so not re-litigated) and the project's **§2 declarations** (fetched fresh via `hx doti constitution`; the live judgment). Evaluated BEFORE design and RE-EVALUATED after design. Record PASS, or a violation justified in Complexity Tracking. Do not proceed past an unjustified violation.
 
 ## Research (resolve unknowns)
 

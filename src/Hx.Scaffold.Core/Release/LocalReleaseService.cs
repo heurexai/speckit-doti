@@ -31,8 +31,9 @@ public static class LocalReleaseService
             : request.RuntimeIdentifier.Trim();
         string? explicitIntent = NormalizeExplicitReleaseIntent(request.ReleaseIntent);
         HxLocalConfigurationLoader.Validate(request.Configuration);
-        LocalReleaseRootDecision rootDecision = ResolveRootFromConfiguration(request.Configuration);
         LocalReleaseTarget target = ReleaseTargetManifest.Load(repo);
+        LocalReleaseRootDecision rootDecision = ResolveRootFromConfiguration(
+            request.Configuration, target.DefaultReleaseRootEnvironmentVariable);
         var cycle = new CycleService(repo);
         CycleReleaseTrain releaseTrain = cycle.GetReleaseTrain();
         if (!releaseTrain.Valid)
@@ -237,7 +238,13 @@ public static class LocalReleaseService
         }
     }
 
-    private static LocalReleaseRootDecision ResolveRootFromConfiguration(HxLocalConfiguration configuration)
+    // Resolve the local release root with a SINGLE precedence (no hard-coded machine path in a committed config):
+    //   1. hx.config.json localReleaseOutput.directory (explicit, absolute) — WINS;
+    //   2. else the environment variable named by localReleaseOutput.environmentVariable, then the release-target
+    //      manifest's defaultReleaseRootEnvironmentVariable, then DOTI_RELEASE_ROOT;
+    //   3. else unavailable — the local copy is skipped (the tag + package proofs still run).
+    private static LocalReleaseRootDecision ResolveRootFromConfiguration(
+        HxLocalConfiguration configuration, string defaultEnvironmentVariableName)
     {
         if (!configuration.LocalReleaseOutput.Enabled)
         {
@@ -251,15 +258,13 @@ public static class LocalReleaseService
                 Reason: "local release output disabled by hx.config.json");
         }
 
-        string releaseDirectory = configuration.LocalReleaseOutput.Directory!.Trim();
-        return new LocalReleaseRootDecision(
-            EffectiveEnvironmentVariableName: "",
-            RequestedEnvironmentVariableName: null,
-            EnvironmentVariableRead: false,
-            EnvironmentVariableIgnored: false,
-            Source: "hx-config",
-            ReleaseRoot: releaseDirectory,
-            Reason: "local release output configured by hx.config.json");
+        return LocalReleaseRootResolver.Resolve(
+            explicitReleaseRoot: configuration.LocalReleaseOutput.Directory,
+            requestedEnvironmentVariableName: configuration.LocalReleaseOutput.EnvironmentVariable,
+            readEnvironmentVariable: Environment.GetEnvironmentVariable,
+            defaultEnvironmentVariableName: string.IsNullOrWhiteSpace(defaultEnvironmentVariableName)
+                ? LocalReleaseRootResolver.DefaultEnvironmentVariableName
+                : defaultEnvironmentVariableName);
     }
 
     private sealed record ReleaseArtifactBuild(

@@ -66,31 +66,60 @@ public sealed class LocalReleaseRootTests
     }
 
     [Fact]
-    public void Enabled_local_release_output_requires_absolute_directory()
+    public void Enabled_local_release_output_directory_is_optional_but_must_be_absolute_when_set()
     {
-        var missing = new HxLocalConfiguration
-        {
-            SchemaVersion = 1,
-            SourcePath = "hx.config.json",
-            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = true }
-        };
-        var blank = new HxLocalConfiguration
-        {
-            SchemaVersion = 1,
-            SourcePath = "hx.config.json",
-            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = true, Directory = " " }
-        };
-        var relative = new HxLocalConfiguration
-        {
-            SchemaVersion = 1,
-            SourcePath = "hx.config.json",
-            LocalReleaseOutput = new HxLocalReleaseOutputConfiguration { Enabled = true, Directory = "releases" }
-        };
+        // A committed config must carry NO machine path: an enabled output with no directory is VALID — the root
+        // resolves from the environment. A whitespace directory is treated as unset.
+        HxLocalConfigurationLoader.Validate(ReleaseConfig(enabled: true));
+        HxLocalConfigurationLoader.Validate(ReleaseConfig(enabled: true, directory: " "));
+        HxLocalConfigurationLoader.Validate(ReleaseConfig(enabled: true, environmentVariable: "HEUREX_RELEASE_ROOT"));
 
-        Assert.Contains("directory is required", Assert.Throws<InvalidOperationException>(() => HxLocalConfigurationLoader.Validate(missing)).Message);
-        Assert.Contains("directory is required", Assert.Throws<InvalidOperationException>(() => HxLocalConfigurationLoader.Validate(blank)).Message);
-        Assert.Contains("absolute path", Assert.Throws<InvalidOperationException>(() => HxLocalConfigurationLoader.Validate(relative)).Message);
+        // When a directory IS given it must be absolute.
+        Assert.Contains("absolute path", Assert.Throws<InvalidOperationException>(
+            () => HxLocalConfigurationLoader.Validate(ReleaseConfig(enabled: true, directory: "releases"))).Message);
+
+        // An invalid environment-variable NAME is rejected.
+        Assert.Contains("environment variable name", Assert.Throws<InvalidOperationException>(
+            () => HxLocalConfigurationLoader.Validate(ReleaseConfig(enabled: true, environmentVariable: "bad name!"))).Message);
     }
+
+    [Fact]
+    public void Release_root_resolves_directory_over_named_env_over_default_env()
+    {
+        string abs = OperatingSystem.IsWindows() ? @"C:\fixed-root" : "/fixed-root";
+
+        // 1. An explicit directory WINS over every environment variable.
+        LocalReleaseRootDecision dir = LocalReleaseRootResolver.Resolve(
+            abs, "HEUREX_RELEASE_ROOT", _ => "/env", "DOTI_RELEASE_ROOT");
+        Assert.Equal(abs, dir.ReleaseRoot);
+        Assert.Equal("explicit", dir.Source);
+
+        // 2. No directory → the NAMED env var (this PC's HEUREX_RELEASE_ROOT) wins over the manifest default.
+        LocalReleaseRootDecision named = LocalReleaseRootResolver.Resolve(
+            null, "HEUREX_RELEASE_ROOT", n => n == "HEUREX_RELEASE_ROOT" ? "/heurex" : null, "DOTI_RELEASE_ROOT");
+        Assert.Equal("/heurex", named.ReleaseRoot);
+
+        // 3. No name override → the manifest default env var (DOTI_RELEASE_ROOT).
+        LocalReleaseRootDecision def = LocalReleaseRootResolver.Resolve(
+            null, null, n => n == "DOTI_RELEASE_ROOT" ? "/doti" : null, "DOTI_RELEASE_ROOT");
+        Assert.Equal("/doti", def.ReleaseRoot);
+
+        // 4. Nothing set → unavailable; the local copy is skipped (tag + package proofs still run).
+        LocalReleaseRootDecision none = LocalReleaseRootResolver.Resolve(null, null, _ => null, "DOTI_RELEASE_ROOT");
+        Assert.Null(none.ReleaseRoot);
+    }
+
+    private static HxLocalConfiguration ReleaseConfig(bool enabled, string? directory = null, string? environmentVariable = null) => new()
+    {
+        SchemaVersion = 1,
+        SourcePath = "hx.config.json",
+        LocalReleaseOutput = new HxLocalReleaseOutputConfiguration
+        {
+            Enabled = enabled,
+            Directory = directory,
+            EnvironmentVariable = environmentVariable,
+        },
+    };
 
     [Fact]
     public void Disabled_local_release_output_succeeds_without_directory()

@@ -20,7 +20,8 @@ public static class DotiInstaller
         string targetRepoRoot,
         IReadOnlyList<DotiAgentTarget> agents,
         string repoName,
-        bool force = false)
+        bool force = false,
+        string? projectNameOverride = null)
     {
         DotiTargetClassification classification = DotiTargetClassifier.Classify(targetRepoRoot);
         bool targetCreated = !classification.Exists;
@@ -108,6 +109,10 @@ public static class DotiInstaller
 
         MaterializeRepoTemplates(payloadRoot, targetRepoRoot, copied, installed);
 
+        // 009 FR-009/010/015: initialize the constitution from the §1/§2 template (the payload excludes this repo's
+        // own constitution), filling the auto-derived project name; preserve an operator-edited one (managed-asset).
+        InitializeConstitution(targetRepoRoot, projectNameOverride, installed, preserved);
+
         string? nextStep = classification.Classification is DotiInstallClassification.InstalledNewTarget
             or DotiInstallClassification.InstalledEmptyTarget
             ? "Run `hx new --output <target> --name <project-name>` or the scaffold creation command for this repository."
@@ -126,6 +131,38 @@ public static class DotiInstaller
             removed,
             skipped,
             blocked);
+    }
+
+    /// <summary>
+    /// 009 FR-009/010/015: initialize the target's <c>.doti/memory/constitution.md</c> from the installed §1/§2
+    /// template (this repo's own constitution is excluded from the shipped payload, so a generated repo never inherits
+    /// it), filling the auto-derived <c>{PROJECT_NAME}</c> title (an explicit <c>hx new --name</c> wins; else the
+    /// solution/dir name). Managed-asset preservation: <see cref="ConstitutionInitializer"/> writes ONLY when absent,
+    /// so a re-install over an operator-edited constitution preserves it (SC-006). Never blocks the install.
+    /// </summary>
+    private static void InitializeConstitution(
+        string targetRepoRoot,
+        string? projectNameOverride,
+        List<DotiInstallPathEffect> installed,
+        List<DotiInstallPathEffect> preserved)
+    {
+        string templatePath = Path.Combine(targetRepoRoot, ".doti", "core", "templates", "constitution-template.md");
+        if (!File.Exists(templatePath))
+        {
+            return; // older payload without the structured template — nothing to initialize from; never block install.
+        }
+
+        string projectName = ProjectNameResolver.Resolve(targetRepoRoot, projectNameOverride);
+        ConstitutionInitResult result = ConstitutionInitializer.Initialize(
+            targetRepoRoot, File.ReadAllText(templatePath), projectName);
+        if (result.Outcome == ConstitutionInitOutcome.Initialized)
+        {
+            installed.Add(new DotiInstallPathEffect(result.Path, $"constitution initialized from template ('{result.ProjectName}')"));
+        }
+        else
+        {
+            preserved.Add(new DotiInstallPathEffect(result.Path, "operator-authored constitution preserved"));
+        }
     }
 
     /// <summary>

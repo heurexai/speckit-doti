@@ -18,4 +18,9 @@
     <ProjectReference Include="..\..\tools\Hx.Embedding.Core\Hx.Embedding.Core.csproj" />
     <ProjectReference Include="..\..\tools\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- FR-013/SC-007: the labelled .NET code<->doc calibration gold set, copied next to the test assembly. -->
+    <Content Include="Fixtures\dotnet-gold-set.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

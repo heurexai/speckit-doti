@@ -18,6 +18,10 @@ tools/gitversion/bin/
 .doti/cycle-state.json
 .doti/gate-proof.json
 
+# Machine-local hx release config (NEVER commit a machine path or machine-specific env-var name).
+# The committed, portable hx.config.template.json is the fallback the build/CI/shipped tool use.
+tools/Hx.Scaffold.Cli/hx.config.json
+
 # Test and coverage output
 TestResults/
 coverage/
