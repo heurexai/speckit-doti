@@ -90,11 +90,12 @@
     <ItemGroup>
       <!-- H-6 (FR-016): EXCLUDE .doti/templates from the filesystem glob — it is gitignored + materialized below
            from .doti/core/templates (the single source), so a stale local copy can never leak into the anchored payload.
-           009 FR-009/010: EXCLUDE this repo's constitution (.doti/memory + .doti/core/memory) from the shipped payload —
+           009 FR-009/010: EXCLUDE this repo's constitution (.doti/memory/constitution.md) from the shipped payload —
            a generated repo must get its OWN constitution, INITIALIZED from constitution-template.md by DotiInstaller,
            never a copy of speckit-doti's. (The source-based `doti payload check` is unaffected — it installs from the
-           repo, where the constitution is present and reconciles to itself.) -->
-      <_HxDoti Include="$(RepoRoot).doti/**/*" Exclude="$(RepoRoot).doti/cycle-state.json;$(RepoRoot).doti/gate-proof.json;$(RepoRoot).doti/sentrux-optimization-log.json;$(RepoRoot).doti/templates/**;$(RepoRoot).doti/memory/constitution.md;$(RepoRoot).doti/core/memory/constitution.md" />
+           repo, where the constitution is present and reconciles to itself.) 010: the constitution is single-sourced
+           at .doti/memory/constitution.md — there is no .doti/core/memory twin to exclude. -->
+      <_HxDoti Include="$(RepoRoot).doti/**/*" Exclude="$(RepoRoot).doti/cycle-state.json;$(RepoRoot).doti/gate-proof.json;$(RepoRoot).doti/sentrux-optimization-log.json;$(RepoRoot).doti/templates/**;$(RepoRoot).doti/memory/constitution.md" />
       <_HxCoreTemplates Include="$(RepoRoot).doti/core/templates/**/*" />
       <!-- 3. The tool manifests + grammars (NOT the per-RID bin/ binaries — fetched per T022). -->
       <_HxGitleaks Include="$(RepoRoot)tools/gitleaks/**/*" Exclude="$(RepoRoot)tools/gitleaks/bin/**" />

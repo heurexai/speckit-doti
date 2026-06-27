@@ -217,6 +217,29 @@ public sealed class ConstitutionTests
         }
     }
 
+    // ---- 010 / FR-001, SC-001 : the constitution is single-sourced (no .doti/core/memory twin)
+
+    [Fact]
+    public void Constitution_is_single_sourced_with_no_core_memory_twin()
+    {
+        string repo = FindRepoRoot();
+
+        // the vestigial source-layer twin must NOT exist — the constitution lives only at .doti/memory/constitution.md
+        Assert.False(
+            File.Exists(Path.Combine(repo, ".doti", "core", "memory", "constitution.md")),
+            "the redundant .doti/core/memory/constitution.md twin must not exist; the constitution is single-sourced at .doti/memory/constitution.md");
+
+        string active = Path.Combine(repo, ".doti", "memory", "constitution.md");
+        Assert.True(File.Exists(active));
+        string text = File.ReadAllText(active);
+        Assert.Contains("## §1", text);
+        Assert.Contains("## §2", text);
+        foreach (string placeholder in Section2Placeholders)
+        {
+            Assert.DoesNotContain(placeholder, text);
+        }
+    }
+
     private static string NewTempDir()
     {
         string dir = Path.Combine(Path.GetTempPath(), "doti-constitution-test-" + Guid.NewGuid().ToString("N"));
