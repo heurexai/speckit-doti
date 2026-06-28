@@ -1,0 +1,16 @@
+# GitVersion 6 — trunk-based (GitHubFlow): `main` increments PATCH by default, so a doti
+# bug cycle (assess→fix→test, which writes no +semver signal) bumps the PATCH; a feature
+# cycle bumps the MINOR via the `+semver: minor` trailer that `doti cycle stamp
+# --stage release --release-intent` writes. An explicit `hx release --major|--minor|--patch`
+# always overrides. `next-version` pins the series START to 0.1.0 (the first `hx release`
+# calculates/tags v0.1.0); it is a floor and GitVersion ignores it once tags exceed it.
+# Do NOT drop the workflow line: GitVersion's default (unset) workflow is GitFlow, which
+# treats a develop/dev branch as the next-MINOR integration branch and would bump minor on
+# bug fixes.
+workflow: GitHubFlow/v1
+next-version: 0.1.0
+assembly-versioning-scheme: MajorMinorPatch
+assembly-file-versioning-scheme: MajorMinorPatch
+assembly-informational-format: '{MajorMinorPatch}'
+ignore:
+  sha: []

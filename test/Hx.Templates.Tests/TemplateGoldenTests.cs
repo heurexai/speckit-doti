@@ -251,6 +251,31 @@ public sealed class TemplateGoldenTests
         Assert.DoesNotContain("VelopackApp", program, System.StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void Template_ships_trunk_based_versioning_config()
+    {
+        // 020 (FR-001/004/005): a generated repo must version deterministically out of the box —
+        // trunk-based so the default bump is PATCH (a doti bug cycle -> patch), and the series starts at 0.1.0.
+        // Without this file a generated repo falls back to GitVersion's GitFlow default (a dev branch -> minor).
+        string gitVersion = Path.Combine(TemplateRepo.TemplateDir, "GitVersion.yml");
+        Assert.True(File.Exists(gitVersion), "template must ship GitVersion.yml so a generated repo versions deterministically");
+
+        string gv = File.ReadAllText(gitVersion);
+        Assert.Contains("workflow: GitHubFlow/v1", gv); // trunk 'main' increments Patch by default; no minor-tracking develop
+        Assert.Contains("next-version: 0.1.0", gv);     // the version series starts at 0.1.0
+    }
+
+    [Fact]
+    public void Template_ships_auto_year_company_copyright()
+    {
+        // 020 (FR-006/007/008): a generated release assembly must carry a company copyright whose year is
+        // the year the release was produced (auto-updating), with the holder flowing from the --company value.
+        string props = File.ReadAllText(Path.Combine(TemplateRepo.TemplateDir, "Directory.Build.props"));
+        Assert.Contains("<Copyright>", props);
+        Assert.Contains("$([System.DateTime]::UtcNow.Year)", props); // build-time year = the release year
+        Assert.Contains("$(Company)", props);                        // holder == the --company value
+    }
+
     private static int CountOccurrences(string haystack, string needle)
     {
         int count = 0, index = 0;

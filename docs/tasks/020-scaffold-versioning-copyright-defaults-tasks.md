@@ -4,14 +4,14 @@
 
 ## Phase 1 — Setup / premise check
 
-- [ ] T001 Confirm a new root config file is instantiated + packed: `scaffold/templates/dotnet-cli/.template.config/template.json` does not exclude a root `GitVersion.yml` from instantiation, and `scaffold/Hx.Scaffold.Templates.csproj` globs `templates\**\*` (so the new file is packed) — `scaffold/templates/dotnet-cli/.template.config/template.json`, `scaffold/Hx.Scaffold.Templates.csproj` — [premise for FR-001]
+- [x] T001 Confirm a new root config file is instantiated + packed: `scaffold/templates/dotnet-cli/.template.config/template.json` does not exclude a root `GitVersion.yml` from instantiation, and `scaffold/Hx.Scaffold.Templates.csproj` globs `templates\**\*` (so the new file is packed) — `scaffold/templates/dotnet-cli/.template.config/template.json`, `scaffold/Hx.Scaffold.Templates.csproj` — [premise for FR-001] <!-- doti-task-hash: 4c69b7ee8dbd9f37e6472a93b5c69fc239603cf4daebc9d084a19140d4512ada -->
 
 ## Phase 2 — WI1 Versioning defaults (Priority: P1) 🎯 MVP
 
 **Goal:** a generated repo starts at 0.1.0 and increments patch (bug) / minor (feature) with no operator-authored config. **Independent test:** `hx version calculate` on a generated repo → 0.1.0; the golden test pins the shipped config.
 
-- [ ] T002 [US1] Golden test asserting `scaffold/templates/dotnet-cli/GitVersion.yml` is present and pins `workflow: GitHubFlow/v1` + `next-version: 0.1.0` (write first; MUST fail before T003) — `test/Hx.Templates.Tests/TemplateGoldenTests.cs` — [covers FR-001, FR-004, FR-005, FR-009, SC-001, SC-004]
-- [ ] T003 [US1] Add `scaffold/templates/dotnet-cli/GitVersion.yml` — `workflow: GitHubFlow/v1`, `next-version: 0.1.0`, `assembly-*-scheme: MajorMinorPatch`, `assembly-informational-format: '{MajorMinorPatch}'`, `ignore.sha: []` — `scaffold/templates/dotnet-cli/GitVersion.yml` — [covers FR-001, FR-002, FR-003, FR-004, FR-005, SC-002]
+- [x] T002 [US1] Golden test asserting `scaffold/templates/dotnet-cli/GitVersion.yml` is present and pins `workflow: GitHubFlow/v1` + `next-version: 0.1.0` (write first; MUST fail before T003) — `test/Hx.Templates.Tests/TemplateGoldenTests.cs` — [covers FR-001, FR-004, FR-005, FR-009, SC-001, SC-004] <!-- doti-task-hash: c3db8bfe0cc556b9e1a017ffbc86ccc3252c3dc612aff5422e0ee48de0dae316 -->
+- [x] T003 [US1] Add `scaffold/templates/dotnet-cli/GitVersion.yml` — `workflow: GitHubFlow/v1`, `next-version: 0.1.0`, `assembly-*-scheme: MajorMinorPatch`, `assembly-informational-format: '{MajorMinorPatch}'`, `ignore.sha: []` — `scaffold/templates/dotnet-cli/GitVersion.yml` — [covers FR-001, FR-002, FR-003, FR-004, FR-005, SC-002] <!-- doti-task-hash: aa0a729f23d6c587175da90d1eddbe0b189891f101101287b870aff63287795e -->
 
 **Checkpoint:** `gate run --profile normal` green over the change set.
 
@@ -19,15 +19,15 @@
 
 **Goal:** a generated repo's release assembly carries `Copyright © <release-year> <Company>`. **Independent test:** a Release build of a generated repo emits `AssemblyCopyrightAttribute` with the current year + company.
 
-- [ ] T004 [US2] Golden test asserting `scaffold/templates/dotnet-cli/Directory.Build.props` contains a `<Copyright>` using the build-time year function `$([System.DateTime]::UtcNow.Year)` + `$(Company)` (write first; MUST fail before T005) — `test/Hx.Templates.Tests/TemplateGoldenTests.cs` — [covers FR-006, FR-007, FR-008, FR-009, SC-003, SC-004]
-- [ ] T005 [US2] Add `<Copyright>Copyright © $([System.DateTime]::UtcNow.Year) $(Company)</Copyright>` immediately after `<Company>` in `scaffold/templates/dotnet-cli/Directory.Build.props` — `scaffold/templates/dotnet-cli/Directory.Build.props` — [covers FR-006, FR-007, FR-008]
+- [x] T004 [US2] Golden test asserting `scaffold/templates/dotnet-cli/Directory.Build.props` contains a `<Copyright>` using the build-time year function `$([System.DateTime]::UtcNow.Year)` + `$(Company)` (write first; MUST fail before T005) — `test/Hx.Templates.Tests/TemplateGoldenTests.cs` — [covers FR-006, FR-007, FR-008, FR-009, SC-003, SC-004] <!-- doti-task-hash: ee0111dbd0d8651d3f75aa612c021024a71c6345e8e8583767ba6550bf8f04dd -->
+- [x] T005 [US2] Add `<Copyright>Copyright © $([System.DateTime]::UtcNow.Year) $(Company)</Copyright>` immediately after `<Company>` in `scaffold/templates/dotnet-cli/Directory.Build.props` — `scaffold/templates/dotnet-cli/Directory.Build.props` — [covers FR-006, FR-007, FR-008] <!-- doti-task-hash: 09616dfc9df50ebf6aac0f7514f8082162bd6fbd1e723a9886d428b4922f2934 -->
 
 **Checkpoint:** `gate run --profile normal` green over the change set.
 
 ## Phase 4 — Polish & release docs
 
-- [ ] T006 Note the new generated-repo defaults (0.1.0 start + patch-default/minor-on-feature versioning; auto-year company copyright) in `CHANGELOG.md` and the scaffold section of `README.md` — `CHANGELOG.md`, `README.md` — [covers SC-001, SC-003 docs hygiene]
-- [ ] T007 `gate run --profile release` green over the full change set; stamp implement on green — [covers SC-002, SC-004]
+- [x] T006 Note the new generated-repo defaults (0.1.0 start + patch-default/minor-on-feature versioning; auto-year company copyright) in `CHANGELOG.md` and the scaffold section of `README.md` — `CHANGELOG.md`, `README.md` — [covers SC-001, SC-003 docs hygiene] <!-- doti-task-hash: bc7168e1a00b135cef4e82bd5a37731411b0eedcae55907d28182e04ee053b48 -->
+- [x] T007 `gate run --profile release` green over the full change set; stamp implement on green — [covers SC-002, SC-004] <!-- doti-task-hash: 93f30c1236f93e0a8b38e862550aa25e2bc97726d0c6ae1872d608c11ea592e5 -->
 
 ## Dependencies & Execution Order
 
