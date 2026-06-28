@@ -13,10 +13,16 @@
 
 `hx new` gives you a compiling .NET solution on day one. Doti gives your AI coding agent a governed path from idea to release: spec, clarify, plan, tasks, analyze, architecture review, implementation, drift review, and release, each backed by command-checked proof instead of trust-me prose.
 
+[![NuGet](https://img.shields.io/nuget/v/Heurex.SpeckitDoti?style=flat-square&labelColor=1A1F4D&color=C9A961&label=nuget)](https://www.nuget.org/packages/Heurex.SpeckitDoti)
 [![.NET](https://img.shields.io/badge/.NET-10.0-C9A961?style=flat-square&labelColor=1A1F4D)](https://dotnet.microsoft.com/)
+[![platform](https://img.shields.io/badge/platform-win--x64_·_linux--x64_·_osx--arm64-C9A961?style=flat-square&labelColor=1A1F4D)](#quickstart)
+[![output](https://img.shields.io/badge/output-JSON_%2B_human-C9A961?style=flat-square&labelColor=1A1F4D)](#quickstart)
+[![gates](https://img.shields.io/badge/gates-fail--closed-C9A961?style=flat-square&labelColor=1A1F4D)](#proofs-gates-and-recovery)
+[![versioning](https://img.shields.io/badge/versioning-GitVersion-C9A961?style=flat-square&labelColor=1A1F4D)](#quickstart)
+[![cycle](https://img.shields.io/badge/cycle-%2F01–%2F09_%2B_utilities-C9A961?style=flat-square&labelColor=1A1F4D)](#the-doti-cycle)
+[![install](https://img.shields.io/badge/install-dotnet_tool_·_MS_Store-C9A961?style=flat-square&labelColor=1A1F4D)](#quickstart)
 [![License: MIT](https://img.shields.io/badge/License-MIT-C9A961?style=flat-square&labelColor=1A1F4D)](LICENSE)
 [![Based on Spec Kit](https://img.shields.io/badge/based_on-GitHub_Spec_Kit-C9A961?style=flat-square&labelColor=1A1F4D)](https://github.com/github/spec-kit)
-[![Global tool](https://img.shields.io/badge/install-dotnet_tool-C9A961?style=flat-square&labelColor=1A1F4D)](#quickstart)
 
 </div>
 

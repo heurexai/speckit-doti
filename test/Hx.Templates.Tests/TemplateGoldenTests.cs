@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Text.Json;
+using System.Xml.Linq;
 using Xunit;
 
 namespace Hx.Templates.Tests;
@@ -274,6 +275,31 @@ public sealed class TemplateGoldenTests
         Assert.Contains("<Copyright>", props);
         Assert.Contains("$([System.DateTime]::UtcNow.Year)", props); // build-time year = the release year
         Assert.Contains("$(Company)", props);                        // holder == the --company value
+    }
+
+    [Fact]
+    public void Every_template_xml_asset_is_well_formed_xml()
+    {
+        // Regression guard: the 020 Copyright comment once contained "--company"; "--" is illegal inside an XML
+        // comment, so the GENERATED Directory.Build.props failed to parse, TargetFramework was never set, and every
+        // generated repo failed to build (NETSDK1013) — caught only in a release smoke. The other golden tests read
+        // these assets as strings, never as XML, so the gate stayed green. Parse every shipped XML asset here so an
+        // XML-invalid template (a "--" in a comment, an unescaped entity) fails fast in the gate, not downstream.
+        string[] xml = Directory.EnumerateFiles(TemplateRepo.TemplateDir, "*", SearchOption.AllDirectories)
+            .Where(p => p.EndsWith(".csproj", System.StringComparison.OrdinalIgnoreCase)
+                     || p.EndsWith(".props", System.StringComparison.OrdinalIgnoreCase)
+                     || p.EndsWith(".slnx", System.StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        Assert.NotEmpty(xml); // guard: the glob must actually find the shipped assets
+
+        foreach (string path in xml)
+        {
+            System.Exception? failure = Record.Exception(() => XDocument.Parse(File.ReadAllText(path)));
+            Assert.True(
+                failure is null,
+                $"template XML asset is not well-formed XML and would break the generated build: {path}\n{failure?.Message}");
+        }
     }
 
     private static int CountOccurrences(string haystack, string needle)
