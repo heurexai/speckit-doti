@@ -155,6 +155,7 @@ public static partial class ToolFetcher
             {
                 File.WriteAllBytes(temp, executableBytes);
                 File.Move(temp, exeFullPath, overwrite: true);
+                ExecutableFileMode.EnsureExecutable(exeFullPath); // 016 FR-001: the fetched binary must be runnable on Unix.
             }
             finally
             {

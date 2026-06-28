@@ -63,6 +63,7 @@ public static class StorePopulator
             }
 
             File.Move(tmp, target, overwrite: true);
+            ExecutableFileMode.EnsureExecutable(target); // 016 FR-002: the stored binary (the path the generated repo runs) must be runnable on Unix.
             ToolStore.RecordEntry(new ToolStoreEntry(tool, version, rid, executableName, expectedSha256, source));
             return new StorePopulateResult(StorePopulateStatus.Installed, tool, version, rid, target,
                 $"'{tool}' {version} ({rid}) installed into the shared store.");
