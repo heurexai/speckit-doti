@@ -93,7 +93,9 @@ jobs:
           path: artifacts/nuget
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9   # v4 (pinned 2026-06-27)
         with:
-          global-json-file: global.json
+          # 019: the publish job has no checkout (it only runs `dotnet nuget push`), so it must NOT pin via
+          # global.json (a repo file that is absent here). Pin by version — the .NET 10 SDK channel is all the push needs.
+          dotnet-version: '10.0.x'
 
       - name: NuGet login (OIDC -> short-lived API key)
         id: login

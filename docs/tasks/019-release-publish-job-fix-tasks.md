@@ -4,11 +4,11 @@
 
 ## Phase 1 — Fix the publish job
 
-- [ ] T001 In `.github/workflows/release.yml`, in the **publish** job's `actions/setup-dotnet` step, replace `global-json-file: global.json` with `dotnet-version: '10.0.x'` (the job has no checkout and only runs `dotnet nuget push`). Leave the pack-and-smoke job, the OIDC `id-token: write` scoping, `environment: production`, the NuGet login, and `dotnet nuget push --skip-duplicate` unchanged — `.github/workflows/release.yml` — [covers FR-001, FR-002]
+- [x] T001 In `.github/workflows/release.yml`, in the **publish** job's `actions/setup-dotnet` step, replace `global-json-file: global.json` with `dotnet-version: '10.0.x'` (the job has no checkout and only runs `dotnet nuget push`). Leave the pack-and-smoke job, the OIDC `id-token: write` scoping, `environment: production`, the NuGet login, and `dotnet nuget push --skip-duplicate` unchanged — `.github/workflows/release.yml` — [covers FR-001, FR-002] <!-- doti-task-hash: d5678618ca20bc76ff8a5645f0ba2360e3f3f85f34db3d6650d42a2adeaed069 -->
 
 ## Phase 2 — Verify
 
-- [ ] T002 `release.yml` is valid YAML and the change is confined to the publish job's `setup-dotnet` input; `gate run --profile normal` green over the change set; stamp implement on green. The publish-job-runs-past-`setup-dotnet` outcome is observed on the v0.12.5 tag push (not locally reproducible) — `.github/workflows/release.yml` — [covers SC-001, SC-002]
+- [x] T002 `release.yml` is valid YAML and the change is confined to the publish job's `setup-dotnet` input; `gate run --profile normal` green over the change set; stamp implement on green. The publish-job-runs-past-`setup-dotnet` outcome is observed on the v0.12.5 tag push (not locally reproducible) — `.github/workflows/release.yml` — [covers SC-001, SC-002] <!-- doti-task-hash: 3e33843b28985183680e908611477b64382020ebc86dd662e8836ba8a78b74f2 -->
 
 ## Coverage
 
