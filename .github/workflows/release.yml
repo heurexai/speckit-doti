@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4 (pinned 2026-06-27)
         with:
           fetch-depth: 0       # GitVersion needs full history + tags
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9   # v4 (pinned 2026-06-27)
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1   # v4 (pinned 2026-06-27)
         with:
           global-json-file: global.json
 
@@ -127,7 +127,7 @@ jobs:
         with:
           name: nuget
           path: artifacts/nuget
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9   # v4 (pinned 2026-06-27)
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1   # v4 (pinned 2026-06-27)
         with:
           # The publish job has no checkout (it only pushes), so it must NOT pin via global.json (absent here).
           # Pin by version — the .NET 10 SDK channel is all the push needs.
