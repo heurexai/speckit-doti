@@ -112,7 +112,7 @@ jobs:
       # The unsigned MSIX is a Store-submission INPUT ONLY — it is handed to `submit` as a workflow artifact
       # and is NEVER attached to a GitHub release (the Store signs it; shipping an unsigned MSIX is forbidden).
       - name: Upload the unsigned MSIX (Store-submission input only)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4 (pinned 2026-06-27)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a   # v4 (pinned 2026-06-27)
         with:
           name: msix
           path: speckit-doti-${{ inputs.version }}.msix
