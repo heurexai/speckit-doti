@@ -14,7 +14,9 @@ public sealed partial class CycleService
         var excluded = new HashSet<string>(excludedOwnedPaths ?? [], StringComparer.OrdinalIgnoreCase);
         if (!IsReleaseStageRecovery(state, current, scope))
         {
-            CycleCheckReport check = Check(current.Id);
+            // BUG 021: thread the owned paths into the freshness Check too (not just the dirty-tree guards below) so an
+            // incoming/in-flight owned artifact is subtracted from the prior stages' diff-identity recomputation.
+            CycleCheckReport check = Check(current.Id, excludedOwnedPaths);
             if (!check.Passed)
             {
                 reasons.AddRange(check.Prerequisites

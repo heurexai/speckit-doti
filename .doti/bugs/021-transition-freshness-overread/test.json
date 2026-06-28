@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "021-transition-freshness-overread",
+  "boundFixSha256": "692c00b8e1546d2e211c476fae70cf3e913e2891fc27a11ce75d4d7d2e440d70",
+  "outcome": "pass",
+  "evidence": "dotnet test Hx.Cycle.Tests = 67 passed (incl. new ChangeSetIdentity exclusion unit test proving an owned doc is subtracted from the identity but a code path is not). dotnet test Hx.Runner.Tests = 228 passed, 0 failed. New integration test StagingTheDriftReviewReport_DoesNotStaleImplement_AtTheReleaseCheck reproduces the exact failure (drift-review report staged at the release Check) and asserts implement:fresh (it read implement:stale before the fix); StagingAnUnownedFileStillStalesImplement asserts a real post-implement code edit still yields implement:stale (exclusion is exact); 226 existing cycle-enforcement tests unchanged (no regression)."
+}

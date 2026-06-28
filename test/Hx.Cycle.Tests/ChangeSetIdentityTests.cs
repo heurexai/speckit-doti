@@ -51,4 +51,37 @@ public sealed class ChangeSetIdentityTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    [Fact]
+    public void Compute_excludes_owned_paths_so_an_in_flight_artifact_does_not_move_the_identity()
+    {
+        // BUG 021: a stage's own in-flight artifact (the /08 drift-review report staged for the release transition,
+        // or an incoming feature's spec) must not move the change-set identity that decides whether the diff-kind
+        // `implement` prerequisite is still fresh — else every release stamp falsely reads `implement` as stale.
+        string dir = NewTempDir();
+        try
+        {
+            Write(dir, "src/code.cs", "implementation");
+            Write(dir, "docs/reviews/001-x-drift-review.md", "review body");
+            string[] changed = ["src/code.cs", "docs/reviews/001-x-drift-review.md"];
+            string[] ownedDoc = ["docs/reviews/001-x-drift-review.md"];
+
+            // Excluding the owned doc yields exactly the code-only identity — the doc no longer participates.
+            Assert.Equal(
+                ChangeSetIdentity.Compute(dir, ["src/code.cs"]),
+                ChangeSetIdentity.Compute(dir, changed, ownedDoc));
+
+            // Exact-path but separator-normalized + case-insensitive: a backslash, mixed-case owned path still matches.
+            Assert.Equal(
+                ChangeSetIdentity.Compute(dir, ["src/code.cs"]),
+                ChangeSetIdentity.Compute(dir, changed, ["docs\\reviews\\001-X-Drift-Review.md"]));
+
+            // ...but a code path is never collateral: excluding the doc leaves the code change in the identity
+            // (so a real implementation edit still stales `implement`, exactly as before).
+            Assert.NotEqual(
+                ChangeSetIdentity.Compute(dir, []),
+                ChangeSetIdentity.Compute(dir, changed, ownedDoc));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }

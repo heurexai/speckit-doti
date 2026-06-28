@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "bugId": "021-transition-freshness-overread",
+  "boundAssessmentSha256": "ebd0dcfaa7f23852e4c44c00129ed9383b88eddb6c2ab114a49bed2c2377281c",
+  "summary": "Subtract the feature\u0027s owned doc/review artifacts from the prerequisite-freshness change-set identity (ChangeSetIdentity.Compute exclusion overload \u002B CycleService.FreshnessIdentity helper used by Check\u002BStatus; thread excludedOwnedPaths into ValidateTransitionReadiness\u0027s Check). The only diff stage (implement) has no produces, so a later owned artifact (the /08 report) no longer stales it, while a real code change still does.",
+  "changedPaths": [
+    "tools/Hx.Cycle.Core/ChangeSetIdentity.cs",
+    "tools/Hx.Cycle.Core/CycleService.Check.cs",
+    "tools/Hx.Cycle.Core/CycleService.TransitionReadiness.cs",
+    "test/Hx.Cycle.Tests/ChangeSetIdentityTests.cs",
+    "test/Hx.Runner.Tests/CycleEnforcementReleaseStampScopeTests.cs"
+  ]
+}

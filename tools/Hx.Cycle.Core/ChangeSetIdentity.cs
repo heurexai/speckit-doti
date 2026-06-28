@@ -29,4 +29,29 @@ public static class ChangeSetIdentity
     /// (throws) if the merge-base cannot be resolved — never returns a misleading identity.</summary>
     public static string Of(string repositoryRoot, string baseRef, string headRef) =>
         Compute(repositoryRoot, new ImpactChangeCollector().Collect(repositoryRoot, baseRef, headRef));
+
+    /// <summary>As <see cref="Of(string,string,string)"/> but subtracts <paramref name="excludedPaths"/> (exact,
+    /// separator-normalized, case-insensitive) from the collected change set before hashing — so a stage's OWN
+    /// in-flight artifacts (the cycle's doc/review files) do not move the identity that prerequisite-freshness
+    /// evaluation relies on. Excluding only owned doc/review artifacts never hides a code change: the only diff-kind
+    /// stage produces no artifact, so a code edit is never in the excluded set.</summary>
+    public static string Of(
+        string repositoryRoot, string baseRef, string headRef, IReadOnlyList<string> excludedPaths) =>
+        Compute(repositoryRoot, new ImpactChangeCollector().Collect(repositoryRoot, baseRef, headRef), excludedPaths);
+
+    /// <summary>Pure: <see cref="Compute(string,IReadOnlyList{string})"/> with <paramref name="excludedPaths"/>
+    /// (exact, separator-normalized, case-insensitive) removed from the set first — the unit the tests pin.</summary>
+    public static string Compute(
+        string repositoryRoot, IReadOnlyList<string> changedPaths, IReadOnlyList<string> excludedPaths)
+    {
+        if (excludedPaths.Count == 0)
+        {
+            return Compute(repositoryRoot, changedPaths);
+        }
+
+        var excluded = new HashSet<string>(excludedPaths.Select(NormalizeSeparators), StringComparer.OrdinalIgnoreCase);
+        return Compute(repositoryRoot, changedPaths.Where(p => !excluded.Contains(NormalizeSeparators(p))).ToList());
+    }
+
+    private static string NormalizeSeparators(string path) => path.Replace('\\', '/');
 }

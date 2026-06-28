@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "021-transition-freshness-overread",
+  "verdict": "confirmed",
+  "severity": "high",
+  "remediation": "Exclude the feature\u0027s owned doc/review artifact paths (FeatureArtifactScope.OwnedPaths) from the change-set identity used for prerequisite-freshness evaluation. Add a ChangeSetIdentity.Of overload that subtracts excluded paths; add a CycleService FreshnessIdentity helper that excludes OwnedPaths(state.Feature) plus any caller-supplied incoming-feature owned paths; route Check and Status through it; thread the existing excludedOwnedPaths from ValidateTransitionReadiness into its Check(current.Id) call. Safe: the only diff-kind stage (implement) has no produces, so owned-doc exclusion never hides a code change, and doc/review artifacts are bound by proof hashes not change-set identity.",
+  "summary": "Prerequisite-freshness change-set identity over-reads a later-stage owned artifact (the /08 drift-review report) staged for a transition, falsely staling the implement (diff) proof and blocking the drift-review-\u003Erelease stamp every cycle."
+}
