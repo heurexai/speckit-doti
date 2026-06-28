@@ -1,3 +1,4 @@
+using System.Linq;
 using Xunit;
 
 namespace Hx.Scaffold.Tests;
@@ -6,6 +7,9 @@ namespace Hx.Scaffold.Tests;
 /// 007 T024: the release workflow publishes the framework-dependent global tool <c>Heurex.SpeckitDoti</c> to
 /// NuGet.org via Trusted Publishing (GitHub OIDC — no stored key), runs the source-free install smoke before
 /// publishing, and is H10-hardened (OIDC on the publish job only, behind the protected <c>production</c> Environment).
+/// The release fires on the <c>dev → main</c> squash-merge (not a hand-pushed tag): CI computes the controlled
+/// GitVersion on the merge, creates the <c>v&lt;version&gt;</c> tag, and cuts the GitHub Release — so the build/publish
+/// jobs carry per-job <c>contents: write</c> while the workflow stays read-only at the top.
 /// Velopack/vpk packaging is gone. Structural assertion — the workflow itself only runs in GitHub Actions.
 /// </summary>
 public sealed class GitHubReleaseWorkflowTests
@@ -48,9 +52,15 @@ public sealed class GitHubReleaseWorkflowTests
         Assert.Contains("steps.login.outputs.NUGET_API_KEY", workflow);
         Assert.DoesNotContain("secrets.NUGET_API_KEY", workflow);
 
-        // H10: OIDC on the publish job only; the workflow declares no top-level write permission.
-        Assert.Contains("id-token: write", workflow);
-        Assert.DoesNotContain("contents: write", workflow);
+        // H10: the top level is read-only (no ambient write), and OIDC (`id-token: write`) is granted to the
+        // PUBLISH job ONLY. Count GRANT LINES (the YAML key at line-start), not the raw substring — the header
+        // comment also mentions `id-token: write` in prose, which is not a permission. The dev->main model does
+        // need repo writes — the release tag (build job) + the GitHub Release (publish job) — but only as per-JOB
+        // `contents: write` grants, never workflow-wide and never a stored key.
+        Assert.Contains("contents: read", workflow);
+        int idTokenGrants = workflow.Split('\n')
+            .Count(l => l.TrimStart().StartsWith("id-token: write", System.StringComparison.Ordinal));
+        Assert.Equal(1, idTokenGrants);
 
         // H10: publish behind the protected `production` Environment — its name matches the NuGet Trusted
         // Publishing policy's Environment field; a required reviewer gates OIDC issuance.

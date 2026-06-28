@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Text.Json;
-using System.Xml.Linq;
 using Xunit;
 
 namespace Hx.Templates.Tests;
@@ -280,26 +279,26 @@ public sealed class TemplateGoldenTests
     [Fact]
     public void Every_template_xml_asset_is_well_formed_xml()
     {
-        // Regression guard: the 020 Copyright comment once contained "--company"; "--" is illegal inside an XML
-        // comment, so the GENERATED Directory.Build.props failed to parse, TargetFramework was never set, and every
-        // generated repo failed to build (NETSDK1013) — caught only in a release smoke. The other golden tests read
-        // these assets as strings, never as XML, so the gate stayed green. Parse every shipped XML asset here so an
-        // XML-invalid template (a "--" in a comment, an unescaped entity) fails fast in the gate, not downstream.
-        string[] xml = Directory.EnumerateFiles(TemplateRepo.TemplateDir, "*", SearchOption.AllDirectories)
-            .Where(p => p.EndsWith(".csproj", System.StringComparison.OrdinalIgnoreCase)
-                     || p.EndsWith(".props", System.StringComparison.OrdinalIgnoreCase)
-                     || p.EndsWith(".slnx", System.StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        // Regression guard for the 020 defect: the auto-year-copyright comment contained "--company", and "--" is
+        // illegal inside an XML comment, so every GENERATED repo's Directory.Build.props failed to parse (MSB4024)
+        // -> no TargetFramework -> NETSDK1013. The template assets are inert here, and the other golden tests read
+        // them as strings, so the gate stayed green. XmlAssetValidator parses each shipped XML asset with the BCL
+        // XML reader (the canonical .NET XML linter — no third-party/native dependency) so ANY well-formedness
+        // defect fails fast in the gate, not in a downstream generated build.
+        IReadOnlyList<string> discovered = XmlAssetValidator.DiscoverXmlAssets(TemplateRepo.TemplateDir);
 
-        Assert.NotEmpty(xml); // guard: the glob must actually find the shipped assets
+        // Discovery must reach the load-bearing assets — a glob/scope regression that finds nothing (or the wrong
+        // tree) must fail loudly, never pass vacuously.
+        Assert.Contains(discovered, p => p.EndsWith("Directory.Build.props", System.StringComparison.Ordinal));
+        Assert.Contains(discovered, p => p.EndsWith("Directory.Packages.props", System.StringComparison.Ordinal));
+        Assert.Contains(discovered, p => p.EndsWith(".slnx", System.StringComparison.Ordinal));
+        Assert.Contains(discovered, p => p.EndsWith(".csproj", System.StringComparison.Ordinal));
 
-        foreach (string path in xml)
-        {
-            System.Exception? failure = Record.Exception(() => XDocument.Parse(File.ReadAllText(path)));
-            Assert.True(
-                failure is null,
-                $"template XML asset is not well-formed XML and would break the generated build: {path}\n{failure?.Message}");
-        }
+        IReadOnlyList<XmlAssetDefect> defects = XmlAssetValidator.Validate(TemplateRepo.TemplateDir);
+        Assert.True(
+            defects.Count == 0,
+            "template ships XML that is not well-formed and would break the generated build:\n  "
+                + string.Join("\n  ", defects));
     }
 
     private static int CountOccurrences(string haystack, string needle)
