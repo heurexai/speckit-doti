@@ -143,6 +143,8 @@ Each stage is stamped through `hx doti cycle`. Later stages check that prerequis
 
 Alongside the numbered stages, the unnumbered `/doti-constitution` skill maintains the project **constitution** — **§1** inherited doti invariants (the codified givens) plus **§2** project declarations (tech stack, coding style, domain) — which `plan` and `arch-review` re-read fresh via `hx doti constitution`, so the agent always reviews against the current rules rather than a stale snapshot.
 
+The unnumbered `/doti-auto` skill drives the numbered cycle **hands-off** to a target stage (`--until <stage>`, default the local release): it advances stage-to-stage automatically while nothing needs the operator, stopping only at genuine operator-decision points (a clarify ambiguity, an arch-review BLOCKER, an unrecoverable gate failure, the publish boundary). It is orchestration over the enforced stages — never a bypass: it never weakens a gate, skips a stamp, or pushes a release tag. For a release train, invoke it per member with `--until drift-review`.
+
 ---
 
 ## Proofs, gates, and recovery
