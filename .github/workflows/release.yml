@@ -57,6 +57,14 @@ jobs:
           hx --help
           hx version --json
           hx prereq check --json
+          # 015 FR-004/FR-005: provision the host-RID vendored structural tools (Sentrux + Gitleaks from the
+          # pinned heurexai/* fork releases, manifest-pinned + hash-verified, fail-closed) into the INSTALLED
+          # PAYLOAD so `hx new`'s first-smoke verifies them instead of failing-closed on a fresh runner (the
+          # global tool never bundles the binaries; they are fetched on demand). The payload root is `hx new`'s
+          # sourceRepoRoot — derived from `hx version`'s prerequisites manifest path.
+          payload="$(hx version --json | jq -r '.data.prerequisites.manifestPath')"
+          payload="${payload%/.doti/core/prerequisites.json}"
+          hx tools fetch --repo "$payload" --tool all --json
           hx new --name HxRtSmoke --output "$gen" --company Smoke --agents codex,claude --json
           hx doti install --repo "$gen" --json
           # The scaffolded repo must carry NO Velopack stub and NOT vendor the runner CLI source (FR-045/T021/T042).
