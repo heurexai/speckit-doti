@@ -136,7 +136,7 @@ jobs:
       # installed via the official setup action below. Verify the exact `publish` invocation on the first
       # automated run: https://aka.ms/msstoredevcli
       - name: Setup Microsoft Store Developer CLI
-        uses: microsoft/microsoft-store-apppublisher@15abd1c50fcc164b19cb240fb04ef3c49bf715a2   # v1.1 (pinned 2026-06-27)
+        uses: microsoft/microsoft-store-apppublisher@b76227f539d68e6465f79bbbc82ed92f61081aa4   # v1.3 (pinned 2026-06-29)
 
       - name: Submit to the Microsoft Store
         shell: pwsh
