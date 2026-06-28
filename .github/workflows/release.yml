@@ -1,47 +1,83 @@
 name: Release
 
-# 007 T024 — publish the framework-dependent .NET global tool `Heurex.SpeckitDoti` to public NuGet.org via
-# Trusted Publishing (GitHub OIDC; NO stored API key). One package for all OSes — per-RID tool binaries are
-# fetched + hash-verified on demand (T022), not bundled. Velopack/vpk staging is gone (T016/T017).
+# dev -> main squash-merge release. `main` is the protected release branch (PR-only); `dev` is the permanent
+# working branch. A squash merge from `dev` is a push to `main`, and THAT is the only release trigger — the
+# release version is decided on the merge (not on a hand-pushed tag), so it stays controlled and cannot
+# conflict once more than one contributor works on `dev`.
 #
-# H10 hardening implemented here:
-#   * `id-token: write` is on the PUBLISH job ONLY (this workflow declares no workflow-level write permission).
-#   * The publish job runs in the protected `production` Environment (matching the NuGet policy's Environment
-#     field) — a required reviewer gates OIDC issuance, so a
-#     token is never minted on just any collaborator's tag push.
-#   * Trusted Publishing is the ONLY credential path — there is no fallback stored NUGET_API_KEY anywhere.
+# Versioning: GitVersion (GitHubFlow/v1, see /GitVersion.yml). `main` increments PATCH by default; a
+# `+semver: minor` or `+semver: major` in the SQUASH-MERGE commit message opts up. The workflow computes the
+# version, creates the annotated `v<version>` tag, packs + smoke-tests the global tool, publishes to NuGet.org
+# via Trusted Publishing (OIDC — no stored key), and cuts the GitHub Release. Re-runs are idempotent (the tag
+# is created only if absent, the NuGet push is `--skip-duplicate`, the Release is created only if absent).
 #
-# H10 + T024 OPERATOR PREP (one-time, before the first publish):
-#   1. NuGet.org: create a Trusted Publishing policy (owner `heurexai`, repo `speckit-doti`, workflow `release.yml`).
-#   2. Add the `NUGET_USER` repo secret = the nuget.org username (NOT the email).
-#   3. Configure the `production` Environment with a required reviewer (its name MUST equal the policy's Environment field).
-#   4. Actions below are pinned to full commit SHAs (resolved 2026-06-27 via the GitHub API). The trailing
-#      `# vN` comment records the floating tag each SHA was resolved from; re-pin when bumping a version.
+# H10 hardening: no workflow-level write; `id-token: write` is on the PUBLISH job ONLY; publish runs in the
+# protected `production` Environment (a required reviewer gates OIDC issuance); Trusted Publishing is the only
+# credential path (no fallback NUGET_API_KEY). Actions are pinned to full commit SHAs (the trailing `# vN`
+# records the floating tag each SHA resolved from; re-pin when bumping).
+#
+# OPERATOR PREP (one-time): NuGet.org Trusted Publishing policy (owner `heurexai`, repo `speckit-doti`,
+# workflow `release.yml`); `NUGET_USER` repo secret = the nuget.org username; a `production` Environment whose
+# name equals the policy's Environment field, with a required reviewer.
+
 on:
   push:
-    tags: [ 'v*' ]
+    branches: [ main ]
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
 jobs:
-  pack-and-smoke:
-    name: Pack the global tool + source-free install smoke
+  build-release:
+    name: Version + pack the global tool + source-free install smoke
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write          # create + push the annotated release tag
+    outputs:
+      version: ${{ steps.gv.outputs.version }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5   # v4 (pinned 2026-06-27)
         with:
-          fetch-depth: 0
+          fetch-depth: 0       # GitVersion needs full history + tags
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9   # v4 (pinned 2026-06-27)
         with:
           global-json-file: global.json
 
+      - name: Compute the controlled release version (GitVersion 6.7.0)
+        id: gv
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Pinned to the repo's vendored GitVersion version for parity with `hx version calculate`.
+          dotnet tool install --global GitVersion.Tool --version 6.7.0
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          version="$(dotnet-gitversion /showvariable MajorMinorPatch)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Release version: $version"
+
+      - name: Create + push the annotated release tag (idempotent)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v${{ steps.gv.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists on origin — leaving it as-is."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" -m "Release $tag"
+            git push origin "$tag"
+          fi
+
       - name: Pack Heurex.SpeckitDoti (framework-dependent global tool)
         # PackageOutputPath MUST be absolute: MSBuild resolves a relative path against the PROJECT directory
-        # (tools/Hx.Scaffold.Cli/), not the repo root — so a bare `artifacts/nuget` lands beside the csproj and the
-        # smoke/upload/publish steps (which read repo-root artifacts/nuget) cannot find the package.
+        # (tools/Hx.Scaffold.Cli/), not the repo root — so the smoke/upload/publish steps (which read repo-root
+        # artifacts/nuget) cannot find a relatively-packed package. The version flows from GitVersion.MsBuild,
+        # which now sees the v<version> tag on HEAD and packs that exact version.
         run: dotnet build tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj -c Release -t:PackAnchoredTool -p:PackageOutputPath="$GITHUB_WORKSPACE/artifacts/nuget" --nologo
 
       - name: Source-free install smoke (installed hx; no source checkout on PATH)
@@ -79,13 +115,13 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish to NuGet.org (Trusted Publishing)
-    needs: pack-and-smoke
+    name: Publish to NuGet.org (Trusted Publishing) + GitHub Release
+    needs: build-release
     runs-on: ubuntu-latest
     environment: production     # MUST match the NuGet Trusted Publishing policy's Environment field; add a required reviewer to gate OIDC issuance (H10)
     permissions:
       id-token: write           # OIDC — ONLY on this job
-      contents: read
+      contents: write           # create the GitHub Release
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093   # v4 (pinned 2026-06-27)
         with:
@@ -93,8 +129,8 @@ jobs:
           path: artifacts/nuget
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9   # v4 (pinned 2026-06-27)
         with:
-          # 019: the publish job has no checkout (it only runs `dotnet nuget push`), so it must NOT pin via
-          # global.json (a repo file that is absent here). Pin by version — the .NET 10 SDK channel is all the push needs.
+          # The publish job has no checkout (it only pushes), so it must NOT pin via global.json (absent here).
+          # Pin by version — the .NET 10 SDK channel is all the push needs.
           dotnet-version: '10.0.x'
 
       - name: NuGet login (OIDC -> short-lived API key)
@@ -105,3 +141,19 @@ jobs:
 
       - name: Push Heurex.SpeckitDoti to NuGet.org
         run: dotnet nuget push artifacts/nuget/Heurex.SpeckitDoti.*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Cut the GitHub Release (idempotent)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v${{ needs.build-release.outputs.version }}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists — leaving it as-is."
+          else
+            gh release create "$tag" artifacts/nuget/*.nupkg \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$tag" \
+              --generate-notes
+          fi

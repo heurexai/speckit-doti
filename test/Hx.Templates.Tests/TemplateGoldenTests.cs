@@ -276,6 +276,31 @@ public sealed class TemplateGoldenTests
         Assert.Contains("$(Company)", props);                        // holder == the --company value
     }
 
+    [Fact]
+    public void Every_template_xml_asset_is_well_formed_xml()
+    {
+        // Regression guard for the 020 defect: the auto-year-copyright comment contained "--company", and "--" is
+        // illegal inside an XML comment, so every GENERATED repo's Directory.Build.props failed to parse (MSB4024)
+        // -> no TargetFramework -> NETSDK1013. The template assets are inert here, and the other golden tests read
+        // them as strings, so the gate stayed green. XmlAssetValidator parses each shipped XML asset with the BCL
+        // XML reader (the canonical .NET XML linter — no third-party/native dependency) so ANY well-formedness
+        // defect fails fast in the gate, not in a downstream generated build.
+        IReadOnlyList<string> discovered = XmlAssetValidator.DiscoverXmlAssets(TemplateRepo.TemplateDir);
+
+        // Discovery must reach the load-bearing assets — a glob/scope regression that finds nothing (or the wrong
+        // tree) must fail loudly, never pass vacuously.
+        Assert.Contains(discovered, p => p.EndsWith("Directory.Build.props", System.StringComparison.Ordinal));
+        Assert.Contains(discovered, p => p.EndsWith("Directory.Packages.props", System.StringComparison.Ordinal));
+        Assert.Contains(discovered, p => p.EndsWith(".slnx", System.StringComparison.Ordinal));
+        Assert.Contains(discovered, p => p.EndsWith(".csproj", System.StringComparison.Ordinal));
+
+        IReadOnlyList<XmlAssetDefect> defects = XmlAssetValidator.Validate(TemplateRepo.TemplateDir);
+        Assert.True(
+            defects.Count == 0,
+            "template ships XML that is not well-formed and would break the generated build:\n  "
+                + string.Join("\n  ", defects));
+    }
+
     private static int CountOccurrences(string haystack, string needle)
     {
         int count = 0, index = 0;

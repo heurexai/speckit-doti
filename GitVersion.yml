@@ -1,3 +1,8 @@
+# Trunk-based: `main` (the release branch) defaults to a PATCH bump; a `+semver: minor|major` in the
+# squash-merge commit message opts up. `dev` is the permanent working branch — a GitHubFlow pre-release
+# branch, NOT a GitFlow `develop` (which GitVersion's default workflow would treat as next-minor). The
+# release happens on the `dev` -> `main` squash-merge (release.yml computes the version on that commit).
+workflow: GitHubFlow/v1
 assembly-informational-format: '{MajorMinorPatch}'
 commit-message-incrementing: Enabled
 major-version-bump-message: '\+semver:\s?(breaking|major)'

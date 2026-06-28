@@ -8,7 +8,7 @@
     <Company>ACME_COMPANY</Company>
     <!-- 020: auto-year copyright. `$([System.DateTime]::UtcNow.Year)` evaluates at build time, so the
          release assembly (built by `hx release` in the release year) carries the year the release was run;
-         `$(Company)` keeps the holder in lockstep with the --company value. -->
+         `$(Company)` keeps the holder in lockstep with the company name supplied at generation. -->
     <Copyright>Copyright © $([System.DateTime]::UtcNow.Year) $(Company)</Copyright>
     <!-- 007 T042 (FR-025): nothing packs by default; the CLI project opts back in as a .NET global tool. -->
     <IsPackable>false</IsPackable>
