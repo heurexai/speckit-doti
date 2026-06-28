@@ -32,6 +32,10 @@ No FR/SC is orphaned; no task lacks a requirement.
 
 - **None blocking.** The spec's `## Clarifications` verified (with evidence) that both engines already compute the offender data (Sentrux `FormatObjectViolation`; ArchUnit `Evaluate`), and flagged the one FR-005 path (summary-style `max_cc` may lack per-function location → `UnknownReason`, confirmed at implement). No `[NEEDS CLARIFICATION]` remains.
 
+## Addendum — Sentrux scope correction (mid-implement, T014)
+
+A mid-implement operator decision (spec Clarifications) scopes Sentrux to production code (`test/` excluded via `.sentruxignore`) + an authorized baseline raise (FR-031). Covered by **T014**; consistent across spec (Sentrux And Hygiene Impact + Clarifications) ↔ plan (Addendum) ↔ arch-review (FR-031 classification) ↔ tasks (T014). No FR/SC is contradicted: the architecture/Sentrux outcomes and proof boundary are unchanged; only the *measurement scope* tightens to production code.
+
 ## Verdict
 
 **Consistent and fully covered.** Proceed to `/06-doti-arch-review` (a code change — the code lenses apply, especially the proof-hash-boundary and the generated-template lens).

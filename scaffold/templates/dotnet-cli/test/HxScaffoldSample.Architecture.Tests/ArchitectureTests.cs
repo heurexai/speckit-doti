@@ -44,7 +44,7 @@ public sealed partial class ArchitectureTests
     {
         IArchRule rule = Types().That().ResideInNamespaceMatching(LibraryNs)
             .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(CliNs));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("namespaceDependency", rule);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed partial class ArchitectureTests
     {
         IArchRule rule = Types().That().ResideInNamespaceMatching(LibraryNs)
             .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(CommandLineNs));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("classDependency", rule);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed partial class ArchitectureTests
     {
         IArchRule rule = Classes().That().ImplementInterface(typeof(IGreetingService))
             .Should().HaveNameEndingWith("Service");
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("inheritanceNaming", rule);
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed partial class ArchitectureTests
     {
         IArchRule rule = Classes().That().HaveNameEndingWith("Service")
             .Should().ResideInNamespaceMatching(LibraryNs);
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("namespaceContainment", rule);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed partial class ArchitectureTests
     {
         IArchRule rule = Classes().That().HaveAnyAttributes(typeof(SerializableContractAttribute))
             .Should().ResideInNamespaceMatching(LibraryNs);
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("attributeAccess", rule);
     }
 
     [Fact]
@@ -130,7 +130,40 @@ public sealed partial class ArchitectureTests
     public void Namespaces_are_free_of_cycles()
     {
         IArchRule rule = Slices().Matching("HxScaffoldSample.(*)").Should().BeFreeOfCycles();
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("cycleFreedom", rule);
     }
 
+    // 014 (FR-001/007): evaluate-and-emit. The rule OUTCOME is unchanged — it still FAILS on a violation (we assert
+    // the failing count is 0) — but on failure the assertion MESSAGE carries a deterministic marker block per failing
+    // rule so the Heurex architecture gate can recover WHICH types broke the rule from the TRX. When green, no marker
+    // is emitted. The marker format mirrors the toolkit's ArchitectureViolationMarker so the runner parses it; the
+    // generated repo carries its own copy because it does not reference the toolkit contracts.
+    private static void AssertNoViolations(string ruleName, IArchRule rule)
+    {
+        string[] failingObjects = rule.Evaluate(Arch)
+            .Where(result => !result.Passed)
+            .Select(result => result.EvaluatedObjectIdentifier.ToString())
+            .Where(name => !string.IsNullOrEmpty(name))
+            .OrderBy(name => name, System.StringComparer.Ordinal)
+            .Distinct()
+            .ToArray();
+
+        Assert.True(failingObjects.Length == 0, FormatViolationMarker(ruleName, rule.ToString() ?? ruleName, failingObjects));
+    }
+
+    // The single-line marker block parsed by the Heurex architecture-gate runner. Keep in lockstep with the toolkit's
+    // Hx.Tooling.Contracts.ArchitectureViolationMarker: ##HXARCHVIOLATION## rule=.. ||desc=.. ||objects=a;b ##END##,
+    // with the four delimiter substrings (\\ ; " ||" =) and # percent-escaped so a payload that contains one survives.
+    private static string FormatViolationMarker(string rule, string description, IReadOnlyList<string> violatingObjects)
+    {
+        string objects = string.Join(";", violatingObjects.Select(EscapeMarker));
+        return $"##HXARCHVIOLATION## rule={EscapeMarker(rule)} ||desc={EscapeMarker(description)} ||objects={objects} ##END##";
+    }
+
+    private static string EscapeMarker(string value) => value
+        .Replace("\\", "\\5c")
+        .Replace(";", "\\3b")
+        .Replace(" ||", "\\7c")
+        .Replace("=", "\\3d")
+        .Replace("#", "\\23");
 }

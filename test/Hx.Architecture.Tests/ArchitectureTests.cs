@@ -64,7 +64,7 @@ public sealed class ArchitectureTests
             .AndShould().NotHaveNameEndingWith("Classifier")
             .AndShould().NotHaveNameEndingWith("Projector")
             .AndShould().NotHaveNameEndingWith("Detector");
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("cliSurfaceConfinement", rule);
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class ArchitectureTests
     {
         IArchRule rule = Classes().That().ResideInNamespaceMatching(CliNs).And().HaveNameEndingWith("Commands")
             .Should().DependOnAny(Types().That().ResideInNamespaceMatching(CoreNs));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("cliDelegation", rule);
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class ArchitectureTests
             .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(@"^Hx\.")
                 .And().DoNotResideInNamespaceMatching(EmbeddingNs)
                 .And().DoNotResideInNamespaceMatching(@"^Hx\.Tooling\.Contracts"));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("embeddingCoreConfinement", rule);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public sealed class ArchitectureTests
         // H-7 (FR-021 broadened): the entire semantic stack is offline/local — no System.Net.* (no HTTP, no sockets).
         IArchRule rule = Types().That().ResideInNamespaceMatching(SemanticStackNs)
             .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(@"^System\.Net"));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("semanticStackOffline", rule);
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public sealed class ArchitectureTests
     {
         IArchRule rule = Types().That().ResideInNamespaceMatching(@"^Hx\.(Gate|Cycle)\.Core")
             .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(SemanticStackNs));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("gateCycleCoreNoSemantic", rule);
     }
 
     // 009 L3: the §2 constitution composition lives in the RUNNER (RunnerCommands.Doti.ReviewContext), NEVER in
@@ -161,7 +161,7 @@ public sealed class ArchitectureTests
         Assert.Contains(Arch.Types, t => t.Name.Equals("CycleStateStore", System.StringComparison.Ordinal)); // real subject
         IArchRule rule = Types().That().ResideInNamespaceMatching(@"^Hx\.Cycle\.Core")
             .Should().NotDependOnAny(Types().That().ResideInNamespaceMatching(@"^Hx\.Doti\.Core"));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("cycleCoreNoDotiCore", rule);
     }
 
     // M-8: the gate-proof hashers project canonical proof inputs only — ChangeSetContext is a REVIEW context (arch-review
@@ -172,7 +172,7 @@ public sealed class ArchitectureTests
     {
         IArchRule rule = Classes().That().HaveNameEndingWith("ProofHasher")
             .Should().NotDependOnAny(Types().That().HaveFullNameContaining("ChangeSetContext"));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("proofHashersNoChangeSetContext", rule);
     }
 
     [Fact]
@@ -185,8 +185,10 @@ public sealed class ArchitectureTests
 
     // 012 M1 (the load-bearing boundary): the visibility records — GateTrace, ChangeSummary, AffectedTestInventory —
     // are REVIEW/TELEMETRY context carried on the GateRunResult/GateProof envelope, NEVER a proof-hash input (008
-    // FR-020/SC-009). A *ProofHasher depending on any of them would let advisory change-context leak into a
-    // deterministic proof. Compile-checked, extending the M-8 pattern to the new records.
+    // FR-020/SC-009). 014 (T012, FR-007/SC-006) extends the same boundary to the structural-violation records —
+    // ArchitectureViolation, SentruxViolation, StructuralStepViolations — which are likewise render-only/never-hashed.
+    // A *ProofHasher depending on any of them would let advisory detail leak into a deterministic proof.
+    // Compile-checked, extending the M-8 pattern to the new records.
     [Fact]
     public void Gate_proof_hashers_do_not_depend_on_the_visibility_trace_records()
     {
@@ -194,17 +196,24 @@ public sealed class ArchitectureTests
             .Should().NotDependOnAny(Types().That()
                 .HaveFullNameContaining("GateTrace")
                 .Or().HaveFullNameContaining("ChangeSummary")
-                .Or().HaveFullNameContaining("AffectedTestInventory"));
-        Assert.True(rule.HasNoViolations(Arch));
+                .Or().HaveFullNameContaining("AffectedTestInventory")
+                .Or().HaveFullNameContaining("ArchitectureViolation")
+                .Or().HaveFullNameContaining("SentruxViolation")
+                .Or().HaveFullNameContaining("StructuralStepViolations"));
+        AssertNoViolations("proofHashersNoVisibilityRecords", rule);
     }
 
     [Fact]
     public void Visibility_trace_records_are_loaded()
     {
-        // Guard: the M1 rule must have real forbidden targets (the three 012 visibility records).
+        // Guard: the M1/014 rule must have real forbidden targets (the 012 visibility records + the 014 structural
+        // -violation records).
         Assert.Contains(Arch.Types, t => t.Name.Equals("GateTrace", System.StringComparison.Ordinal));
         Assert.Contains(Arch.Types, t => t.Name.Equals("ChangeSummary", System.StringComparison.Ordinal));
         Assert.Contains(Arch.Types, t => t.Name.Equals("AffectedTestInventory", System.StringComparison.Ordinal));
+        Assert.Contains(Arch.Types, t => t.Name.Equals("ArchitectureViolation", System.StringComparison.Ordinal));
+        Assert.Contains(Arch.Types, t => t.Name.Equals("SentruxViolation", System.StringComparison.Ordinal));
+        Assert.Contains(Arch.Types, t => t.Name.Equals("StructuralStepViolations", System.StringComparison.Ordinal));
     }
 
     [Fact]
@@ -234,6 +243,25 @@ public sealed class ArchitectureTests
             Assert.DoesNotContain("nine rule", text, System.StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("nine families", text, System.StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    // 014 (T005, FR-001/007): evaluate-and-emit. The rule's OUTCOME is unchanged — it still FAILS when there is a
+    // violation (we assert the failing count is 0) — but on failure the assertion MESSAGE carries a deterministic
+    // ArchitectureViolationMarker block per failing rule so ArchitectureTestRunner can recover the offender detail
+    // from the TRX. When green, no marker is emitted. Shared by every positive rule assertion to stay DRY.
+    private static void AssertNoViolations(string ruleName, IArchRule rule)
+    {
+        string[] failingObjects = rule.Evaluate(Arch)
+            .Where(result => !result.Passed)
+            .Select(result => result.EvaluatedObjectIdentifier.ToString())
+            .Where(name => !string.IsNullOrEmpty(name))
+            .OrderBy(name => name, System.StringComparer.Ordinal)
+            .Distinct()
+            .ToArray();
+
+        Assert.True(
+            failingObjects.Length == 0,
+            ArchitectureViolationMarker.Format(ruleName, rule.ToString() ?? ruleName, failingObjects));
     }
 
     private static string FindRepositoryRoot()

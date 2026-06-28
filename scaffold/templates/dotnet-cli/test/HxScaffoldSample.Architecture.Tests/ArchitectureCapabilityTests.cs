@@ -15,7 +15,7 @@ public sealed partial class ArchitectureTests
             .Or().HaveFullNameMatching(@"System\.Diagnostics\.Process");
         IArchRule rule = Types().That().ResideInNamespaceMatching(LibraryNs)
             .Should().NotDependOnAny(dangerous);
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("capabilityConfinement", rule);
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed partial class ArchitectureTests
         // Output confinement: all console writes flow through the Agent host.
         IArchRule rule = Types().That().ResideInNamespaceMatching(CliNs).And().DoNotHaveName("Agent")
             .Should().NotDependOnAny(Types().That().HaveFullNameMatching(@"^System\.Console$"));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("outputConfinement", rule);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed partial class ArchitectureTests
         Assert.Contains(Arch.Types, t => t.FullName == "System.Console");
         IArchRule rule = Classes().That().HaveName("Agent")
             .Should().DependOnAny(Types().That().HaveFullNameMatching(@"^System\.Console$"));
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("agentConsoleChokepoint", rule);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed partial class ArchitectureTests
             .AndShould().NotHaveNameEndingWith("Manager")
             .AndShould().NotHaveNameEndingWith("Scanner")
             .AndShould().NotHaveNameEndingWith("Provider");
-        Assert.True(rule.HasNoViolations(Arch));
+        AssertNoViolations("cliSurfaceConfinement", rule);
     }
 
     [Fact]

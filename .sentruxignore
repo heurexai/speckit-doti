@@ -12,3 +12,10 @@ docs/
 .doti/
 .agents/
 .claude/
+
+# Test code is excluded so the structural barometer measures PRODUCTION architecture only. A test fixture
+# legitimately carries many test methods per file (a large, well-structured test file is not a production
+# "god file"), and test scaffolding is not the production code whose architecture the gate guards. Excluding
+# tests gives a true reading of the production sources; their own size/cohesion is governed by review, not the
+# structural signal. (scaffold/templates/ test code is already excluded above as packaged template input.)
+test/

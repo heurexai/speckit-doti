@@ -337,6 +337,84 @@ public static class CliRenderer
         {
             WriteGateSummary(c, trace);
         }
+
+        // 014 (FR-001/003/004): the standalone `architecture test`/`sentrux check` results carry the offender detail in
+        // their Data (and so --json). Surface a brief, bounded human summary from that SAME data — one source of truth.
+        WriteStandaloneStructuralSummary(c, result);
+    }
+
+    // 014 (FR-004/006): render a brief offender panel for the standalone structural commands from the result's Data.
+    // Bounded/capped like the gate ladder; absent when the command is not a structural result or has no offenders.
+    private static void WriteStandaloneStructuralSummary(IAnsiConsole c, CliResult result)
+    {
+        IReadOnlyList<string> offenders = StandaloneArchitectureOffenders(result);
+        if (offenders.Count == 0)
+        {
+            offenders = StandaloneSentruxOffenders(result);
+        }
+
+        if (offenders.Count == 0)
+        {
+            return;
+        }
+
+        c.Write(new Panel(new Markup(string.Join("\n", offenders)))
+            .Header($"[{GoldHex}]offenders[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderColor(Navy)
+            .Padding(1, 0, 1, 0));
+        c.WriteLine();
+    }
+
+    private static IReadOnlyList<string> StandaloneArchitectureOffenders(CliResult result)
+    {
+        ArchitectureTestResult? arch = DataAs<ArchitectureTestResult>(result);
+        if (arch is null || arch.Outcome != StageOutcome.Fail)
+        {
+            return [];
+        }
+
+        ArchitectureViolation[] violations = arch.Tests
+            .Where(test => test.Outcome == StageOutcome.Fail && test.Violations is { Count: > 0 })
+            .SelectMany(test => test.Violations!)
+            .OrderBy(v => v.Rule, StringComparer.Ordinal)
+            .ThenBy(v => v.Description, StringComparer.Ordinal)
+            .ToArray();
+        return CapOffenders(violations.Select(FormatArchitectureOffender).ToArray());
+    }
+
+    private static IReadOnlyList<string> StandaloneSentruxOffenders(CliResult result)
+    {
+        SentruxCheckResult? sentrux = DataAs<SentruxCheckResult>(result);
+        if (sentrux is null || sentrux.RulesOutcome != StageOutcome.Fail || sentrux.RuleViolationDetails is not { Count: > 0 } details)
+        {
+            return [];
+        }
+
+        SentruxViolation[] ordered = details
+            .OrderBy(v => v.Rule, StringComparer.Ordinal)
+            .ThenBy(v => v.File ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(v => v.Function ?? string.Empty, StringComparer.Ordinal)
+            .ToArray();
+        return CapOffenders(ordered.Select(FormatSentruxOffender).ToArray());
+    }
+
+    // Deserialize the result's Data ring as T (the same envelope the JSON carries). Any shape mismatch yields null.
+    private static T? DataAs<T>(CliResult result) where T : class
+    {
+        if (result.Data is not { } data)
+        {
+            return null;
+        }
+
+        try
+        {
+            return data.Deserialize<T>(JsonContractSerializerOptions.Create());
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -357,6 +435,9 @@ public static class CliRenderer
         foreach (GateStep step in trace.Steps)
         {
             lines.Add(LadderLine(step));
+            // 014 (FR-004/006): under a FAILING structural step, render its offenders as concise one-line summaries,
+            // deterministically ordered, capped with "+N more". A passing step shows no offender lines.
+            lines.AddRange(StructuralOffenderLines(step, trace.StructuralViolations));
         }
 
         lines.Add(string.Empty);
@@ -435,6 +516,117 @@ public static class CliRenderer
             : string.Empty;
         return $"[{color}]{glyph}[/] [{LightHex}]{Markup.Escape(Label(step.Name))}[/] " +
                $"[{color}]{word}[/]{duration}{reason}";
+    }
+
+    // 014 (FR-004/006): up to this many offender lines per failing structural step, then an explicit "+N more". The
+    // full offender set always remains in --json (the trace the JSON carries is uncapped).
+    private const int OffenderCap = 5;
+
+    // 014 (FR-004): for a FAILING architecture-test/sentrux-* step, render the matching trace offenders as concise,
+    // deterministically ordered one-line summaries. Empty for a passing step or a step with no captured offenders.
+    private static IReadOnlyList<string> StructuralOffenderLines(
+        GateStep step, IReadOnlyList<StructuralStepViolations>? structural)
+    {
+        bool failing = step.Outcome is StageOutcome.Fail or StageOutcome.Blocked;
+        if (!failing || structural is null || !IsStructuralStep(step.Name))
+        {
+            return [];
+        }
+
+        StructuralStepViolations? match = structural.FirstOrDefault(s =>
+            string.Equals(s.StepName, step.Name, StringComparison.Ordinal));
+        if (match is null)
+        {
+            return [];
+        }
+
+        IReadOnlyList<string> formatted = match.Architecture.Count > 0
+            ? match.Architecture.Select(FormatArchitectureOffender).ToArray()
+            : match.Sentrux.Select(FormatSentruxOffender).ToArray();
+        return CapOffenders(formatted);
+    }
+
+    private static bool IsStructuralStep(string stepName) =>
+        string.Equals(stepName, "architecture-test", StringComparison.Ordinal)
+        || stepName.StartsWith("sentrux-", StringComparison.Ordinal);
+
+    private static IReadOnlyList<string> CapOffenders(IReadOnlyList<string> offenders)
+    {
+        if (offenders.Count <= OffenderCap)
+        {
+            return [.. offenders.Select(o => $"[{MutedHex}]    ↳[/] {o}")];
+        }
+
+        var capped = offenders.Take(OffenderCap)
+            .Select(o => $"[{MutedHex}]    ↳[/] {o}")
+            .ToList();
+        capped.Add($"[{MutedHex}]    ↳ +{offenders.Count - OffenderCap} more[/]");
+        return capped;
+    }
+
+    // cliSurfaceConfinement: FooService, BarService +N more — name the rule + the violating objects (capped). When the
+    // detail could not be recovered, surface the unknown reason instead of a fabricated object list (FR-005).
+    private static string FormatArchitectureOffender(ArchitectureViolation violation)
+    {
+        if (violation.UnknownReason is { } reason)
+        {
+            return $"[{LightHex}]{Markup.Escape(violation.Rule)}[/] [{MutedHex}](detail unknown — {Markup.Escape(Cap(reason, 60)!)})[/]";
+        }
+
+        string objects = violation.ViolatingObjects.Count == 0
+            ? "(no objects reported)"
+            : JoinCapped(violation.ViolatingObjects.Select(ShortTypeName).ToArray());
+        return $"[{LightHex}]{Markup.Escape(violation.Rule)}:[/] {objects}";
+    }
+
+    // Cap a single rule's object list inline (the example: "FooService, BarService +N more"); the full set is in JSON.
+    private static string JoinCapped(IReadOnlyList<string> values)
+    {
+        if (values.Count <= OffenderCap)
+        {
+            return Join(values);
+        }
+
+        return Join(values.Take(OffenderCap)) + $" [{MutedHex}]+{values.Count - OffenderCap} more[/]";
+    }
+
+    // max_cc: ProcessFoo() — Bar.cs:42 (CC 28 > 25) — use the fields present; if the location is unknown, surface the
+    // rule + message + the reason rather than a fabricated location (FR-005).
+    private static string FormatSentruxOffender(SentruxViolation violation)
+    {
+        if (violation.UnknownReason is { } reason)
+        {
+            string message = violation.Message is { } m ? Cap(m, 50)! : "(no message)";
+            return $"[{LightHex}]{Markup.Escape(violation.Rule)}:[/] {Markup.Escape(message)} " +
+                   $"[{MutedHex}](location unknown — {Markup.Escape(Cap(reason, 60)!)})[/]";
+        }
+
+        string function = violation.Function is { } fn ? $"{Markup.Escape(fn)}() " : string.Empty;
+        string location = violation.File is { } file
+            ? $"— {Markup.Escape(ShortPath(file))}{(violation.Line is { } line ? $":{line}" : string.Empty)}"
+            : string.Empty;
+        string measure = violation.MeasuredValue is { } value && violation.Limit is { } limit
+            ? $" [{MutedHex}]({Markup.Escape(value)} > {Markup.Escape(limit)})[/]"
+            : string.Empty;
+        string body = $"{function}{location}".Trim();
+        return $"[{LightHex}]{Markup.Escape(violation.Rule)}:[/] {body}{measure}";
+    }
+
+    private static string Join(IEnumerable<string> values) =>
+        string.Join(", ", values.Select(Markup.Escape));
+
+    // Render the leaf type name (the last dotted segment) so a long FQN does not blow the one-line budget.
+    private static string ShortTypeName(string fullName)
+    {
+        int dot = fullName.LastIndexOf('.');
+        return dot >= 0 && dot < fullName.Length - 1 ? fullName[(dot + 1)..] : fullName;
+    }
+
+    // Render the file name (the last path segment) so the offender line stays scannable.
+    private static string ShortPath(string path)
+    {
+        int slash = path.LastIndexOfAny(['/', '\\']);
+        return slash >= 0 && slash < path.Length - 1 ? path[(slash + 1)..] : path;
     }
 
     // Deserialize the trace from the envelope's JsonNode data — one source of truth with the JSON, no separate

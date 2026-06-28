@@ -57,6 +57,10 @@ Surface **which files/types caused** a structural-gate failure. Capture the offe
 - **Medium: ArchUnit TRX capture.** The description must round-trip through the test failure message → TRX → parser. Mitigated by a deterministic emit format + a unit test over a crafted TRX (no real violation needed), and fail-closed `UnknownReason` when a message can't be parsed.
 - **Low: Sentrux field availability.** The `max_cc` summary rule may lack per-function location → honest `UnknownReason` (confirmed at implement, per the spec's verified clarification).
 
+## Addendum — operator-directed Sentrux scope correction (mid-implement)
+
+During implement a 014 *test* file crossed the god-file threshold and dropped the whole-graph Sentrux signal (a false positive — test fixtures legitimately have many methods per file). Per operator direction, Sentrux is scoped to **production code** (`test/` added to `.sentruxignore`); production-only god files stay at 5 (014 added none) and the signal rises to 6483, so the baseline is raised once via the authorized FR-031 path (a stricter floor, classified as legitimate non-regression growth in the arch-review). This is a measurement-scope correction recorded in the spec's Clarifications + Sentrux/Hygiene Impact; it strengthens the production barometer and changes no rule, limit, or proof. See T014.
+
 ## Next
 
 `/04-doti-tasks` — break into contract / ArchUnit-capture / Sentrux-capture / render / boundary-proof tasks.

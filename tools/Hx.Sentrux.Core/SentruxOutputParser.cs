@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Hx.Tooling.Contracts;
 
 namespace Hx.Sentrux.Core;
 
@@ -11,7 +12,14 @@ namespace Hx.Sentrux.Core;
 /// </summary>
 public static class SentruxOutputParser
 {
-    public sealed record CheckReport(bool Passed, int? QualitySignal, IReadOnlyList<string> Violations);
+    // 014 (FR-003): the report carries BOTH the legacy flattened <see cref="Violations"/> string list (unchanged) and
+    // the structured <see cref="ViolationDetails"/> projected from the SAME parsed objects — render-only offender
+    // detail, never a proof input.
+    public sealed record CheckReport(
+        bool Passed,
+        int? QualitySignal,
+        IReadOnlyList<string> Violations,
+        IReadOnlyList<SentruxViolation> ViolationDetails);
 
     public sealed record GateReport(int? SignalBefore, int? SignalAfter, bool Degraded);
 
@@ -19,7 +27,7 @@ public static class SentruxOutputParser
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return new CheckReport(false, null, []);
+            return new CheckReport(false, null, [], []);
         }
 
         using JsonDocument document = JsonDocument.Parse(json);
@@ -27,12 +35,14 @@ public static class SentruxOutputParser
 
         bool passed = TryBool(root, "passed") ?? TryBool(root, "pass") ?? false;
         int? quality = ReadSignal(root, "quality", "qualitySignal", "quality_signal", "signal");
-        return new CheckReport(passed, quality, ReadViolations(root));
+        (IReadOnlyList<string> flat, IReadOnlyList<SentruxViolation> structured) = ReadViolations(root);
+        return new CheckReport(passed, quality, flat, structured);
     }
 
-    private static IReadOnlyList<string> ReadViolations(JsonElement root)
+    private static (IReadOnlyList<string> Flat, IReadOnlyList<SentruxViolation> Structured) ReadViolations(JsonElement root)
     {
         List<string> violations = [];
+        List<SentruxViolation> details = [];
         if (root.TryGetProperty("violations", out JsonElement v) && v.ValueKind == JsonValueKind.Array)
         {
             foreach (JsonElement item in v.EnumerateArray())
@@ -41,11 +51,12 @@ public static class SentruxOutputParser
                 if (violation is not null)
                 {
                     violations.Add(violation);
+                    details.Add(StructureViolation(item));
                 }
             }
         }
 
-        return violations;
+        return (violations, details);
     }
 
     private static string? FormatViolation(JsonElement item) => item.ValueKind switch
@@ -54,6 +65,62 @@ public static class SentruxOutputParser
         JsonValueKind.Object => FormatObjectViolation(item),
         _ => null,
     };
+
+    // 014 (FR-003/005): project the SAME parsed fields into a structured offender. A string-only (non-object)
+    // violation has no per-function attribution → UnknownReason "unstructured engine violation"; an object with no
+    // path/file (e.g. a max_cc summary message) leaves File/Function null → UnknownReason "summary-level violation
+    // without per-function location". Never zero/fabricated.
+    private static SentruxViolation StructureViolation(JsonElement item) => item.ValueKind switch
+    {
+        JsonValueKind.String => new SentruxViolation(
+            "rule", null, null, null, null, null, item.GetString() ?? string.Empty,
+            "unstructured engine violation"),
+        JsonValueKind.Object => StructureObjectViolation(item),
+        _ => new SentruxViolation("rule", null, null, null, null, null, null, "unrecognized engine violation shape"),
+    };
+
+    private static SentruxViolation StructureObjectViolation(JsonElement item)
+    {
+        string rule = TryString(item, "rule") ?? "rule";
+        string? message = TryString(item, "message");
+        string? file = TryString(item, "path") ?? TryString(item, "file") ?? TryString(item, "source");
+        string? function = TryString(item, "function") ?? TryString(item, "member") ?? TryString(item, "symbol");
+        int? line = TryInt(item, "line") ?? TryInt(item, "startLine");
+        string? measured = TryMeasure(item, "value", "measured", "actual");
+        string? limit = TryMeasure(item, "limit", "threshold", "max");
+
+        // FR-005: a summary-level structural rule (no path AND no function) has no offender location — surface the
+        // unknown with its reason rather than implying a clean location.
+        string? unknownReason = string.IsNullOrWhiteSpace(file) && string.IsNullOrWhiteSpace(function)
+            ? "engine reported a summary-level violation without per-function location"
+            : null;
+
+        return new SentruxViolation(rule, file, function, line, measured, limit, message, unknownReason);
+    }
+
+    // A measured value or limit may arrive as a number or a string; surface it as a stable string either way.
+    private static string? TryMeasure(JsonElement item, params string[] names)
+    {
+        foreach (string name in names)
+        {
+            if (!item.TryGetProperty(name, out JsonElement value))
+            {
+                continue;
+            }
+
+            if (value.ValueKind == JsonValueKind.String)
+            {
+                return value.GetString();
+            }
+
+            if (value.ValueKind == JsonValueKind.Number)
+            {
+                return value.GetRawText();
+            }
+        }
+
+        return null;
+    }
 
     private static string FormatObjectViolation(JsonElement item)
     {

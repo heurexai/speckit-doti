@@ -40,7 +40,8 @@ public sealed class GateTraceProjector
         string headRef,
         string configuration,
         bool implementStageCode,
-        long totalMs)
+        long totalMs,
+        IReadOnlyList<StructuralStepViolations>? structuralViolations = null)
     {
         bool changeHasCode = ChangeHasCode(change);
         bool detailed = implementStageCode && changeHasCode;
@@ -50,7 +51,7 @@ public sealed class GateTraceProjector
             ? TryBuildInventory(repositoryRoot, plan, lane, configuration)
             : null;
 
-        return Assemble(proof, summary, inventory, plan, lane, totalMs);
+        return Assemble(proof, summary, inventory, plan, lane, totalMs, structuralViolations);
     }
 
     /// <summary>Pure assembly (no IO) — the testable core. Composes the trace and computes the effective mode from
@@ -62,14 +63,17 @@ public sealed class GateTraceProjector
         AffectedTestInventory? inventory,
         AffectedPlan plan,
         Lane lane,
-        long totalMs) =>
+        long totalMs,
+        IReadOnlyList<StructuralStepViolations>? structuralViolations = null) =>
         new(
             proof.Scope ?? new GateScope(JsonContractDefaults.SchemaVersion, false, "scope: not recorded", []),
             summary,
             inventory,
             proof.Steps,
             totalMs,
-            EffectiveMode(plan, lane));
+            EffectiveMode(plan, lane),
+            // 014 (FR-004): null when no structural step has offenders, so a green run carries no offender noise.
+            structuralViolations is { Count: > 0 } ? structuralViolations : null);
 
     /// <summary>FR-007/008: the effective EXECUTION mode, distinct from the planner outcome — the release lane or a
     /// planner escalation forces a full suite even when the planner could narrow.</summary>

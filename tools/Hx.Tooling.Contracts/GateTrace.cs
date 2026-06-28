@@ -42,7 +42,8 @@ public sealed record AffectedTestInventory(
 /// docs-only or non-implement gate), the per-step ladder with durations, and the total elapsed time. Assembled by
 /// <c>GateTraceProjector</c> from the <see cref="GateProof"/> + change context + affected plan; carried additively
 /// on <see cref="GateRunResult"/>. This is REVIEW/TELEMETRY context — it lives on the envelope, never on the hashed
-/// <c>AffectedTestProof.Plan</c>, and no <c>*ProofHasher</c> may depend on it (M1, 008 FR-020).
+/// <c>AffectedTestProof.Plan</c>, and no <c>*ProofHasher</c> may depend on it (M1, 008 FR-020). 014 (FR-004/007)
+/// extends this with <see cref="StructuralViolations"/> — the same never-hashed/render-only rule applies to it.
 /// </summary>
 public sealed record GateTrace(
     GateScope Scope,
@@ -50,7 +51,19 @@ public sealed record GateTrace(
     AffectedTestInventory? Tests,
     IReadOnlyList<GateStep> Steps,
     long TotalMs,
-    string EffectiveMode);
+    string EffectiveMode,
+    // 014 (FR-004): the structural-engine offender detail keyed to the failing architecture-test/sentrux-* ladder
+    // steps. Additive nullable (M2) — null on a pre-014 trace and when no structural step has violations. Render-only
+    // (M1, FR-007): on the envelope's trace ONLY, never the hashed proof; no *ProofHasher may depend on it.
+    IReadOnlyList<StructuralStepViolations>? StructuralViolations = null);
+
+/// <summary>014 (FR-004): the captured offenders for one FAILING structural ladder step (e.g. <c>architecture-test</c>
+/// or <c>sentrux-check</c>) — the ArchUnitNET violating types and/or the structured Sentrux offenders. Carried on the
+/// render-only <see cref="GateTrace"/> envelope, never on the hashed proof.</summary>
+public sealed record StructuralStepViolations(
+    string StepName,
+    IReadOnlyList<ArchitectureViolation> Architecture,
+    IReadOnlyList<SentruxViolation> Sentrux);
 
 /// <summary>The effective affected-test execution mode shown in a <see cref="GateTrace"/> (FR-007).</summary>
 public static class GateEffectiveMode

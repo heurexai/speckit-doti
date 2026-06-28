@@ -85,14 +85,44 @@ public static class ArchitectureTestRunner
         }
     }
 
-    private static List<ArchitectureTestCase> ParseTrx(string trxPath)
+    /// <summary>Parse a TRX file into per-`[Fact]` results, recovering each FAILING case's emitted offender detail
+    /// (014, FR-001/005). Public for unit testing over a crafted TRX without shelling <c>dotnet test</c>.</summary>
+    public static List<ArchitectureTestCase> ParseTrx(string trxPath)
     {
         XDocument doc = XDocument.Load(trxPath);
         return doc.Descendants(Trx + "UnitTestResult")
-            .Select(e => new ArchitectureTestCase(
-                ShortName(e.Attribute("testName")?.Value ?? string.Empty),
-                e.Attribute("outcome")?.Value == "Passed" ? StageOutcome.Pass : StageOutcome.Fail))
+            .Select(ToTestCase)
             .ToList();
+    }
+
+    private static ArchitectureTestCase ToTestCase(XElement result)
+    {
+        string name = ShortName(result.Attribute("testName")?.Value ?? string.Empty);
+        bool passed = result.Attribute("outcome")?.Value == "Passed";
+        if (passed)
+        {
+            return new ArchitectureTestCase(name, StageOutcome.Pass);
+        }
+
+        // 014 (FR-001/005/006): recover the offender detail the test EMITTED into its failure message. Fail-closed —
+        // a failing test whose message carries no parseable marker yields one UnknownReason violation, never an empty
+        // "no violations".
+        return new ArchitectureTestCase(name, StageOutcome.Fail, FailureViolations(name, result));
+    }
+
+    private static IReadOnlyList<ArchitectureViolation> FailureViolations(string testName, XElement result)
+    {
+        string message = result
+            .Descendants(Trx + "ErrorInfo")
+            .Elements(Trx + "Message")
+            .Select(m => m.Value)
+            .FirstOrDefault() ?? string.Empty;
+
+        IReadOnlyList<ArchitectureViolation> parsed = ArchitectureViolationMarker.Parse(message);
+        return parsed.Count > 0
+            ? parsed
+            : [new ArchitectureViolation(testName, "violation description not captured", [],
+                "TRX failure message carried no structural detail")];
     }
 
     private static string ShortName(string fullyQualified)

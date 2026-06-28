@@ -21,7 +21,7 @@ public static partial class SentruxChecker
         ProcessRunResult checkRun = ProcessRunner.Run(SentruxProcessAdapter.Check(executable, root));
         SentruxOutputParser.CheckReport check = SentruxOutputParser.ParseCheck(checkRun.StandardOutput);
         StageOutcome outcome = check.Passed ? StageOutcome.Pass : StageOutcome.Fail;
-        return new RulesCheck(outcome, check.QualitySignal, check.Violations);
+        return new RulesCheck(outcome, check.QualitySignal, check.Violations, check.ViolationDetails);
     }
 
     private static bool TryMissingBaseline(
@@ -41,12 +41,14 @@ public static partial class SentruxChecker
 
         advisory.Add($"Sentrux baseline missing at {policy.BaselinePath}; run `sentrux baseline` before the regression gate.");
         result = Build(StageOutcome.Blocked, verification, rules.Outcome, rules.Violations,
-            rules.QualitySignal, null, policy.SignalToleranceBand, StageOutcome.Blocked, [], advisory);
+            rules.QualitySignal, null, policy.SignalToleranceBand, StageOutcome.Blocked, [], advisory,
+            ruleViolationDetails: rules.ViolationDetails);
         return true;
     }
 
     private sealed record RulesCheck(
         StageOutcome Outcome,
         int? QualitySignal,
-        IReadOnlyList<string> Violations);
+        IReadOnlyList<string> Violations,
+        IReadOnlyList<SentruxViolation> ViolationDetails);
 }

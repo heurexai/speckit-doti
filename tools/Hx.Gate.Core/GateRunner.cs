@@ -28,13 +28,27 @@ namespace Hx.Gate.Core;
 /// </summary>
 public static class GateRunner
 {
-    public static GateProof Run(string repositoryRoot, Lane lane, Action<GateStep>? onStep = null)
+    public static GateProof Run(
+        string repositoryRoot,
+        Lane lane,
+        Action<GateStep>? onStep = null,
+        Action<StructuralStepViolations>? onStructuralViolations = null)
     {
         var steps = new List<GateStep>();
         // 012 FR-019: time every step so the human trace can show per-step duration + total elapsed. Timing is pure
         // telemetry stamped onto GateStep.DurationMs — never a proof input (M1).
         void Emit(GateStep step) => EmitStep(steps, onStep, step);
         void EmitTimed(Func<GateStep> produce) => Emit(Timed(produce));
+        // 014 (FR-004/007): surface the structural-engine offender detail for the trace ENVELOPE only. The GateStep
+        // each structural step builds is unchanged (summary evidence); the offenders go out-of-band so they never
+        // touch the hashed proof.
+        void EmitStructural(StructuralStepViolations? violations)
+        {
+            if (violations is not null)
+            {
+                onStructuralViolations?.Invoke(violations);
+            }
+        }
 
         // The repo's declared TIER (not the --profile lane) owns which opinionated gates run + in what mode
         // (FR-029). A step the tier does not declare defaults to Enforced — today's behavior.
@@ -60,12 +74,12 @@ public static class GateRunner
         EmitTimed(() => TaskCompletionStep(taskCompletionProof));
         BuildAndTestResult buildAndTest = Timed(() => BuildAndTestStep(repositoryRoot, lane, affected.Plan), out long buildMs);
         Emit(buildAndTest.Step with { DurationMs = buildMs });
-        EmitTimed(() => ScopeOrTier(scope, ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot)));
+        EmitTimed(() => ScopeOrTier(scope, ladder, repositoryRoot, "architecture-test", () => ArchitectureStep(repositoryRoot, EmitStructural)));
         EmitTimed(() => NoVelopackStep(repositoryRoot)); // FR-007/SC-005: always enforced — a hard product invariant, not tier-downgradable
         EmitTimed(() => NoSourceStep(repositoryRoot)); // FR-006/SC-004: no tool build tree in the staged release layout
         EmitTimed(() => SkillDriftStep(repositoryRoot)); // render/payload/skill-drift stay ENFORCED — never scope-skipped (SC-011)
         EmitTimed(() => DotiPayloadStep(repositoryRoot));
-        EmitTimed(() => ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot)));
+        EmitTimed(() => ScopeOrTier(scope, ladder, repositoryRoot, "sentrux-check", () => SentruxCheckStep(repositoryRoot, EmitStructural)));
         EmitTimed(() => VersionStep(repositoryRoot, lane));
         EmitTimed(() => SecurityStep(repositoryRoot, lane));
         ReleaseDocumentationProof? documentationProof = null;
@@ -175,9 +189,11 @@ public static class GateRunner
             sentruxVerify.Verified ? "verified" : string.Join("; ", sentruxVerify.Problems));
     }
 
-    private static GateStep ArchitectureStep(string repositoryRoot)
+    private static GateStep ArchitectureStep(string repositoryRoot, Action<StructuralStepViolations?> onStructural)
     {
         ArchitectureTestResult arch = ArchitectureTestRunner.Run(repositoryRoot);
+        // 014 (FR-004): hand the offender detail to the trace ENVELOPE; the GateStep below is unchanged (summary only).
+        onStructural(StructuralViolationProjector.ForArchitecture("architecture-test", arch));
         return Step("architecture-test", arch.Outcome,
             $"{arch.PassedCount}/{arch.TestCount} passed; {arch.Families.Count} families");
     }
@@ -226,9 +242,11 @@ public static class GateRunner
                 : result.Drifted.Select(path => new GateEvidence("doti-payload.drift", path, path)).ToArray());
     }
 
-    private static GateStep SentruxCheckStep(string repositoryRoot)
+    private static GateStep SentruxCheckStep(string repositoryRoot, Action<StructuralStepViolations?> onStructural)
     {
         SentruxCheckResult sentruxCheck = SentruxChecker.Check(repositoryRoot);
+        // 014 (FR-004): hand the structured offender detail to the trace ENVELOPE; the GateStep below is unchanged.
+        onStructural(StructuralViolationProjector.ForSentrux("sentrux-check", sentruxCheck));
         var evidence = new List<GateEvidence>
         {
             new("sentrux-check", $"signal={sentruxCheck.QualitySignal}; regression={sentruxCheck.RegressionOutcome}; verdict={sentruxCheck.RegressionVerdict}"),

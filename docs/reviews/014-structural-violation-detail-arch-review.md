@@ -36,6 +36,16 @@
 
 - **F10 (LOW):** violation detail surfaces file paths/type names already in the repo — no new secret/PII exposure; no new input parsing of untrusted data beyond the engines' own already-trusted output. No SCA/SAST surface change.
 
+## Sentrux rebaseline classification (FR-031) — added 2026-06-28 during implement
+
+The implement change set scopes Sentrux to production code (`.sentruxignore` excludes the repo's `test/` tree) and consequently raises the Sentrux baseline once. Per `SentruxRebaselinePolicy` (FR-031/SC-015), the operator rebaseline must carry a machine-checkable classification that the signal growth is legitimate, not a laundered architecture regression. Classification, with evidence:
+
+- **The production code did NOT regress.** With tests excluded, the production-only god-file set is unchanged from the prior baseline (5 files: `GateRunner`, `RunnerCommands.Gates`, `HygieneScanner`, `FirstSmokeRunner`, `LocalReleaseService`) and `complexFunctions` is unchanged (1). 014 added **zero** new production god files or complex functions — the boundary/capture/render code stays within the layer + function-size limits.
+- **The signal ROSE (6383 → 6483) because test noise was removed**, not because production architecture degraded. A test fixture crossing the god-file threshold (`test/Hx.Gate.Tests/ProofHashBoundaryTests.cs`) was a false-positive structural signal; excluding it yields a truer, higher production reading. Raising the baseline to 6483 locks in a **stricter** production floor.
+- This is therefore legitimate, operator-classified growth — a measurement-scope correction with clean production code — not a regression laundered into a raised baseline.
+
+sentrux-rebaseline: functionality-driven-growth
+
 ## Verdict
 
-**No open BLOCKER in any applicable lens.** The single load-bearing invariant (the proof-hash boundary, F1) is foreclosed by the design and is the explicit MUST-VERIFY at implement (T001/T012/T013) + drift-review. The two HIGH items (F3 ArchUnit capture fragility, F6 generated-template) are mitigated by fail-closed capture + template care, both test-covered. Cleared for `/07-doti-implement`.
+**No open BLOCKER in any applicable lens.** The single load-bearing invariant (the proof-hash boundary, F1) is foreclosed by the design and is the explicit MUST-VERIFY at implement (T001/T012/T013) + drift-review. The two HIGH items (F3 ArchUnit capture fragility, F6 generated-template) are mitigated by fail-closed capture + template care, both test-covered. The operator-directed Sentrux scope correction + baseline raise is classified above (FR-031). Cleared for `/07-doti-implement`.

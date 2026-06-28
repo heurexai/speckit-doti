@@ -25,16 +25,21 @@ public static partial class RunnerCommands
     public static CliResult GateRun(CliMeta meta, string repo, string profile, Action<CliEvent> emit)
     {
         LaneDecision lane = LaneResolver.Resolve(profile);
+        // 014 (FR-004): collect the structural-engine offender detail GateRunner surfaces out-of-band (never the hashed
+        // proof — M1) so the trace can carry it for the failing architecture-test/sentrux-check ladder steps.
+        var structuralViolations = new List<StructuralStepViolations>();
         GateProof proof = lane.Outcome == StageOutcome.Fail
             ? new GateProof(JsonContractDefaults.SchemaVersion, StageOutcome.Fail,
                 [new GateStep("lane", StageOutcome.Fail, [new GateEvidence("lane", lane.Reason)])], [])
-            : GateRunner.Run(repo, lane.Lane, onStep: step => emit(new CliEvent(
-                "step", step.Name, step.Outcome.ToString().ToLowerInvariant(), step.Evidence.FirstOrDefault()?.Message, step.DurationMs)));
+            : GateRunner.Run(repo, lane.Lane,
+                onStep: step => emit(new CliEvent(
+                    "step", step.Name, step.Outcome.ToString().ToLowerInvariant(), step.Evidence.FirstOrDefault()?.Message, step.DurationMs)),
+                onStructuralViolations: structuralViolations.Add);
 
         // 012 (FR-009/021): build the operator-facing visibility trace and carry it on the ENVELOPE (never the hashed
         // proof — M1). Best-effort: a trace failure must never fail an otherwise-passing gate. The implement-stage
         // detail tier is resolved HERE (cycle context), so GateRunner stays stage-agnostic.
-        GateTrace? trace = lane.Outcome == StageOutcome.Fail ? null : TryBuildTrace(repo, lane.Lane, proof);
+        GateTrace? trace = lane.Outcome == StageOutcome.Fail ? null : TryBuildTrace(repo, lane.Lane, proof, structuralViolations);
         var runResult = new GateRunResult(JsonContractDefaults.SchemaVersion, lane, proof, trace);
 
         string note = "";
@@ -55,7 +60,8 @@ public static partial class RunnerCommands
     // 012: assemble the GateTrace from the finished proof. The affected plan + base/head/config come from the proof's
     // AffectedTestProof; the change context is recomputed (review context, cheap); the implement-stage flag is the
     // cycle's current stage == "implement". Returns null on any failure — visibility is never load-bearing.
-    private static GateTrace? TryBuildTrace(string repo, Lane lane, GateProof proof)
+    private static GateTrace? TryBuildTrace(
+        string repo, Lane lane, GateProof proof, IReadOnlyList<StructuralStepViolations> structuralViolations)
     {
         try
         {
@@ -71,7 +77,7 @@ public static partial class RunnerCommands
             long totalMs = proof.Steps.Sum(s => s.DurationMs ?? 0);
             return new GateTraceProjector().Project(
                 repo, proof, change, affected.Plan, lane,
-                affected.BaseRef, affected.HeadRef, affected.Configuration, implementStage, totalMs);
+                affected.BaseRef, affected.HeadRef, affected.Configuration, implementStage, totalMs, structuralViolations);
         }
         catch
         {
