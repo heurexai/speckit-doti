@@ -162,7 +162,7 @@ The remaining utility skills:
 
 ## Proofs, gates, and recovery
 
-The main branch now includes the 007–011 work: source-free installed `hx`, tiered Doti install, review recovery, deterministic change context, advisory local semantic drift candidates, and the project constitution stage.
+The main branch now includes the 007–016 work: source-free installed `hx`, tiered Doti install, review recovery, deterministic change context, advisory local semantic drift candidates, the project constitution stage, gate & affected-test visibility (`gate run --stream`), the `/doti-auto` hands-off cycle driver, the ArchUnit/Sentrux structural-offender detail (which files/types caused a structural failure, with Sentrux scoped to production code), and cross-platform tool provisioning (per-RID fetch + executable bit).
 
 Key capabilities:
 
@@ -210,9 +210,9 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx doti drift-candidates` | Run advisory local semantic drift search. |
 | `hx doti bug assess/fix/test` | Run the enforced bug mini-cycle. |
 | `hx doti converge` | Compare feature prose and tasks for requirement coverage. |
-| `hx gate run --profile normal` | Run the deterministic gate ladder and emit a `GateProof`. |
+| `hx gate run --profile normal` | Run the deterministic gate ladder and emit a `GateProof`; add `--stream` for a live per-step trace (scope, per-step timing, change summary). |
 | `hx architecture test` | Run ArchUnitNET architecture rule families. |
-| `hx sentrux verify/check` | Verify and run Sentrux boundary analysis. |
+| `hx sentrux verify/check` | Verify and run Sentrux boundary analysis; a violation surfaces the offending file/function (production code only — the `test/` tree is excluded). |
 | `hx hygiene scan` | Run public-release hygiene checks. |
 | `hx security scan` | Run package-vulnerability and analyzer-backed security checks. |
 | `hx tools fetch` | Fetch and SHA-256-verify pinned tool binaries on demand. |
@@ -265,7 +265,7 @@ hx gate run --repo . --profile normal --json
 - Semantic drift candidates are advisory only. A clean candidate list is not proof.
 - `workflow-only` can help non-.NET repos adopt the Doti process, but the full scaffold value is .NET-focused.
 - Current main includes release-train work beyond the older public release notes. Check [CHANGELOG.md](CHANGELOG.md) for what is published vs. unreleased.
-- Latest cycle: `016-exec-bit-and-context-refresh` — marks fetched/stored tool binaries executable on Unix (the cross-platform fix that unblocks the release-CI publish) and refreshes the doti agent context (`CLAUDE.md`/`AGENTS.md`/`.doti/agent-context.md`) to describe the capabilities added since 012. `015-release-accuracy` documented the unnumbered utility skills in this README (the `/doti-constitution` project constitution plus the recovery/automation/upkeep utilities) and fixed the release CI to provision the host-RID vendored structural tools from the pinned `heurexai/*` fork releases before the install smoke. Released in **v0.12.0**: `012-affected-test-plan-visibility` — gate & affected-test telemetry (`gate run --stream` per-step ladder with timing, a two-tier change summary, scope/ladder render — all render-only on the proof envelope); `013-doti-auto-mode` — the unnumbered `/doti-auto` skill that drives the cycle hands-off to a target, stopping only at operator-decision points and never weakening a gate or publishing; and `014-structural-violation-detail` — ArchUnitNET + Sentrux offender detail (which files/types caused a structural failure) in the standalone commands and the gate ladder, plus Sentrux scoped to production code via `.sentruxignore`. Earlier released cycles (`009`–`011`) added the two-layer §1/§2 project constitution. See [CHANGELOG.md](CHANGELOG.md) for the full notes.
+- Latest cycle: `017-readme-currency` — refreshed this README to describe the 012–016 capabilities (gate `--stream` visibility, the ArchUnit/Sentrux structural-offender detail). `016-exec-bit-and-context-refresh` marks fetched/stored tool binaries executable on Unix (the cross-platform fix that unblocks the release-CI publish) and refreshes the doti agent context (`CLAUDE.md`/`AGENTS.md`/`.doti/agent-context.md`). `015-release-accuracy` documented the unnumbered utility skills in this README (the `/doti-constitution` project constitution plus the recovery/automation/upkeep utilities) and fixed the release CI to provision the host-RID vendored structural tools from the pinned `heurexai/*` fork releases before the install smoke. Released in **v0.12.0**: `012-affected-test-plan-visibility` — gate & affected-test telemetry (`gate run --stream` per-step ladder with timing, a two-tier change summary, scope/ladder render — all render-only on the proof envelope); `013-doti-auto-mode` — the unnumbered `/doti-auto` skill that drives the cycle hands-off to a target, stopping only at operator-decision points and never weakening a gate or publishing; and `014-structural-violation-detail` — ArchUnitNET + Sentrux offender detail (which files/types caused a structural failure) in the standalone commands and the gate ladder, plus Sentrux scoped to production code via `.sentruxignore`. Earlier released cycles (`009`–`011`) added the two-layer §1/§2 project constitution. See [CHANGELOG.md](CHANGELOG.md) for the full notes.
 
 ---
 
