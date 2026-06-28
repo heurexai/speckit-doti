@@ -1,15 +1,18 @@
 ---
-name: converge
+name: doti-converge
 description: Brownfield/drift reconciliation: assess the codebase vs spec/plan/tasks and append the remaining unbuilt work as new tasks. Utility — runs anytime the ledger has fallen behind.
 compatibility:
-  - codex
+  - claude
 metadata:
-  source: .doti/core/templates/commands/converge.md
+  source: .doti/core/templates/commands/doti-converge.md
   maturity: command-aware-advisory
+argument-hint: "[feature slug]"
+user-invocable: true
+disable-model-invocation: false
 ---
-# converge
+# doti-converge
 
-Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/converge.md`.
+Read `.doti/agent-context.md`, then follow `.doti/core/templates/commands/doti-converge.md`.
 
 Find the requirement coverage gap deterministically with `hx doti converge --spec docs/specs/<NNN-slug>.md --tasks docs/tasks/<NNN-slug>-tasks.md` — it reports every FR-###/SC-### the spec defines that NO task covers (fails closed `converge-input` if a file is missing). For each uncovered requirement, ASSESS it against the codebase (genuinely unbuilt vs already-built-but-unmapped — read/reproduce, don't assume), then append the genuinely-missing work as new tasks in the right phase (the spec's declared Priority Mode order — MVP-first for code, truth-first for docs, safety-first for workflow), mapped `[covers FR-/SC-]`. converge never rewrites the ledger for you; you append and the ordered-task gate keeps the order honest. Ties to `/08-doti-drift-review` (spec->tasks gap vs source->installed gap).
 

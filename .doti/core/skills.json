@@ -101,7 +101,7 @@
       "nextStage": "A passing test closes the bug. Resume your active cycle stage, or start a feature with `/01-doti-specify`."
     },
     {
-      "name": "converge",
+      "name": "doti-converge",
       "description": "Brownfield/drift reconciliation: assess the codebase vs spec/plan/tasks and append the remaining unbuilt work as new tasks. Utility — runs anytime the ledger has fallen behind.",
       "argumentHint": "[feature slug]",
       "highlights": [
