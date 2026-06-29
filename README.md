@@ -231,6 +231,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 > The doti repo version-lifecycle commands (`check-version` / `scan` / `update` / `update-all`) and the `version --repo` payload-relation fix shipped in `022-doti-repo-version-lifecycle`.
 
+> The development cycle reviews the design before the work that depends on it: `arch-review` runs at `04` (immediately after `plan`), then `tasks` (`05`) and `analyze` (`06`) — shipped in `026-arch-review-after-plan`.
+
 ---
 
 ## Distribution and release model
