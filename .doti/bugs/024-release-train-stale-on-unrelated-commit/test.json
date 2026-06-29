@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "024-release-train-stale-on-unrelated-commit",
+  "boundFixSha256": "bfdd960feff01cf2dac7c24fb886fc8576cd74eeaaa0e4fa3ed285ee06b0a0d0",
+  "outcome": "pass",
+  "evidence": "Direct regression test ActiveFeatureProof_ReValidatesAgainstItsOwnReleaseCommit_NotLiveHead: re-plan bounded to the feature\u0027s release commit has NO planner-hash drift; re-plan against live HEAD (pre-fix) DOES drift \u2014 confirmed by reverting the bound (test fails) and restoring (test passes). Integration dogfood: with the fix \u002B a clean tree, \u0027hx release --patch\u0027 succeeded \u2014 \u0027Release speckit-doti 0.14.1 tagged v0.14.1\u0027 with feature 022 staying valid (the exact bug scenario). 60 cycle/release-train tests green."
+}

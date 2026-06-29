@@ -28,20 +28,20 @@ public sealed class SentruxManifestValidatorTests
     }
 
     [Fact]
-    public void RepositoryManifestPinsHeurexForkV0511ForDeclaredRids()
+    public void RepositoryManifestPinsHeurexForkV0512ForDeclaredRids()
     {
         string manifestPath = Path.Combine(RepositoryRoot(), SentruxManifestValidator.ManifestRelativePath);
         using JsonDocument document = JsonDocument.Parse(File.ReadAllText(manifestPath));
         JsonElement root = document.RootElement;
 
         Assert.Equal("https://github.com/heurexai/sentrux", root.GetProperty("sourceRemote").GetString());
-        Assert.Equal("v0.5.11", root.GetProperty("releaseTag").GetString());
+        Assert.Equal("v0.5.12", root.GetProperty("releaseTag").GetString());
 
         Dictionary<string, string> expected = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["win-x64"] = "ed387706d10fc2708507939d5390016b256cc4a725afcf9e209021cbab2bf88c",
-            ["linux-x64"] = "6da9bede77654a54425c101d37d1bbb192a51c8cf7bd2823ad9c0da45ee34fae",
-            ["osx-arm64"] = "0389d2b84075bf02a5f53707f589e5a999b65b7b31acc47e622417d23745dad2",
+            ["win-x64"] = "63be6c50f5efdbebc4b520f60435887becd54be86562c63f05d87377ccd5b626",
+            ["linux-x64"] = "d7d09faaf6220fbb91057182b3709ffda01549461cb3c9a9c64afaeece890ab2",
+            ["osx-arm64"] = "8e53e6862543030cca24c9a7922a55cd9f039200d48ad1c387980257776918e4",
         };
 
         foreach (JsonElement asset in root.GetProperty("assets").EnumerateArray())
@@ -49,11 +49,16 @@ public sealed class SentruxManifestValidatorTests
             string rid = asset.GetProperty("rid").GetString()!;
             Assert.True(expected.TryGetValue(rid, out string? sha), "unexpected or duplicate Sentrux RID: " + rid);
             Assert.Equal(sha, asset.GetProperty("executableSha256").GetString());
-            Assert.Contains("/v0.5.11/", asset.GetProperty("downloadUrl").GetString(), StringComparison.Ordinal);
+            Assert.Contains("/v0.5.12/", asset.GetProperty("downloadUrl").GetString(), StringComparison.Ordinal);
             expected.Remove(rid);
         }
 
         Assert.Empty(expected);
+
+        // Bug#1 fix: the fork v0.5.12 added `--include-untracked` to the regression `gate`; the manifest pins the
+        // capability so a downstream environment cannot silently run an older fork that drops untracked-file growth.
+        string[] requiredFeatures = root.GetProperty("requiredFeatures").EnumerateArray().Select(f => f.GetString()!).ToArray();
+        Assert.Contains("gate-include-untracked", requiredFeatures);
     }
 
     private static string RepositoryRoot()

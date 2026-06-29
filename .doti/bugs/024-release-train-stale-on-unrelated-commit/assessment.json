@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "024-release-train-stale-on-unrelated-commit",
+  "verdict": "confirmed",
+  "severity": "high",
+  "remediation": "Bound the active release feature\u0027s gate-proof re-validation to the feature\u0027s OWN latest release-transition commit (featureReleaseHead) instead of the live symbolic HEAD: add a headRef param to GateProofValidator.ValidateAffectedTestProof/ValidateScope and pass featureReleaseHead from CycleService.ReleaseTrain.GateProofStatusForFeature.",
+  "summary": "Release-train re-validated the active feature\u0027s gate proof against LIVE HEAD, so an unrelated later commit (a separate bug fix on the same branch) falsely invalidated the unchanged feature and blocked the release."
+}

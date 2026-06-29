@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "bugId": "023-sentrux-gate-untracked",
+  "boundAssessmentSha256": "e34d94b409a0f6c32d7500bd822f0d84fac668efb67724b274990991bcbc59bb",
+  "summary": "Vendored Sentrux fork v0.5.12 (gate --include-untracked) \u002B GateCompare passes the flag; manifest pins gate-include-untracked; prose/constitution re-rendered.",
+  "changedPaths": [
+    "tools/sentrux/sentrux.version.json",
+    "tools/Hx.Sentrux.Core/SentruxProcessAdapter.cs",
+    "tools/sentrux/grammars/csharp/grammars/windows-x86_64.dll",
+    ".github/workflows/compute-tool-hashes.yml",
+    "test/Hx.Runner.Tests/SentruxManifestValidatorTests.cs",
+    ".doti/profiles/dotnet-cli/profile.json",
+    ".doti/core/templates/agent-context-template.md",
+    ".doti/memory/constitution.md"
+  ]
+}

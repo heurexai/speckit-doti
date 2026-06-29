@@ -59,6 +59,10 @@ public static class ErrorCodes
     public const string Validation_SentruxStructuralReviewRequired = "VAL0030";
     public const string Validation_SentruxRebaselineRefused = "VAL0031";
     public const string Validation_ReleaseTrainDrift = "VAL0032";
+    public const string Validation_DotiNotARepo = "VAL0033";
+    public const string Validation_DotiVersionUnknown = "VAL0034";
+    public const string Validation_GitRequired = "VAL0035";
+    public const string Integrity_DotiUpdateFailed = "ITG0015";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -163,5 +167,13 @@ public static class ErrorCodes
             "A Sentrux rebaseline was refused.", "A rebaseline needs explicit operator intent AND a change-set-fresh arch-review record classifying the growth as functionality-driven; refactor instead if the architecture is wrong."),
         new("VAL0032", "validation", "VAL", 32, Severity.Error, ExitClass.Validation, "validation.release-train-drift",
             "A later release-train feature changed paths an earlier completed-unreleased feature owns or documents.", "Reconcile the cross-feature drift before release: update the earlier feature's spec/docs/code (or the later feature's), so the release train is internally consistent."),
+        new("VAL0033", "validation", "VAL", 33, Severity.Error, ExitClass.Validation, "validation.doti-not-a-repo",
+            "The target path is not a Doti-enabled repository.", "Run `hx doti install --repo <path>` to set up Doti there first; update/check-version require an existing Doti repo."),
+        new("VAL0034", "validation", "VAL", 34, Severity.Warning, ExitClass.Validation, "validation.doti-version-unknown",
+            "The repository has Doti installed but no recorded payload version.", "Run `hx doti update --repo <path>` to write the version stamp; older installs may lack one."),
+        new("VAL0035", "validation", "VAL", 35, Severity.Error, ExitClass.Validation, "validation.git-required",
+            "Git is required for this command but was unavailable.", "Install Git and run inside a Git repository; `hx doti update`/`update-all` apply changes in a git worktree."),
+        new("ITG0015", "integrity", "ITG", 15, Severity.Error, ExitClass.Integrity, "integrity.doti-update-failed",
+            "A Doti repository update failed.", "See the per-repo reason (for example a dirty worktree or a git error) and re-run after resolving it."),
     ];
 }
