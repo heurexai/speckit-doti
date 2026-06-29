@@ -25,3 +25,9 @@
 ## Verdict
 
 **No BLOCKER.** Two non-blocking items to confirm during implement (worktree captures all managed assets; the within-core edge stays acyclic) — both have tasks (T040/T041/T043, T001) and gate enforcement. Cleared for `/07-implement`.
+
+## Sentrux growth classification (FR-031) — re-run against the implemented change
+
+Re-run of this review against the implemented code diff (the Sentrux signal is measured on COMMITTED production code, so the growth first surfaces post-implement). The structural delta is a **+0.1% aggregate signal** (measured ≈`0.6488` vs baseline `0.6481`) with **0 rule violations**: no function exceeds `max_cc=25` or `max_fn_lines=120`, no new god-file (still 5), no cycle (`max_cycles=0` holds — the new within-core edges `Hx.Doti.Core → Hx.Runner.Core`/`Hx.Version.Core` are acyclic, both in the `core` layer). The delta is import-coupling from ~900 lines of new, single-responsibility production code (7 `*.Core` types + the `GitWorktree` primitive + thin CLI), each within the size limit — the modular design approved above, not a wrong-architecture regression. `sentrux verify` (per-function rules) and `architecture-test` both pass. The growth is therefore functionality-driven, authorizing an FR-031 baseline ratchet (floor rises, never lowers; the gate stays enforced).
+
+sentrux-rebaseline: functionality-driven-growth

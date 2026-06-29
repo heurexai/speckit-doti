@@ -354,27 +354,15 @@ public static class GateRunner
         }
     }
 
-    // Diff against the integration branch when it exists; otherwise HEAD. The collector also unions the working tree
-    // via `git status`, so uncommitted changes are always covered. CRUCIAL: resolve to a concrete commit SHA, NOT a
-    // symbolic ref. The affected-test proof PERSISTS this base, and a stored `"HEAD"` re-resolves to a DIFFERENT commit
-    // the moment a later transition commit advances HEAD — so the release-train validation (which runs AFTER the
-    // release transition commits) saw the symbolic base move and rejected an otherwise-valid proof ("base ref does not
-    // match"). A resolved SHA is a stable snapshot that survives subsequent commits.
-    private static string ResolveBaseRef(string repositoryRoot)
-    {
-        ProcessRunResult dev = ProcessRunner.Run(
-            new ToolCommand("git", ["rev-parse", "--verify", "--quiet", "dev"], repositoryRoot));
-        if (dev.ExitCode == 0 && !string.IsNullOrWhiteSpace(dev.StandardOutput))
-        {
-            return dev.StandardOutput.Trim();
-        }
-
-        ProcessRunResult head = ProcessRunner.Run(
-            new ToolCommand("git", ["rev-parse", "--verify", "--quiet", "HEAD"], repositoryRoot));
-        return head.ExitCode == 0 && !string.IsNullOrWhiteSpace(head.StandardOutput)
-            ? head.StandardOutput.Trim()
-            : "HEAD";
-    }
+    // 022 (Bug#2 fix): the affected-test base is the SINGLE-sourced proof base ref — the active cycle's per-stage
+    // BaseRef when a cycle is active (the same base GateProofStore.Persist records and the transition validator
+    // re-plans from), else the integration branch `dev`, else HEAD, always as a concrete SHA. Previously this resolved
+    // `dev`/HEAD INDEPENDENTLY of the cycle base, so once the cycle base advanced (rebase-to-head) the gate planned off
+    // `dev` while persistence recorded the cycle base — the proof's two base refs diverged and the diff/release
+    // transition rejected an otherwise-valid proof. The collector unions the working tree, so uncommitted changes are
+    // covered regardless of base.
+    private static string ResolveBaseRef(string repositoryRoot) =>
+        GitRefs.ResolveProofBaseRef(repositoryRoot);
 
     private static BuildAndTestResult BuildAndTestStep(string repositoryRoot, Lane lane, AffectedPlan plan)
     {

@@ -41,7 +41,10 @@ public sealed class GateProofStore
     /// transition/release verification will verify), else the resolved default.</summary>
     public static PersistedGateProof Persist(string repositoryRoot, Lane lane, GateProof proof)
     {
-        string baseRef = new CycleStateStore(repositoryRoot).Read()?.BaseRef ?? GitRefs.ResolveBaseRef(repositoryRoot);
+        // 022 (Bug#2 fix): single-sourced with the gate's affected-test base via GitRefs.ResolveProofBaseRef, so the
+        // persisted base and the affected-test proof base are always the same commit (the transition validator
+        // requires it). The cycle base wins when active; else dev/HEAD as a concrete SHA.
+        string baseRef = GitRefs.ResolveProofBaseRef(repositoryRoot);
         string changeSetId = ChangeSetIdentity.Of(repositoryRoot, baseRef, "HEAD");
         var persisted = new PersistedGateProof(
             JsonContractDefaults.SchemaVersion, changeSetId, baseRef, lane, proof, GitRefs.TryHeadSha(repositoryRoot));

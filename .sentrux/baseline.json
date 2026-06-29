@@ -1,7 +1,7 @@
 {
-  "timestamp": 1782610623.2192693,
-  "quality_signal": 0.6481342211018286,
-  "coupling_score": 0.12078882497945768,
+  "timestamp": 1782702827.9903102,
+  "quality_signal": 0.6488265452136658,
+  "coupling_score": 0.08789514263685427,
   "coupling_edges": [
     {
       "rank": 1,
@@ -77,24 +77,6 @@
     },
     {
       "rank": 5,
-      "from_file": "src/Hx.Scaffold.Core/Hx.Scaffold.Core.csproj",
-      "to_file": "tools/Hx.Doti.Core/Hx.Doti.Core.csproj",
-      "from_module": "src/Hx.Scaffold.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "project_reference",
-          "symbol": "..\\..\\tools\\Hx.Doti.Core\\Hx.Doti.Core.csproj",
-          "line": 19,
-          "column": 32
-        }
-      ]
-    },
-    {
-      "rank": 6,
       "from_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "to_file": "tools/Hx.Cycle.Core/GateLadder.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -112,7 +94,7 @@
       ]
     },
     {
-      "rank": 7,
+      "rank": 6,
       "from_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
       "to_file": "src/Hx.Scaffold.Core/Configuration/HxLocalConfiguration.cs",
       "from_module": "src/Hx.Scaffold.Core/Release",
@@ -136,7 +118,7 @@
       ]
     },
     {
-      "rank": 8,
+      "rank": 7,
       "from_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
       "to_file": "src/Hx.Scaffold.Core/DirectoryCopy.cs",
       "from_module": "src/Hx.Scaffold.Core/Release",
@@ -154,7 +136,7 @@
       ]
     },
     {
-      "rank": 9,
+      "rank": 8,
       "from_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
       "to_file": "src/Hx.Scaffold.Core/PayloadRoot.cs",
       "from_module": "src/Hx.Scaffold.Core/Release",
@@ -172,7 +154,7 @@
       ]
     },
     {
-      "rank": 10,
+      "rank": 9,
       "from_file": "src/Hx.Scaffold.Core/ScaffoldDotiInstaller.cs",
       "to_file": "src/Hx.Scaffold.Core/Release/ScaffoldReleaseTargetWriter.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -190,7 +172,7 @@
       ]
     },
     {
-      "rank": 11,
+      "rank": 10,
       "from_file": "src/Hx.Scaffold.Core/ScaffoldDotiInstaller.cs",
       "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -208,43 +190,7 @@
       ]
     },
     {
-      "rank": 12,
-      "from_file": "src/Hx.Scaffold.Core/ScaffoldDotiInstaller.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiAgentTarget.cs",
-      "from_module": "src/Hx.Scaffold.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiAgentTarget",
-          "line": 16,
-          "column": 9
-        }
-      ]
-    },
-    {
-      "rank": 13,
-      "from_file": "src/Hx.Scaffold.Core/ScaffoldDotiInstaller.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiInstaller.cs",
-      "from_module": "src/Hx.Scaffold.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from src/Hx.Scaffold.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiInstaller",
-          "line": 8,
-          "column": 31
-        }
-      ]
-    },
-    {
-      "rank": 14,
+      "rank": 11,
       "from_file": "src/Hx.Scaffold.Core/ScaffoldHookArmorer.cs",
       "to_file": "tools/Hx.Cycle.Core/HookInstaller.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -268,7 +214,7 @@
       ]
     },
     {
-      "rank": 15,
+      "rank": 12,
       "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -286,7 +232,7 @@
       ]
     },
     {
-      "rank": 16,
+      "rank": 13,
       "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifest.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -304,7 +250,7 @@
       ]
     },
     {
-      "rank": 17,
+      "rank": 14,
       "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -322,7 +268,7 @@
       ]
     },
     {
-      "rank": 18,
+      "rank": 15,
       "from_file": "src/Hx.Scaffold.Core/ToolVendor.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicyLoader.cs",
       "from_module": "src/Hx.Scaffold.Core",
@@ -340,7 +286,7 @@
       ]
     },
     {
-      "rank": 19,
+      "rank": 16,
       "from_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "src/Hx.Scaffold.Core/Versioning",
@@ -352,55 +298,13 @@
         {
           "kind": "csharp_type_reference",
           "symbol": "InstalledPayload",
-          "line": 106,
+          "line": 107,
           "column": 43
         }
       ]
     },
     {
-      "rank": 20,
-      "from_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
-      "to_file": "tools/Hx.Doti.Core/ManagedAssets/ManagedAssetManifest.cs",
-      "from_module": "src/Hx.Scaffold.Core/Versioning",
-      "to_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from src/Hx.Scaffold.Core/Versioning to unstable module tools/Hx.Doti.Core/ManagedAssets contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetScanResult",
-          "line": 171,
-          "column": 13
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetStatus",
-          "line": 35,
-          "column": 19
-        }
-      ]
-    },
-    {
-      "rank": 21,
-      "from_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
-      "to_file": "tools/Hx.Doti.Core/ManagedAssets/ManagedAssetScanner.cs",
-      "from_module": "src/Hx.Scaffold.Core/Versioning",
-      "to_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from src/Hx.Scaffold.Core/Versioning to unstable module tools/Hx.Doti.Core/ManagedAssets contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetScanner",
-          "line": 171,
-          "column": 43
-        }
-      ]
-    },
-    {
-      "rank": 22,
+      "rank": 17,
       "from_file": "tools/Hx.Cycle.Core/CycleService.ReleaseTrain.cs",
       "to_file": "tools/Hx.Cycle.Core/Tasks/DotiTaskCompletion.cs",
       "from_module": "tools/Hx.Cycle.Core",
@@ -430,7 +334,7 @@
       ]
     },
     {
-      "rank": 23,
+      "rank": 18,
       "from_file": "tools/Hx.Cycle.Core/Tasks/DotiTaskCompletion.cs",
       "to_file": "tools/Hx.Cycle.Core/CycleStateStore.cs",
       "from_module": "tools/Hx.Cycle.Core/Tasks",
@@ -448,133 +352,7 @@
       ]
     },
     {
-      "rank": 24,
-      "from_file": "tools/Hx.Doti.Core/Bug/BugCycleService.cs",
-      "to_file": "tools/Hx.Doti.Core/ManagedAssets/CanonicalContentHasher.cs",
-      "from_module": "tools/Hx.Doti.Core/Bug",
-      "to_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Doti.Core/Bug to unstable module tools/Hx.Doti.Core/ManagedAssets contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "HashProfile",
-          "line": 138,
-          "column": 47
-        }
-      ]
-    },
-    {
-      "rank": 25,
-      "from_file": "tools/Hx.Doti.Core/DotiInstaller.cs",
-      "to_file": "tools/Hx.Doti.Core/ManagedAssets/CanonicalContentHasher.cs",
-      "from_module": "tools/Hx.Doti.Core",
-      "to_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Doti.Core to unstable module tools/Hx.Doti.Core/ManagedAssets contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "CanonicalHash",
-          "line": 301,
-          "column": 13
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "HashProfile",
-          "line": 301,
-          "column": 81
-        }
-      ]
-    },
-    {
-      "rank": 26,
-      "from_file": "tools/Hx.Doti.Core/DotiInstaller.cs",
-      "to_file": "tools/Hx.Doti.Core/ManagedAssets/ManagedAssetManifest.cs",
-      "from_module": "tools/Hx.Doti.Core",
-      "to_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Doti.Core to unstable module tools/Hx.Doti.Core/ManagedAssets contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetHashEntry",
-          "line": 94,
-          "column": 23
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetManifest",
-          "line": 98,
-          "column": 49
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetManifestStore",
-          "line": 98,
-          "column": 49
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetScanResult",
-          "line": 437,
-          "column": 9
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetState",
-          "line": 387,
-          "column": 34
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetStatus",
-          "line": 50,
-          "column": 37
-        }
-      ]
-    },
-    {
-      "rank": 27,
-      "from_file": "tools/Hx.Doti.Core/DotiInstaller.cs",
-      "to_file": "tools/Hx.Doti.Core/ManagedAssets/ManagedAssetScanner.cs",
-      "from_module": "tools/Hx.Doti.Core",
-      "to_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Doti.Core to unstable module tools/Hx.Doti.Core/ManagedAssets contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ManagedAssetScanner",
-          "line": 97,
-          "column": 9
-        }
-      ]
-    },
-    {
-      "rank": 28,
-      "from_file": "tools/Hx.Doti.Core/ManagedAssets/ManagedAssetScanner.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiRenderResult.cs",
-      "from_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Doti.Core/ManagedAssets to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiRenderTarget",
-          "line": 83,
-          "column": 23
-        }
-      ]
-    },
-    {
-      "rank": 29,
+      "rank": 19,
       "from_file": "tools/Hx.Embedding.Core/Engines/BgeM3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/EngineId.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -592,7 +370,7 @@
       ]
     },
     {
-      "rank": 30,
+      "rank": 20,
       "from_file": "tools/Hx.Embedding.Core/Engines/BgeM3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/EngineOptions.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -610,7 +388,7 @@
       ]
     },
     {
-      "rank": 31,
+      "rank": 21,
       "from_file": "tools/Hx.Embedding.Core/Engines/BgeM3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/IEmbedder.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -634,7 +412,7 @@
       ]
     },
     {
-      "rank": 32,
+      "rank": 22,
       "from_file": "tools/Hx.Embedding.Core/Engines/BgeM3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/SemanticException.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -652,7 +430,7 @@
       ]
     },
     {
-      "rank": 33,
+      "rank": 23,
       "from_file": "tools/Hx.Embedding.Core/Engines/BgeM3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/Vectors.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -670,7 +448,7 @@
       ]
     },
     {
-      "rank": 34,
+      "rank": 24,
       "from_file": "tools/Hx.Embedding.Core/Engines/Qwen3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/EngineId.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -688,7 +466,7 @@
       ]
     },
     {
-      "rank": 35,
+      "rank": 25,
       "from_file": "tools/Hx.Embedding.Core/Engines/Qwen3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/EngineOptions.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -706,7 +484,7 @@
       ]
     },
     {
-      "rank": 36,
+      "rank": 26,
       "from_file": "tools/Hx.Embedding.Core/Engines/Qwen3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/IEmbedder.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -736,7 +514,7 @@
       ]
     },
     {
-      "rank": 37,
+      "rank": 27,
       "from_file": "tools/Hx.Embedding.Core/Engines/Qwen3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/SemanticException.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -754,7 +532,7 @@
       ]
     },
     {
-      "rank": 38,
+      "rank": 28,
       "from_file": "tools/Hx.Embedding.Core/Engines/Qwen3Embedder.cs",
       "to_file": "tools/Hx.Embedding.Core/Vectors.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -772,7 +550,7 @@
       ]
     },
     {
-      "rank": 39,
+      "rank": 29,
       "from_file": "tools/Hx.Embedding.Core/Engines/XlmRobertaTokenizer.cs",
       "to_file": "tools/Hx.Embedding.Core/SemanticException.cs",
       "from_module": "tools/Hx.Embedding.Core/Engines",
@@ -790,7 +568,7 @@
       ]
     },
     {
-      "rank": 40,
+      "rank": 30,
       "from_file": "tools/Hx.Embedding.Core/SemanticEngineFactory.cs",
       "to_file": "tools/Hx.Embedding.Core/Engines/BgeM3Embedder.cs",
       "from_module": "tools/Hx.Embedding.Core",
@@ -808,7 +586,7 @@
       ]
     },
     {
-      "rank": 41,
+      "rank": 31,
       "from_file": "tools/Hx.Embedding.Core/SemanticEngineFactory.cs",
       "to_file": "tools/Hx.Embedding.Core/Engines/Qwen3Embedder.cs",
       "from_module": "tools/Hx.Embedding.Core",
@@ -826,7 +604,7 @@
       ]
     },
     {
-      "rank": 42,
+      "rank": 32,
       "from_file": "tools/Hx.Embedding.Core/SimilarityService.cs",
       "to_file": "tools/Hx.Embedding.Core/Results/Results.cs",
       "from_module": "tools/Hx.Embedding.Core",
@@ -856,7 +634,7 @@
       ]
     },
     {
-      "rank": 43,
+      "rank": 33,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Cycle.Core/CycleStateStore.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -874,7 +652,7 @@
       ]
     },
     {
-      "rank": 44,
+      "rank": 34,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Cycle.Core/GateConfigRequirements.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -892,7 +670,7 @@
       ]
     },
     {
-      "rank": 45,
+      "rank": 35,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Cycle.Core/GateLadder.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -928,7 +706,7 @@
       ]
     },
     {
-      "rank": 46,
+      "rank": 36,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Cycle.Core/GateScopeResolver.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -946,7 +724,7 @@
       ]
     },
     {
-      "rank": 47,
+      "rank": 37,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Cycle.Core/SentruxOptimizationTracker.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -970,7 +748,7 @@
       ]
     },
     {
-      "rank": 48,
+      "rank": 38,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Cycle.Core/Tasks/DotiTaskCompletion.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -988,79 +766,7 @@
       ]
     },
     {
-      "rank": 49,
-      "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiAgentTarget.cs",
-      "from_module": "tools/Hx.Gate.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiAgentTarget",
-          "line": 231,
-          "column": 70
-        }
-      ]
-    },
-    {
-      "rank": 50,
-      "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiPayloadParityChecker.cs",
-      "from_module": "tools/Hx.Gate.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiPayloadParityChecker",
-          "line": 238,
-          "column": 41
-        }
-      ]
-    },
-    {
-      "rank": 51,
-      "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiRenderResult.cs",
-      "from_module": "tools/Hx.Gate.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiRenderResult",
-          "line": 231,
-          "column": 9
-        }
-      ]
-    },
-    {
-      "rank": 52,
-      "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiRenderer.cs",
-      "from_module": "tools/Hx.Gate.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiRenderer",
-          "line": 231,
-          "column": 34
-        }
-      ]
-    },
-    {
-      "rank": 53,
+      "rank": 39,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -1078,7 +784,7 @@
       ]
     },
     {
-      "rank": 54,
+      "rank": 40,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanRequest.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -1096,7 +802,7 @@
       ]
     },
     {
-      "rank": 55,
+      "rank": 41,
       "from_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -1114,7 +820,7 @@
       ]
     },
     {
-      "rank": 56,
+      "rank": 42,
       "from_file": "tools/Hx.Gate.Core/Hx.Gate.Core.csproj",
       "to_file": "tools/Hx.Cycle.Core/Hx.Cycle.Core.csproj",
       "from_module": "tools/Hx.Gate.Core",
@@ -1132,25 +838,7 @@
       ]
     },
     {
-      "rank": 57,
-      "from_file": "tools/Hx.Gate.Core/Hx.Gate.Core.csproj",
-      "to_file": "tools/Hx.Doti.Core/Hx.Doti.Core.csproj",
-      "from_module": "tools/Hx.Gate.Core",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Gate.Core to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "project_reference",
-          "symbol": "..\\Hx.Doti.Core\\Hx.Doti.Core.csproj",
-          "line": 12,
-          "column": 32
-        }
-      ]
-    },
-    {
-      "rank": 58,
+      "rank": 43,
       "from_file": "tools/Hx.Gate.Core/NoVelopackScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/ScaffoldHygieneChecks.cs",
       "from_module": "tools/Hx.Gate.Core",
@@ -1168,7 +856,7 @@
       ]
     },
     {
-      "rank": 59,
+      "rank": 44,
       "from_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
       "to_file": "tools/Hx.Cycle.Core/Hx.Cycle.Core.csproj",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1186,25 +874,7 @@
       ]
     },
     {
-      "rank": 60,
-      "from_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
-      "to_file": "tools/Hx.Doti.Core/Hx.Doti.Core.csproj",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "project_reference",
-          "symbol": "..\\Hx.Doti.Core\\Hx.Doti.Core.csproj",
-          "line": 12,
-          "column": 32
-        }
-      ]
-    },
-    {
-      "rank": 61,
+      "rank": 45,
       "from_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
       "to_file": "tools/Hx.Gate.Core/Hx.Gate.Core.csproj",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1222,7 +892,7 @@
       ]
     },
     {
-      "rank": 62,
+      "rank": 46,
       "from_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
       "to_file": "tools/Hx.Semantic.Core/Hx.Semantic.Core.csproj",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1240,7 +910,7 @@
       ]
     },
     {
-      "rank": 63,
+      "rank": 47,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Bug.cs",
       "to_file": "tools/Hx.Doti.Core/Bug/BugCycleContracts.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1270,7 +940,7 @@
       ]
     },
     {
-      "rank": 64,
+      "rank": 48,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Bug.cs",
       "to_file": "tools/Hx.Doti.Core/Bug/BugCycleService.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1288,7 +958,7 @@
       ]
     },
     {
-      "rank": 65,
+      "rank": 49,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Converge.cs",
       "to_file": "tools/Hx.Doti.Core/Converge/ConvergeService.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1312,31 +982,7 @@
       ]
     },
     {
-      "rank": 66,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Constitution.cs",
-      "to_file": "tools/Hx.Doti.Core/ConstitutionService.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ConstitutionReadResult",
-          "line": 19,
-          "column": 9
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ConstitutionService",
-          "line": 12,
-          "column": 86
-        }
-      ]
-    },
-    {
-      "rank": 67,
+      "rank": 50,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.DriftCandidates.cs",
       "to_file": "tools/Hx.Embedding.Core/SemanticException.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1354,7 +1000,7 @@
       ]
     },
     {
-      "rank": 68,
+      "rank": 51,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.DriftCandidates.cs",
       "to_file": "tools/Hx.Semantic.Core/DriftCandidateRunner.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1372,7 +1018,7 @@
       ]
     },
     {
-      "rank": 69,
+      "rank": 52,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Install.cs",
       "to_file": "tools/Hx.Cycle.Core/HookInstaller.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1402,67 +1048,7 @@
       ]
     },
     {
-      "rank": 70,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Install.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiAgentTarget.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiAgentTarget",
-          "line": 17,
-          "column": 49
-        }
-      ]
-    },
-    {
-      "rank": 71,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Install.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiInstallBootstrapper.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiInstallBootstrapRequest",
-          "line": 46,
-          "column": 17
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiInstallBootstrapper",
-          "line": 44,
-          "column": 36
-        }
-      ]
-    },
-    {
-      "rank": 72,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Payload.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiPayloadParityChecker.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiPayloadParityChecker",
-          "line": 13,
-          "column": 45
-        }
-      ]
-    },
-    {
-      "rank": 73,
+      "rank": 53,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Question.cs",
       "to_file": "tools/Hx.Cycle.Core/OperatorQuestionValidator.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1486,79 +1072,7 @@
       ]
     },
     {
-      "rank": 74,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Render.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiAgentTarget.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiAgentTarget",
-          "line": 11,
-          "column": 49
-        }
-      ]
-    },
-    {
-      "rank": 75,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Render.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiPayloadParityChecker.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiPayloadParityChecker",
-          "line": 19,
-          "column": 51
-        }
-      ]
-    },
-    {
-      "rank": 76,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Render.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiRenderResult.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiRenderResult",
-          "line": 16,
-          "column": 9
-        }
-      ]
-    },
-    {
-      "rank": 77,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.Render.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiRenderer.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiRenderer",
-          "line": 16,
-          "column": 35
-        }
-      ]
-    },
-    {
-      "rank": 78,
+      "rank": 54,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.ReviewContext.cs",
       "to_file": "tools/Hx.Cycle.Core/CycleStateStore.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1576,7 +1090,7 @@
       ]
     },
     {
-      "rank": 79,
+      "rank": 55,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.ReviewContext.cs",
       "to_file": "tools/Hx.Cycle.Core/LayerMap.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1594,7 +1108,7 @@
       ]
     },
     {
-      "rank": 80,
+      "rank": 56,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.ReviewContext.cs",
       "to_file": "tools/Hx.Cycle.Core/ReviewContext.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1612,7 +1126,7 @@
       ]
     },
     {
-      "rank": 81,
+      "rank": 57,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.ReviewContext.cs",
       "to_file": "tools/Hx.Cycle.Core/ReviewContextProjector.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1630,31 +1144,7 @@
       ]
     },
     {
-      "rank": 82,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.ReviewContext.cs",
-      "to_file": "tools/Hx.Doti.Core/ConstitutionService.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ConstitutionReadResult",
-          "line": 12,
-          "column": 74
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ConstitutionService",
-          "line": 37,
-          "column": 47
-        }
-      ]
-    },
-    {
-      "rank": 83,
+      "rank": 58,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.TaskHash.cs",
       "to_file": "tools/Hx.Cycle.Core/Tasks/DotiTaskCompletion.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1684,25 +1174,7 @@
       ]
     },
     {
-      "rank": 84,
-      "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Doti.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiAgentTarget.cs",
-      "from_module": "tools/Hx.Runner.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiAgentTarget",
-          "line": 7,
-          "column": 61
-        }
-      ]
-    },
-    {
-      "rank": 85,
+      "rank": 59,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.DotiCycle.cs",
       "to_file": "tools/Hx.Cycle.Core/CycleFeatureSlug.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1720,7 +1192,7 @@
       ]
     },
     {
-      "rank": 86,
+      "rank": 60,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.DotiCycle.cs",
       "to_file": "tools/Hx.Cycle.Core/CycleReports.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1756,7 +1228,7 @@
       ]
     },
     {
-      "rank": 87,
+      "rank": 61,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.DotiCycle.cs",
       "to_file": "tools/Hx.Cycle.Core/HookInstaller.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1780,7 +1252,7 @@
       ]
     },
     {
-      "rank": 88,
+      "rank": 62,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.DotiCycle.cs",
       "to_file": "tools/Hx.Cycle.Core/RestampSafetyClassifier.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1798,7 +1270,7 @@
       ]
     },
     {
-      "rank": 89,
+      "rank": 63,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
       "to_file": "tools/Hx.Cycle.Core/CycleStateStore.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1816,7 +1288,7 @@
       ]
     },
     {
-      "rank": 90,
+      "rank": 64,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
       "to_file": "tools/Hx.Cycle.Core/GateProofStore.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1834,7 +1306,7 @@
       ]
     },
     {
-      "rank": 91,
+      "rank": 65,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
       "to_file": "tools/Hx.Gate.Core/GateRunner.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1852,7 +1324,7 @@
       ]
     },
     {
-      "rank": 92,
+      "rank": 66,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
       "to_file": "tools/Hx.Gate.Core/GateTraceProjector.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1870,7 +1342,7 @@
       ]
     },
     {
-      "rank": 93,
+      "rank": 67,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
       "to_file": "tools/Hx.Gate.Core/LaneResolver.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1888,7 +1360,7 @@
       ]
     },
     {
-      "rank": 94,
+      "rank": 68,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1906,7 +1378,7 @@
       ]
     },
     {
-      "rank": 95,
+      "rank": 69,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1924,7 +1396,7 @@
       ]
     },
     {
-      "rank": 96,
+      "rank": 70,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksUpdateChecker.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1942,7 +1414,7 @@
       ]
     },
     {
-      "rank": 97,
+      "rank": 71,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1960,7 +1432,7 @@
       ]
     },
     {
-      "rank": 98,
+      "rank": 72,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicyLoader.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1978,7 +1450,7 @@
       ]
     },
     {
-      "rank": 99,
+      "rank": 73,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanRequest.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -1996,7 +1468,7 @@
       ]
     },
     {
-      "rank": 100,
+      "rank": 74,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Hygiene.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -2014,7 +1486,7 @@
       ]
     },
     {
-      "rank": 101,
+      "rank": 75,
       "from_file": "tools/Hx.Runner.Cli/RunnerCommands.Sentrux.cs",
       "to_file": "tools/Hx.Cycle.Core/SentruxRebaselinePolicy.cs",
       "from_module": "tools/Hx.Runner.Cli",
@@ -2038,7 +1510,7 @@
       ]
     },
     {
-      "rank": 102,
+      "rank": 76,
       "from_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksConfigRenderer.cs",
       "to_file": "tools/Hx.Runner.Core/Hygiene/HygienePolicy.cs",
       "from_module": "tools/Hx.Runner.Core/Gitleaks",
@@ -2056,67 +1528,7 @@
       ]
     },
     {
-      "rank": 103,
-      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
-      "to_file": "tools/Hx.Runner.Core/Git/ChangedFile.cs",
-      "from_module": "tools/Hx.Runner.Core/Hygiene",
-      "to_module": "tools/Hx.Runner.Core/Git",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Git contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ChangeKind",
-          "line": 152,
-          "column": 30
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "ChangedFile",
-          "line": 9,
-          "column": 80
-        }
-      ]
-    },
-    {
-      "rank": 104,
-      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
-      "to_file": "tools/Hx.Runner.Core/Git/GitChangedFileDiscovery.cs",
-      "from_module": "tools/Hx.Runner.Core/Hygiene",
-      "to_module": "tools/Hx.Runner.Core/Git",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Git contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "GitChangedFileDiscovery",
-          "line": 141,
-          "column": 15
-        }
-      ]
-    },
-    {
-      "rank": 105,
-      "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
-      "to_file": "tools/Hx.Runner.Core/Git/StagedBlobMaterializer.cs",
-      "from_module": "tools/Hx.Runner.Core/Hygiene",
-      "to_module": "tools/Hx.Runner.Core/Git",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Runner.Core/Hygiene to unstable module tools/Hx.Runner.Core/Git contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "StagedBlobMaterializer",
-          "line": 41,
-          "column": 9
-        }
-      ]
-    },
-    {
-      "rank": 106,
+      "rank": 77,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksExitClassifier.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -2140,7 +1552,7 @@
       ]
     },
     {
-      "rank": 107,
+      "rank": 78,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifest.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -2164,7 +1576,7 @@
       ]
     },
     {
-      "rank": 108,
+      "rank": 79,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksManifestValidator.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -2182,7 +1594,7 @@
       ]
     },
     {
-      "rank": 109,
+      "rank": 80,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksProcessAdapter.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -2200,7 +1612,7 @@
       ]
     },
     {
-      "rank": 110,
+      "rank": 81,
       "from_file": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "to_file": "tools/Hx.Runner.Core/Gitleaks/GitleaksReportParser.cs",
       "from_module": "tools/Hx.Runner.Core/Hygiene",
@@ -2218,7 +1630,7 @@
       ]
     },
     {
-      "rank": 111,
+      "rank": 82,
       "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
       "to_file": "src/Hx.Scaffold.Core/Hx.Scaffold.Core.csproj",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2236,7 +1648,7 @@
       ]
     },
     {
-      "rank": 112,
+      "rank": 83,
       "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
       "to_file": "tools/Hx.Cycle.Core/Hx.Cycle.Core.csproj",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2254,25 +1666,7 @@
       ]
     },
     {
-      "rank": 113,
-      "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
-      "to_file": "tools/Hx.Doti.Core/Hx.Doti.Core.csproj",
-      "from_module": "tools/Hx.Scaffold.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "project_reference",
-          "symbol": "..\\Hx.Doti.Core\\Hx.Doti.Core.csproj",
-          "line": 57,
-          "column": 32
-        }
-      ]
-    },
-    {
-      "rank": 114,
+      "rank": 84,
       "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
       "to_file": "tools/Hx.Impact.Cli/Hx.Impact.Cli.csproj",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2290,7 +1684,7 @@
       ]
     },
     {
-      "rank": 115,
+      "rank": 85,
       "from_file": "tools/Hx.Scaffold.Cli/Hx.Scaffold.Cli.csproj",
       "to_file": "tools/Hx.Runner.Cli/Hx.Runner.Cli.csproj",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2308,7 +1702,7 @@
       ]
     },
     {
-      "rank": 116,
+      "rank": 86,
       "from_file": "tools/Hx.Scaffold.Cli/Program.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2326,7 +1720,7 @@
       ]
     },
     {
-      "rank": 117,
+      "rank": 87,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
       "to_file": "src/Hx.Scaffold.Core/Configuration/HxLocalConfiguration.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2350,7 +1744,7 @@
       ]
     },
     {
-      "rank": 118,
+      "rank": 88,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2368,7 +1762,7 @@
       ]
     },
     {
-      "rank": 119,
+      "rank": 89,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommandFactory.cs",
       "to_file": "tools/Hx.Impact.Cli/ImpactCommandFactory.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2386,7 +1780,7 @@
       ]
     },
     {
-      "rank": 120,
+      "rank": 90,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.DotiInstall.cs",
       "to_file": "tools/Hx.Cycle.Core/HookInstaller.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2416,49 +1810,7 @@
       ]
     },
     {
-      "rank": 121,
-      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.DotiInstall.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiAgentTarget.cs",
-      "from_module": "tools/Hx.Scaffold.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiAgentTarget",
-          "line": 18,
-          "column": 14
-        }
-      ]
-    },
-    {
-      "rank": 122,
-      "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.DotiInstall.cs",
-      "to_file": "tools/Hx.Doti.Core/DotiInstallBootstrapper.cs",
-      "from_module": "tools/Hx.Scaffold.Cli",
-      "to_module": "tools/Hx.Doti.Core",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Scaffold.Cli to unstable module tools/Hx.Doti.Core contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiInstallBootstrapRequest",
-          "line": 58,
-          "column": 21
-        },
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "DotiInstallBootstrapper",
-          "line": 56,
-          "column": 40
-        }
-      ]
-    },
-    {
-      "rank": 123,
+      "rank": 91,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.New.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2476,7 +1828,7 @@
       ]
     },
     {
-      "rank": 124,
+      "rank": 92,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.New.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldNewRunner.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2494,7 +1846,7 @@
       ]
     },
     {
-      "rank": 125,
+      "rank": 93,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.PayloadManifest.cs",
       "to_file": "src/Hx.Scaffold.Core/PayloadManifestGenerator.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2512,7 +1864,7 @@
       ]
     },
     {
-      "rank": 126,
+      "rank": 94,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.PayloadManifest.cs",
       "to_file": "src/Hx.Scaffold.Core/PayloadRoot.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2530,7 +1882,7 @@
       ]
     },
     {
-      "rank": 127,
+      "rank": 95,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Prereq.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2548,7 +1900,7 @@
       ]
     },
     {
-      "rank": 128,
+      "rank": 96,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Release.cs",
       "to_file": "src/Hx.Scaffold.Core/Configuration/HxLocalConfiguration.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2566,7 +1918,7 @@
       ]
     },
     {
-      "rank": 129,
+      "rank": 97,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Release.cs",
       "to_file": "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2590,7 +1942,7 @@
       ]
     },
     {
-      "rank": 130,
+      "rank": 98,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Version.cs",
       "to_file": "src/Hx.Scaffold.Core/InstalledPayload.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2608,7 +1960,7 @@
       ]
     },
     {
-      "rank": 131,
+      "rank": 99,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.Version.cs",
       "to_file": "src/Hx.Scaffold.Core/Versioning/ScaffoldVersionReport.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2632,7 +1984,7 @@
       ]
     },
     {
-      "rank": 132,
+      "rank": 100,
       "from_file": "tools/Hx.Scaffold.Cli/ScaffoldCommands.cs",
       "to_file": "src/Hx.Scaffold.Core/ScaffoldBootstrap.cs",
       "from_module": "tools/Hx.Scaffold.Cli",
@@ -2650,7 +2002,7 @@
       ]
     },
     {
-      "rank": 133,
+      "rank": 101,
       "from_file": "tools/Hx.Semantic.Cli/Hx.Semantic.Cli.csproj",
       "to_file": "tools/Hx.Semantic.Core/Hx.Semantic.Core.csproj",
       "from_module": "tools/Hx.Semantic.Cli",
@@ -2668,7 +2020,7 @@
       ]
     },
     {
-      "rank": 134,
+      "rank": 102,
       "from_file": "tools/Hx.Semantic.Cli/SemanticCommandFactory.cs",
       "to_file": "tools/Hx.Embedding.Core/SemanticException.cs",
       "from_module": "tools/Hx.Semantic.Cli",
@@ -2686,7 +2038,7 @@
       ]
     },
     {
-      "rank": 135,
+      "rank": 103,
       "from_file": "tools/Hx.Semantic.Cli/SemanticCommandFactory.cs",
       "to_file": "tools/Hx.Semantic.Core/DriftCandidateRunner.cs",
       "from_module": "tools/Hx.Semantic.Cli",
@@ -2704,7 +2056,7 @@
       ]
     },
     {
-      "rank": 136,
+      "rank": 104,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateFinder.cs",
       "to_file": "tools/Hx.Embedding.Core/IEmbedder.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2728,7 +2080,7 @@
       ]
     },
     {
-      "rank": 137,
+      "rank": 105,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateFinder.cs",
       "to_file": "tools/Hx.Embedding.Core/SimilarityService.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2746,7 +2098,7 @@
       ]
     },
     {
-      "rank": 138,
+      "rank": 106,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateRunner.cs",
       "to_file": "tools/Hx.Embedding.Core/EngineSelector.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2770,7 +2122,7 @@
       ]
     },
     {
-      "rank": 139,
+      "rank": 107,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateRunner.cs",
       "to_file": "tools/Hx.Embedding.Core/ModelLocator.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2788,7 +2140,7 @@
       ]
     },
     {
-      "rank": 140,
+      "rank": 108,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateRunner.cs",
       "to_file": "tools/Hx.Embedding.Core/SemanticEngineFactory.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2806,7 +2158,7 @@
       ]
     },
     {
-      "rank": 141,
+      "rank": 109,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateRunner.cs",
       "to_file": "tools/Hx.Embedding.Core/SemanticException.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2824,7 +2176,7 @@
       ]
     },
     {
-      "rank": 142,
+      "rank": 110,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateService.cs",
       "to_file": "tools/Hx.Embedding.Core/CSharpMemberChunker.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2848,7 +2200,7 @@
       ]
     },
     {
-      "rank": 143,
+      "rank": 111,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateService.cs",
       "to_file": "tools/Hx.Embedding.Core/EngineSelector.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2866,7 +2218,7 @@
       ]
     },
     {
-      "rank": 144,
+      "rank": 112,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateService.cs",
       "to_file": "tools/Hx.Embedding.Core/IEmbedder.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2884,7 +2236,7 @@
       ]
     },
     {
-      "rank": 145,
+      "rank": 113,
       "from_file": "tools/Hx.Semantic.Core/DriftCandidateService.cs",
       "to_file": "tools/Hx.Embedding.Core/Thresholds.cs",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2902,7 +2254,7 @@
       ]
     },
     {
-      "rank": 146,
+      "rank": 114,
       "from_file": "tools/Hx.Semantic.Core/Hx.Semantic.Core.csproj",
       "to_file": "tools/Hx.Embedding.Core/Hx.Embedding.Core.csproj",
       "from_module": "tools/Hx.Semantic.Core",
@@ -2918,68 +2270,32 @@
           "column": 32
         }
       ]
-    },
-    {
-      "rank": 147,
-      "from_file": "tools/Hx.Tooling.Contracts/TaskCompletionProof.cs",
-      "to_file": "tools/Hx.Doti.Core/ManagedAssets/CanonicalContentHasher.cs",
-      "from_module": "tools/Hx.Tooling.Contracts",
-      "to_module": "tools/Hx.Doti.Core/ManagedAssets",
-      "target_stable": false,
-      "classification": "cross_module_unstable_dependency",
-      "reason": "cross-module dependency from tools/Hx.Tooling.Contracts to unstable module tools/Hx.Doti.Core/ManagedAssets contributes to coupling score",
-      "sources": [
-        {
-          "kind": "csharp_type_reference",
-          "symbol": "CanonicalHash",
-          "line": 9,
-          "column": 12
-        }
-      ]
     }
   ],
   "cycle_count": 0,
   "cycle_details": [],
-  "god_file_count": 5,
+  "god_file_count": 6,
   "god_files": [
     {
       "rank": 1,
       "path": "tools/Hx.Gate.Core/GateRunner.cs",
       "language": "csharp",
-      "reason": "call-edge fan-out exceeds language threshold (46 > 15), indicating responsibility concentration",
+      "reason": "call-edge fan-out exceeds language threshold (47 > 15), indicating responsibility concentration",
       "classification": "fan_out_above_threshold",
-      "score": 3.0667,
+      "score": 3.1333,
       "threshold": 15,
       "loc": 548,
-      "imports": 46,
+      "imports": 47,
       "fan_in": 1,
-      "fan_out": 46,
-      "call_edges": 60,
-      "degree_centrality": 0.0716,
-      "instability": 0.9787,
+      "fan_out": 47,
+      "call_edges": 62,
+      "degree_centrality": 0.0698,
+      "instability": 0.9792,
       "max_complexity": 5,
       "function_count": 30
     },
     {
       "rank": 2,
-      "path": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
-      "language": "csharp",
-      "reason": "dependency fan-out exceeds language threshold (29 > 15), indicating responsibility concentration",
-      "classification": "fan_out_above_threshold",
-      "score": 1.9333,
-      "threshold": 15,
-      "loc": 104,
-      "imports": 29,
-      "fan_in": 0,
-      "fan_out": 29,
-      "call_edges": 20,
-      "degree_centrality": 0.0442,
-      "instability": 1.0,
-      "max_complexity": 3,
-      "function_count": 5
-    },
-    {
-      "rank": 3,
       "path": "tools/Hx.Runner.Core/Hygiene/HygieneScanner.cs",
       "language": "csharp",
       "reason": "dependency fan-out exceeds language threshold (29 > 15), indicating responsibility concentration",
@@ -2991,10 +2307,28 @@
       "fan_in": 3,
       "fan_out": 29,
       "call_edges": 21,
-      "degree_centrality": 0.0488,
+      "degree_centrality": 0.0465,
       "instability": 0.9063,
       "max_complexity": 11,
       "function_count": 9
+    },
+    {
+      "rank": 3,
+      "path": "tools/Hx.Runner.Cli/RunnerCommands.Gates.cs",
+      "language": "csharp",
+      "reason": "dependency fan-out exceeds language threshold (29 > 15), indicating responsibility concentration",
+      "classification": "fan_out_above_threshold",
+      "score": 1.9333,
+      "threshold": 15,
+      "loc": 104,
+      "imports": 29,
+      "fan_in": 0,
+      "fan_out": 29,
+      "call_edges": 20,
+      "degree_centrality": 0.0422,
+      "instability": 1.0,
+      "max_complexity": 3,
+      "function_count": 5
     },
     {
       "rank": 4,
@@ -3009,7 +2343,7 @@
       "fan_in": 1,
       "fan_out": 19,
       "call_edges": 10,
-      "degree_centrality": 0.0305,
+      "degree_centrality": 0.0291,
       "instability": 0.95,
       "max_complexity": 2,
       "function_count": 4
@@ -3027,10 +2361,28 @@
       "fan_in": 1,
       "fan_out": 17,
       "call_edges": 21,
-      "degree_centrality": 0.0274,
+      "degree_centrality": 0.0262,
       "instability": 0.9444,
       "max_complexity": 6,
       "function_count": 35
+    },
+    {
+      "rank": 6,
+      "path": "tools/Hx.Doti.Core/DotiInstaller.cs",
+      "language": "csharp",
+      "reason": "call-edge fan-out exceeds language threshold (16 > 15), indicating responsibility concentration",
+      "classification": "fan_out_above_threshold",
+      "score": 1.0667,
+      "threshold": 15,
+      "loc": 484,
+      "imports": 16,
+      "fan_in": 4,
+      "fan_out": 16,
+      "call_edges": 20,
+      "degree_centrality": 0.0291,
+      "instability": 0.8,
+      "max_complexity": 10,
+      "function_count": 19
     }
   ],
   "hotspot_count": 1,
@@ -3043,6 +2395,6 @@
     }
   ],
   "max_depth": 11,
-  "total_import_edges": 1217,
-  "cross_module_edges": 904
+  "total_import_edges": 1297,
+  "cross_module_edges": 965
 }
