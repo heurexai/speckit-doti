@@ -45,7 +45,7 @@ If you already know GitHub Spec Kit, think of speckit-doti as the same spec-firs
 | Familiar Spec Kit idea | Original Spec Kit | speckit-doti |
 | --- | --- | --- |
 | Project start | `specify init` installs Spec Kit workflow assets into a project. | `hx new` creates a compiling .NET repo, or `hx doti install --repo <path>` adds Doti to an existing repo. |
-| Workflow shape | `constitution`, `specify`, `clarify`, `plan`, `tasks`, `analyze`, `implement`, with optional `checklist`, `converge`, and `taskstoissues`. | `specify`, `clarify`, `plan`, `tasks`, `analyze`, plus Doti-only `arch-review`, `drift-review`, and `release`; the project `constitution` is an unnumbered `/doti-constitution` skill that `plan` and `arch-review` consume. |
+| Workflow shape | `constitution`, `specify`, `clarify`, `plan`, `tasks`, `analyze`, `implement`, with optional `checklist`, `converge`, and `taskstoissues`. | `specify`, `clarify`, `plan`, then Doti-only `arch-review` (right after `plan`), `tasks`, `analyze`, `implement`, `drift-review`, and `release`; the project `constitution` is an unnumbered `/doti-constitution` skill that `plan` and `arch-review` consume. |
 | Constitution | A single constitution document, SemVer-versioned with a Sync Impact Report on each amendment. | **Two layers** — **§1** inherited doti invariants (cited, already gate/ArchUnit/Sentrux/GitVersion-enforced, never re-declared) + **§2** project declarations (the only operator-authored content) — re-injected **fresh** into `plan` and `arch-review` via `hx doti constitution`; amendments are tracked by the cycle + git, with **no** SemVer doc-version line or Sync Impact Report ritual. |
 | Enforcement model | Agent prompts, templates, scripts, review gates, and checklists guide the process. | CLI-backed stage proofs, freshness checks, task hashes, pre-release gates, and fail-closed transition checks enforce the process. |
 | Architecture | Technology-independent; architecture depends on the plan and project conventions. | Opinionated .NET architecture is generated and checked with ArchUnitNET, Sentrux, analyzers, and rule files. |
@@ -89,9 +89,9 @@ Then drive the repo with the generated agent skills:
 /01-doti-specify
 /02-doti-clarify
 /03-doti-plan
+/04-doti-arch-review
 /05-doti-tasks
 /06-doti-analyze
-/04-doti-arch-review
 /07-doti-implement
 /08-doti-drift-review
 /09-doti-release
@@ -138,9 +138,9 @@ Doti keeps the useful shape of GitHub Spec Kit, then adds enforcement.
 | `specify` | Define the feature in `docs/specs/{NNN-slug}.md`. | Stage proof binds the spec content. |
 | `clarify` | Ask and resolve blocking product questions. | Operator-question format is validated. |
 | `plan` | Produce the implementation design. | Plan proof binds the approved approach. |
+| `arch-review` | Review the design right after `plan`, before tasks and analyze depend on it. | Doti-only stage; scopes ArchUnitNET/Sentrux expectations; a BLOCKER sends you back to `plan`. |
 | `tasks` | Create executable tasks. | Task ledger becomes the implementation contract. |
 | `analyze` | Check spec, plan, and tasks for gaps. | Coverage and consistency are reviewed before code. |
-| `arch-review` | Review architecture impact before implementation. | Doti-only stage; scopes ArchUnitNET/Sentrux expectations. |
 | `implement` | Execute the tasks. | Task completion is checked and hash-stamped. |
 | `drift-review` | Compare the actual diff with the approved plan. | Doti-only stage; catches implementation/spec drift before release. |
 | `release` | Package, tag, and prove the release. | Doti-only stage; release proof is command-backed. |
