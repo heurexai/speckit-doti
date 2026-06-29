@@ -52,7 +52,7 @@ This repository **is** the doti cycle engine and runs that engine on itself, so 
 
 ### Tech stack (beyond the .NET 10 baseline)
 
-C# on .NET 10; `System.CommandLine` for the CLI surface; `ArchUnitNET` + the Heurex Sentrux fork (v0.5.11, pinned + SHA-256-verified) for architecture and structural-complexity gates; Gitleaks (vendored, pinned) for secret scanning; GitVersion (vendored win-x64) for versioning; `YamlDotNet` for the `workflow.yml` stage model; `LLamaSharp` (Qwen3-Embedding GGUF, primary) + `Microsoft.ML.OnnxRuntime` (BGE-M3 ONNX, fallback) for the advisory offline semantic drift finder; xUnit for tests. Vendored tool binaries are gitignored and fetched per pinned manifests; the build is green on win-x64 and fails closed on undeclared RIDs.
+C# on .NET 10; `System.CommandLine` for the CLI surface; `ArchUnitNET` + the Heurex Sentrux fork (v0.5.12, pinned + SHA-256-verified, regression `gate` honors `--include-untracked`) for architecture and structural-complexity gates; Gitleaks (vendored, pinned) for secret scanning; GitVersion (vendored win-x64) for versioning; `YamlDotNet` for the `workflow.yml` stage model; `LLamaSharp` (Qwen3-Embedding GGUF, primary) + `Microsoft.ML.OnnxRuntime` (BGE-M3 ONNX, fallback) for the advisory offline semantic drift finder; xUnit for tests. Vendored tool binaries are gitignored and fetched per pinned manifests; the build is green on win-x64 and fails closed on undeclared RIDs.
 
 ### Coding style
 

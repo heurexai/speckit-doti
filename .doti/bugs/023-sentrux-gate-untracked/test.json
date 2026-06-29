@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "023-sentrux-gate-untracked",
+  "boundFixSha256": "e1dde03059ae564de76cfe33dd919ffa8c390502569e38ce9210a177f7be0932",
+  "outcome": "pass",
+  "evidence": "Installed sentrux 0.5.12 (gate --include-untracked accepted, exit 0; was exit 2 on v0.5.11). Dogfood: created an UNTRACKED god-function (CC ~60) in tools/Hx.Doti.Core/; \u0027hx sentrux check\u0027 regression went Pass(signal=6488)-\u003EFail(signal=6464), proving untracked structural growth is now caught at the gate (was invisible before). 48 Sentrux/manifest/hash/gate tests green; manifest\u002Bgrammar hashes verified; doti render-skills --check clean."
+}

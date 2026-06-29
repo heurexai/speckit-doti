@@ -3,13 +3,13 @@
   "tool": "sentrux",
   "license": "MIT",
   "sourceRemote": "https://github.com/heurexai/sentrux",
-  "releaseTag": "v0.5.11",
+  "releaseTag": "v0.5.12",
   "sourceCommit": "",
   "distributionIdentity": "Heurex fork",
   "updateChannel": "stable",
-  "vendoredAt": "2026-06-24",
+  "vendoredAt": "2026-06-29",
   "hashProvenance": {
-    "capturedToolVersion": "v0.5.11",
+    "capturedToolVersion": "v0.5.12",
     "capturedBy": ".github/workflows/compute-tool-hashes.yml",
     "verification": "version-pinned"
   },
@@ -17,30 +17,30 @@
     {
       "rid": "win-x64",
       "assetName": "sentrux-windows-x86_64.exe",
-      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.11/sentrux-windows-x86_64.exe",
+      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.12/sentrux-windows-x86_64.exe",
       "archiveSha256": null,
       "executablePath": "tools/sentrux/bin/win-x64/sentrux.exe",
-      "executableSha256": "ed387706d10fc2708507939d5390016b256cc4a725afcf9e209021cbab2bf88c",
+      "executableSha256": "63be6c50f5efdbebc4b520f60435887becd54be86562c63f05d87377ccd5b626",
       "executableName": "sentrux.exe",
       "supportLevel": "active"
     },
     {
       "rid": "linux-x64",
       "assetName": "sentrux-linux-x86_64",
-      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.11/sentrux-linux-x86_64",
+      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.12/sentrux-linux-x86_64",
       "archiveSha256": null,
       "executablePath": "tools/sentrux/bin/linux-x64/sentrux",
-      "executableSha256": "6da9bede77654a54425c101d37d1bbb192a51c8cf7bd2823ad9c0da45ee34fae",
+      "executableSha256": "d7d09faaf6220fbb91057182b3709ffda01549461cb3c9a9c64afaeece890ab2",
       "executableName": "sentrux",
       "supportLevel": "active"
     },
     {
       "rid": "osx-arm64",
       "assetName": "sentrux-darwin-arm64",
-      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.11/sentrux-darwin-arm64",
+      "downloadUrl": "https://github.com/heurexai/sentrux/releases/download/v0.5.12/sentrux-darwin-arm64",
       "archiveSha256": null,
       "executablePath": "tools/sentrux/bin/osx-arm64/sentrux",
-      "executableSha256": "0389d2b84075bf02a5f53707f589e5a999b65b7b31acc47e622417d23745dad2",
+      "executableSha256": "8e53e6862543030cca24c9a7922a55cd9f039200d48ad1c387980257776918e4",
       "executableName": "sentrux",
       "supportLevel": "active"
     }
@@ -50,7 +50,7 @@
       "name": "csharp",
       "rid": "win-x64",
       "path": "tools/sentrux/grammars/csharp/grammars/windows-x86_64.dll",
-      "sha256": "b582b14030e2c6245fdc7200b48d918075186caa05fcc5cbd840f62bc2d07a45"
+      "sha256": "d967013da3cc537b7934d4d8bec2ae9d15a3d5c305724a3dc997033fdcd4c742"
     },
     {
       "name": "csharp",
@@ -65,5 +65,5 @@
       "sha256": "9d22149d84e736b49819479acaaad137762ea7f14def0bb828448add30e3b390"
     }
   ],
-  "requiredFeatures": ["check-include-untracked", "gate-save"]
+  "requiredFeatures": ["check-include-untracked", "gate-save", "gate-include-untracked"]
 }

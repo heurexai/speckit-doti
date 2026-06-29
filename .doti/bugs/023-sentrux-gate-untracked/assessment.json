@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "023-sentrux-gate-untracked",
+  "verdict": "confirmed",
+  "severity": "medium",
+  "remediation": "Upgrade the vendored Sentrux fork to v0.5.12 (adds --include-untracked to the regression \u0027gate\u0027) and pass --include-untracked in SentruxProcessAdapter.GateCompare, so the structural regression gate measures brand-new untracked worktree files instead of only tracked ones.",
+  "summary": "Sentrux regression gate was blind to untracked files, so a feature\u0027s new files\u0027 structural growth escaped the /07 gate and only failed post-commit at /08."
+}

@@ -18,6 +18,10 @@ public static class SentruxProcessAdapter
     public static ToolCommand GateSave(string executablePath, string repositoryRoot) =>
         new(executablePath, ["gate", "--save", repositoryRoot], repositoryRoot, OfflineEnv);
 
+    // Bug#1 fix (requires fork >= v0.5.12): `--include-untracked` makes the regression gate see brand-new
+    // (never-`git add`-ed) worktree files, so a feature's new files' structural growth surfaces at the pre-commit
+    // gate instead of only after they are tracked. `check` already passes the flag; the fork added it to `gate` in
+    // v0.5.12 (the manifest's `gate-include-untracked` required feature pins this).
     public static ToolCommand GateCompare(string executablePath, string repositoryRoot) =>
-        new(executablePath, ["gate", repositoryRoot], repositoryRoot, OfflineEnv);
+        new(executablePath, ["gate", repositoryRoot, "--include-untracked"], repositoryRoot, OfflineEnv);
 }
