@@ -172,7 +172,7 @@ The main branch now includes the 007–016 work: source-free installed `hx`, tie
 
 Key capabilities:
 
-- **Source-free workflow surface** - installed `hx` exposes `gate run`, `architecture test`, `sentrux verify/check`, `hygiene scan`, `security scan`, `version calculate`, `doti cycle`, `doti constitution`, `doti render-skills`, `doti install`, `doti payload check`, `doti install-hooks`, and `impact plan`.
+- **Source-free workflow surface** - installed `hx` exposes `gate run`, `architecture test`, `sentrux verify/check`, `hygiene scan`, `security scan`, `version calculate`, `doti cycle`, `doti constitution`, `doti render-skills`, `doti install`, `doti check-version`, `doti scan`, `doti update`, `doti update-all`, `doti payload check`, `doti install-hooks`, and `impact plan`.
 - **Always-fresh constitution** - `hx doti constitution` emits the project's §1/§2 constitution; `plan` and `arch-review` evaluate against fresh §2, with delivery code-enforced and evaluation agent-judged (the deterministic gate is unchanged).
 - **Tiered adoption** - install Doti into different repo shapes without pretending every repo is the Heurex scaffold.
 - **Task-hash completion** - checked tasks must carry canonical `doti-task-hash` markers; stale or missing hashes fail the gate.
@@ -207,6 +207,10 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx version --repo <path>` | Report tool identity and the target repo's installed Doti/scaffold state. |
 | `hx prereq check --for new` | Check .NET SDK, Git, and directory readiness before mutation. |
 | `hx doti install --repo <path>` | Install, repair, migrate, or update Doti workflow assets. |
+| `hx doti check-version --repo <path>` | Report a repo's recorded Doti version + its relation to the installed tool (current/outdated/ahead). |
+| `hx doti scan --root <dir>` | Discover every Doti-enabled repo under a tree and table each one's version + relation. |
+| `hx doti update --repo <path> [--force] [--dry-run]` | Update one repo's managed assets to the installed payload and report the before→after version (reconciled in a git worktree; customizations preserved unless `--force`). |
+| `hx doti update-all --root <dir> [--force] [--dry-run]` | Batch-update every Doti repo under a root, fail-soft, with an updated/already-current/failed summary. |
 | `hx doti cycle status/check/stamp` | Report, enforce, or stamp stage proofs. |
 | `hx doti cycle refresh-plan` | Show stale proof recovery steps without mutating anything. |
 | `hx doti cycle refresh --apply-safe` | Rebind only safe-to-reinterpret stale proofs. |

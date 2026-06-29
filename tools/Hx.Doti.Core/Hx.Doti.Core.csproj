@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\Hx.Tooling.Contracts\Hx.Tooling.Contracts.csproj" />
+    <!-- 022 T001: within-core edge for the GitWorktree primitive (Hx.Runner.Core.Git). Acyclic: Hx.Runner.Core
+         references Contracts only and never gains an Hx.Doti.Core ref (arch-review MEDIUM; gate-enforced). -->
+    <ProjectReference Include="..\Hx.Runner.Core\Hx.Runner.Core.csproj" />
+    <!-- 022 T014/FR-020: single-source the version relation through GitVersionTool.CompareVersions, the same
+         comparison the version report uses. Within-core; acyclic (Hx.Version.Core to Hx.Runner.Core, not Doti.Core). -->
+    <ProjectReference Include="..\Hx.Version.Core\Hx.Version.Core.csproj" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 </Project>

@@ -49,7 +49,9 @@ This repo is built with its own spec-driven workflow, **doti**. You don't have t
 
 ## Merging
 
-PRs are **squash-merged** into `main` after a green gate and maintainer approval. Keep each PR focused on one change.
+Contributor PRs are **squash-merged** into the working branch after a green gate and maintainer approval. Keep each PR focused on one change.
+
+**Branch flow (maintainers).** `dev` is the permanent working branch; `main` is the protected release branch. Feature work lands on a short-lived `feat/NNN-*` branch off `dev` (never directly on `dev`, whose ref moves) and is **squash-merged** into `dev`. Releases promote `dev` to `main` with a **merge commit** (not a squash) — squashing `dev → main` rewrites history and diverges the two branches, so the release path always merges. The push to `main` triggers `release.yml` (GitVersion → tag → pack → NuGet Trusted Publishing → GitHub Release); release `v*` tags are created by that CI on the merge, never hand-pushed.
 
 ## Reporting issues
 
