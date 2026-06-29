@@ -162,7 +162,7 @@ The remaining utility skills:
 | `/doti-amend` | Amend an already-stamped cycle stage after an approved artifact change and **reconcile** cycle state via the recovery plan (`hx doti cycle refresh-plan` / `refresh --apply-safe`): re-bind the safe-to-reinterpret stamps, re-run the stages whose content genuinely changed. Never reorders `/01`–`/09`. |
 | `/doti-drift-fix` | Patch a drift `/08-doti-drift-review` surfaced by correcting the **code** — never the spec, which is the source of truth — then reconcile cycle state. |
 | `/doti-converge` | Brownfield / drift reconciliation: find the spec↔tasks coverage gap (`hx doti converge`), assess each uncovered `FR`/`SC` against the codebase, and append the genuinely-unbuilt work as new tasks. |
-| `/doti-upgrade` | Upgrade the installed `hx` tool **and** reconcile this repo's `.doti` assets in one action — updates the tool via its channel (`dotnet tool update -g Heurex.SpeckitDoti`, or the Microsoft Store) and runs `hx doti install --repo .`, preserving operator-modified managed files. |
+| `/doti-upgrade` | Upgrade the installed `hx` tool **and** reconcile this repo's `.doti` assets in one action — updates the tool via its channel (`dotnet tool update -g Heurex.SpeckitDoti`) and runs `hx doti install --repo .`, preserving operator-modified managed files. |
 
 ---
 
@@ -229,13 +229,10 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 ## Distribution and release model
 
-The intended installed product is the `hx` CLI, not this source tree.
+speckit-doti ships as the `hx` CLI — you install the tool, not this source tree. Two parts, nothing else:
 
-- **NuGet global tool** - `dotnet tool install --global Heurex.SpeckitDoti`; update with `dotnet tool update --global Heurex.SpeckitDoti`.
-- **Microsoft Store MSIX** - Windows channel with Store signing and Store-managed updates.
-- **No Velopack** - the current release design removes the prior Velopack installer/update path.
-- **No source archive as product** - release proof checks that installed artifacts run without a speckit-doti source checkout.
-- **Tool binaries fetch on demand** - Gitleaks, Sentrux, and GitVersion are resolved from pinned manifests and hash-verified into a shared per-user store.
+- **NuGet .NET global tool** - `dotnet tool install --global Heurex.SpeckitDoti`; update with `dotnet tool update --global Heurex.SpeckitDoti`.
+- **Tool binaries fetched on demand** - Gitleaks, Sentrux, and GitVersion are resolved from pinned manifests and SHA-256-verified into a shared per-user store the first time they're needed (never bundled in the package).
 
 `hx release` owns local release proof and tag creation. Pushing the `v*` tag is what triggers publishing workflows for NuGet and the Store.
 
