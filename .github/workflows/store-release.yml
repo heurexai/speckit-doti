@@ -112,7 +112,7 @@ jobs:
       # The unsigned MSIX is a Store-submission INPUT ONLY — it is handed to `submit` as a workflow artifact
       # and is NEVER attached to a GitHub release (the Store signs it; shipping an unsigned MSIX is forbidden).
       - name: Upload the unsigned MSIX (Store-submission input only)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4 (pinned 2026-06-27)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a   # v7 (pinned 2026-06-29)
         with:
           name: msix
           path: speckit-doti-${{ inputs.version }}.msix
@@ -127,7 +127,7 @@ jobs:
       contents: read
     steps:
       - name: Download the unsigned MSIX
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093   # v4 (pinned 2026-06-27)
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c   # v8 (pinned 2026-06-29)
         with:
           name: msix
 
@@ -136,7 +136,7 @@ jobs:
       # installed via the official setup action below. Verify the exact `publish` invocation on the first
       # automated run: https://aka.ms/msstoredevcli
       - name: Setup Microsoft Store Developer CLI
-        uses: microsoft/microsoft-store-apppublisher@15abd1c50fcc164b19cb240fb04ef3c49bf715a2   # v1.1 (pinned 2026-06-27)
+        uses: microsoft/microsoft-store-apppublisher@b76227f539d68e6465f79bbbc82ed92f61081aa4   # v1.3 (pinned 2026-06-29)
 
       - name: Submit to the Microsoft Store
         shell: pwsh

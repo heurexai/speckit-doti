@@ -3,6 +3,7 @@ updates:
   # .NET NuGet dependencies (Central Package Management at the repo root).
   - package-ecosystem: nuget
     directory: "/"
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -12,6 +13,7 @@ updates:
   # GitHub Actions used by the workflows.
   - package-ecosystem: github-actions
     directory: "/"
+    target-branch: dev
     schedule:
       interval: weekly
     commit-message:
