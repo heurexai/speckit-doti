@@ -229,6 +229,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx release --minor --repo <path>` | Validate release intent, create/verify the local tag, and produce channel proof. |
 | `hx describe --json` | Self-describe the CLI surface for agents. |
 
+> The doti repo version-lifecycle commands (`check-version` / `scan` / `update` / `update-all`) and the `version --repo` payload-relation fix shipped in `022-doti-repo-version-lifecycle`.
+
 ---
 
 ## Distribution and release model
