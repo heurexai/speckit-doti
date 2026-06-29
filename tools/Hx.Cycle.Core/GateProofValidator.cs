@@ -8,13 +8,24 @@ namespace Hx.Cycle.Core;
 
 public static class GateProofValidator
 {
-    public static IReadOnlyList<string> ValidateAffectedTestProof(string repositoryRoot, PersistedGateProof persisted)
+    /// <summary>
+    /// 023-bug fix: <paramref name="headRef"/> bounds the affected-test re-plan to a CONCRETE commit instead of the
+    /// live symbolic <c>HEAD</c>. Transitions pass <c>null</c> (re-plan to live <c>HEAD</c> — the transition IS at
+    /// HEAD). The RELEASE-TRAIN passes the feature's own release commit (<c>completion.CommitSha</c>), so a later
+    /// unrelated commit landing on top — e.g. a separate bug fix — cannot move the re-plan endpoint and falsely
+    /// invalidate an UNCHANGED feature's proof ("planner hash does not match the current change set"). A feature's
+    /// proof is bound by its own diff (<c>BaseRef..CommitSha</c>), not by where the branch tip happens to be now.
+    /// </summary>
+    public static IReadOnlyList<string> ValidateAffectedTestProof(
+        string repositoryRoot, PersistedGateProof persisted, string? headRef = null)
     {
         AffectedTestProof? proof = persisted.Proof.AffectedTestProof;
         if (proof is null)
         {
             return ["gate proof has no affected-test proof; re-run `gate run` with the current runner"];
         }
+
+        string replanHead = string.IsNullOrWhiteSpace(headRef) ? proof.HeadRef : headRef;
 
         var reasons = new List<string>();
         if (proof.SchemaVersion != JsonContractDefaults.SchemaVersion)
@@ -52,7 +63,7 @@ public static class GateProofValidator
         try
         {
             AffectedPlan expectedPlan = new AffectedTestPlanner().Plan(
-                repositoryRoot, persisted.BaseRef, proof.HeadRef, proof.Configuration);
+                repositoryRoot, persisted.BaseRef, replanHead, proof.Configuration);
             string expectedPlanHash = AffectedTestProofHasher.HashPlan(expectedPlan);
             if (!string.Equals(expectedPlanHash, proof.PlanHash, StringComparison.Ordinal))
             {
@@ -138,7 +149,8 @@ public static class GateProofValidator
     /// not docs-only — distinct from the tier-ladder check, recomputed separately, provable-not-bypassed. A pre-FR-028
     /// proof (no scope dimension) is not blocked here; its test scope is still gated by the affected-test proof.
     /// </summary>
-    public static IReadOnlyList<string> ValidateScope(string repositoryRoot, PersistedGateProof persisted)
+    public static IReadOnlyList<string> ValidateScope(
+        string repositoryRoot, PersistedGateProof persisted, string? headRef = null)
     {
         GateProof proof = persisted.Proof;
         if (proof.Scope is null || proof.AffectedTestProof is null)
@@ -148,8 +160,11 @@ public static class GateProofValidator
 
         try
         {
+            // 023-bug fix: bound the scope re-resolve to the same concrete head as the affected-test re-plan
+            // (see ValidateAffectedTestProof) so a later commit on top cannot invalidate an unchanged feature.
+            string replanHead = string.IsNullOrWhiteSpace(headRef) ? "HEAD" : headRef;
             GateScope expected = GateScopeResolver.Resolve(
-                repositoryRoot, persisted.BaseRef, "HEAD", proof.AffectedTestProof.Plan);
+                repositoryRoot, persisted.BaseRef, replanHead, proof.AffectedTestProof.Plan);
             return ScopeIsValid(proof.Scope.DocsOnly, expected.DocsOnly)
                 ? []
                 : [$"gate proof records a docs-only scope skip (architecture + Sentrux not run) but the current change set is NOT docs-only — a scope skip cannot be minted for a code change (FR-028)"];
