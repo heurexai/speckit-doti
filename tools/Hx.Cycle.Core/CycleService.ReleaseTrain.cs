@@ -152,7 +152,21 @@ public sealed partial class CycleService
             ? new GateProofStore(_repositoryRoot).Read()
             : null;
 
-        IReadOnlyList<string> reasons = persisted is null ? [] : ValidatePersistedGateProof(persisted);
+        // 023-bug fix: re-validate the active feature's proof against the feature's OWN release HEAD, not live HEAD, so
+        // an unrelated commit landing on top (e.g. a separate bug fix on the same branch) cannot falsely invalidate an
+        // unchanged feature's gate proof. The bound is the LATEST transition INTO release (a `release→release` re-stamp
+        // wins over the original `drift-review→release`, since the proof was minted against that later commit) — NOT
+        // `completion.CommitSha`, which is pinned to the drift-review→release transition and misses re-stamps. Earlier
+        // features are already attested by their recorded digest above.
+        string? featureReleaseHead = (state.Transitions ?? [])
+            .Where(t => string.Equals(t.Feature, completion.Feature, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(t.NextStage, "release", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(t.CommitSha))
+            .Select(t => t.CommitSha)
+            .LastOrDefault();
+        IReadOnlyList<string> reasons = persisted is null
+            ? []
+            : ValidatePersistedGateProof(persisted, featureReleaseHead ?? completion.CommitSha);
         string status = ClassifyGateProofStatus(hasImplement, digest, isActiveReleaseFeature, persisted is not null, reasons.Count);
 
         IReadOnlyList<string> blockers = status switch
@@ -185,7 +199,7 @@ public sealed partial class CycleService
         return validationIssueCount == 0 ? "present-valid" : "present-stale";
     }
 
-    private IReadOnlyList<string> ValidatePersistedGateProof(PersistedGateProof persisted)
+    private IReadOnlyList<string> ValidatePersistedGateProof(PersistedGateProof persisted, string? headRef = null)
     {
         var reasons = new List<string>();
         if (persisted.Proof.Outcome != StageOutcome.Pass)
@@ -193,9 +207,9 @@ public sealed partial class CycleService
             reasons.Add($"outcome is {persisted.Proof.Outcome}, not Pass");
         }
 
-        reasons.AddRange(GateProofValidator.ValidateAffectedTestProof(_repositoryRoot, persisted));
+        reasons.AddRange(GateProofValidator.ValidateAffectedTestProof(_repositoryRoot, persisted, headRef));
         reasons.AddRange(GateProofValidator.ValidateLadderCoverage(_repositoryRoot, persisted));
-        reasons.AddRange(GateProofValidator.ValidateScope(_repositoryRoot, persisted));
+        reasons.AddRange(GateProofValidator.ValidateScope(_repositoryRoot, persisted, headRef));
         return reasons;
     }
 

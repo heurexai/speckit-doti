@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "bugId": "024-release-train-stale-on-unrelated-commit",
+  "boundAssessmentSha256": "15e9b9ef061298e628d551cf39e9b9aea306901bba48a09ce4aed1d9f9e4a8f3",
+  "summary": "GateProofValidator gains a bounded-head re-plan; CycleService.ReleaseTrain passes featureReleaseHead (latest -\u003Erelease transition). Default null preserves the transition path (live HEAD).",
+  "changedPaths": [
+    "tools/Hx.Cycle.Core/GateProofValidator.cs",
+    "tools/Hx.Cycle.Core/CycleService.ReleaseTrain.cs",
+    "test/Hx.Runner.Tests/CycleEnforcementReleaseTrainRegressionTests.cs"
+  ]
+}

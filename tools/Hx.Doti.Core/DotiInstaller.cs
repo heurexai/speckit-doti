@@ -37,7 +37,7 @@ public static class DotiInstaller
         // 007 T030: version-aware reconciliation. Refuse a repo whose recorded .doti payload is AHEAD of the bundled
         // payload (no silent downgrade); absent/equal/older all run the conflict-aware forward copy below.
         string? bundledVersion = ReadBundledPayloadVersion(payloadRoot);
-        string? repoVersion = ReadRepoPayloadVersion(targetRepoRoot);
+        string? repoVersion = RepoPayloadStore.ReadPayloadVersion(targetRepoRoot);
         if (bundledVersion is not null && repoVersion is not null
             && ComparePayloadVersions(repoVersion, bundledVersion) > 0)
         {
@@ -103,7 +103,7 @@ public static class DotiInstaller
         // next install can branch absent/equal/older/newer. Written atomically so a crash re-runs to a clean state.
         if (bundledVersion is not null)
         {
-            StampRepoPayload(targetRepoRoot, bundledVersion, ReadBundledToolVersion(payloadRoot) ?? bundledVersion);
+            RepoPayloadStore.Write(targetRepoRoot, bundledVersion, ReadBundledToolVersion(payloadRoot) ?? bundledVersion);
             installed.Add(new DotiInstallPathEffect(".doti/payload.json", "repo payload version stamped from the bundled descriptor"));
         }
 
@@ -462,40 +462,6 @@ public static class DotiInstaller
         }
     }
 
-    private static string? ReadRepoPayloadVersion(string targetRepoRoot)
-    {
-        string path = Path.Combine(targetRepoRoot, ".doti", "payload.json");
-        if (!File.Exists(path))
-        {
-            return null;
-        }
-
-        try
-        {
-            RepoPayloadStamp? stamp = JsonSerializer.Deserialize<RepoPayloadStamp>(
-                File.ReadAllText(path), JsonContractSerializerOptions.Create());
-            return stamp?.PayloadVersion is { Length: > 0 } v ? v : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    private static void StampRepoPayload(string targetRepoRoot, string payloadVersion, string toolVersion)
-    {
-        string path = ResolveInside(targetRepoRoot, ".doti/payload.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        JsonSerializerOptions options = JsonContractSerializerOptions.Create();
-        options.WriteIndented = true;
-        string json = JsonSerializer.Serialize(
-            new RepoPayloadStamp(RepoPayloadStamp.CurrentSchemaVersion, payloadVersion, toolVersion), options);
-
-        string temp = path + ".tmp-" + Guid.NewGuid().ToString("n");
-        File.WriteAllText(temp, json);
-        File.Move(temp, path, overwrite: true);
-    }
-
     // Compare payload versions by their numeric major.minor.patch core, tie-breaking on the full string so a
     // pre-release/build suffix still orders deterministically.
     private static int ComparePayloadVersions(string a, string b)
@@ -504,7 +470,7 @@ public static class DotiInstaller
         return core != 0 ? core : string.CompareOrdinal(a, b);
     }
 
-    private static Version VersionCore(string value)
+    private static System.Version VersionCore(string value)
     {
         string core = value;
         int cut = core.IndexOfAny(['-', '+']);
@@ -513,6 +479,6 @@ public static class DotiInstaller
             core = core[..cut];
         }
 
-        return Version.TryParse(core, out Version? parsed) ? parsed : new Version(0, 0, 0, 0);
+        return System.Version.TryParse(core, out System.Version? parsed) ? parsed : new System.Version(0, 0, 0, 0);
     }
 }

@@ -162,7 +162,7 @@ The remaining utility skills:
 | `/doti-amend` | Amend an already-stamped cycle stage after an approved artifact change and **reconcile** cycle state via the recovery plan (`hx doti cycle refresh-plan` / `refresh --apply-safe`): re-bind the safe-to-reinterpret stamps, re-run the stages whose content genuinely changed. Never reorders `/01`–`/09`. |
 | `/doti-drift-fix` | Patch a drift `/08-doti-drift-review` surfaced by correcting the **code** — never the spec, which is the source of truth — then reconcile cycle state. |
 | `/doti-converge` | Brownfield / drift reconciliation: find the spec↔tasks coverage gap (`hx doti converge`), assess each uncovered `FR`/`SC` against the codebase, and append the genuinely-unbuilt work as new tasks. |
-| `/doti-upgrade` | Upgrade the installed `hx` tool **and** reconcile this repo's `.doti` assets in one action — updates the tool via its channel (`dotnet tool update -g Heurex.SpeckitDoti`, or the Microsoft Store) and runs `hx doti install --repo .`, preserving operator-modified managed files. |
+| `/doti-upgrade` | Upgrade the installed `hx` tool **and** reconcile this repo's `.doti` assets in one action — updates the tool via its channel (`dotnet tool update -g Heurex.SpeckitDoti`) and runs `hx doti install --repo .`, preserving operator-modified managed files. |
 
 ---
 
@@ -172,7 +172,7 @@ The main branch now includes the 007–016 work: source-free installed `hx`, tie
 
 Key capabilities:
 
-- **Source-free workflow surface** - installed `hx` exposes `gate run`, `architecture test`, `sentrux verify/check`, `hygiene scan`, `security scan`, `version calculate`, `doti cycle`, `doti constitution`, `doti render-skills`, `doti install`, `doti payload check`, `doti install-hooks`, and `impact plan`.
+- **Source-free workflow surface** - installed `hx` exposes `gate run`, `architecture test`, `sentrux verify/check`, `hygiene scan`, `security scan`, `version calculate`, `doti cycle`, `doti constitution`, `doti render-skills`, `doti install`, `doti check-version`, `doti scan`, `doti update`, `doti update-all`, `doti payload check`, `doti install-hooks`, and `impact plan`.
 - **Always-fresh constitution** - `hx doti constitution` emits the project's §1/§2 constitution; `plan` and `arch-review` evaluate against fresh §2, with delivery code-enforced and evaluation agent-judged (the deterministic gate is unchanged).
 - **Tiered adoption** - install Doti into different repo shapes without pretending every repo is the Heurex scaffold.
 - **Task-hash completion** - checked tasks must carry canonical `doti-task-hash` markers; stale or missing hashes fail the gate.
@@ -207,6 +207,10 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx version --repo <path>` | Report tool identity and the target repo's installed Doti/scaffold state. |
 | `hx prereq check --for new` | Check .NET SDK, Git, and directory readiness before mutation. |
 | `hx doti install --repo <path>` | Install, repair, migrate, or update Doti workflow assets. |
+| `hx doti check-version --repo <path>` | Report a repo's recorded Doti version + its relation to the installed tool (current/outdated/ahead). |
+| `hx doti scan --root <dir>` | Discover every Doti-enabled repo under a tree and table each one's version + relation. |
+| `hx doti update --repo <path> [--force] [--dry-run]` | Update one repo's managed assets to the installed payload and report the before→after version (reconciled in a git worktree; customizations preserved unless `--force`). |
+| `hx doti update-all --root <dir> [--force] [--dry-run]` | Batch-update every Doti repo under a root, fail-soft, with an updated/already-current/failed summary. |
 | `hx doti cycle status/check/stamp` | Report, enforce, or stamp stage proofs. |
 | `hx doti cycle refresh-plan` | Show stale proof recovery steps without mutating anything. |
 | `hx doti cycle refresh --apply-safe` | Rebind only safe-to-reinterpret stale proofs. |
@@ -225,17 +229,16 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx release --minor --repo <path>` | Validate release intent, create/verify the local tag, and produce channel proof. |
 | `hx describe --json` | Self-describe the CLI surface for agents. |
 
+> The doti repo version-lifecycle commands (`check-version` / `scan` / `update` / `update-all`) and the `version --repo` payload-relation fix shipped in `022-doti-repo-version-lifecycle`.
+
 ---
 
 ## Distribution and release model
 
-The intended installed product is the `hx` CLI, not this source tree.
+speckit-doti ships as the `hx` CLI — you install the tool, not this source tree. Two parts, nothing else:
 
-- **NuGet global tool** - `dotnet tool install --global Heurex.SpeckitDoti`; update with `dotnet tool update --global Heurex.SpeckitDoti`.
-- **Microsoft Store MSIX** - Windows channel with Store signing and Store-managed updates.
-- **No Velopack** - the current release design removes the prior Velopack installer/update path.
-- **No source archive as product** - release proof checks that installed artifacts run without a speckit-doti source checkout.
-- **Tool binaries fetch on demand** - Gitleaks, Sentrux, and GitVersion are resolved from pinned manifests and hash-verified into a shared per-user store.
+- **NuGet .NET global tool** - `dotnet tool install --global Heurex.SpeckitDoti`; update with `dotnet tool update --global Heurex.SpeckitDoti`.
+- **Tool binaries fetched on demand** - Gitleaks, Sentrux, and GitVersion are resolved from pinned manifests and SHA-256-verified into a shared per-user store the first time they're needed (never bundled in the package).
 
 `hx release` owns local release proof and tag creation. Pushing the `v*` tag is what triggers publishing workflows for NuGet and the Store.
 

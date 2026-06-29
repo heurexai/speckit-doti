@@ -10,6 +10,10 @@ public static partial class RunnerCommandFactory
         Command dotiCommand = new("doti", "Doti self-hosting: render skills, cycle state, hooks, operator-question protocol.");
         AddDotiRenderSkills(dotiCommand, meta);
         AddDotiInstall(dotiCommand, meta);
+        AddDotiCheckVersion(dotiCommand, meta);
+        AddDotiScan(dotiCommand, meta);
+        AddDotiUpdate(dotiCommand, meta);
+        AddDotiUpdateAll(dotiCommand, meta);
         AddDotiPayload(dotiCommand, meta);
         AddDotiCycle(dotiCommand, meta);
         AddDotiReviewContext(dotiCommand, meta);
@@ -219,6 +223,80 @@ public static partial class RunnerCommandFactory
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti install",
             () => RunnerCommands.DotiInstall(meta, parseResult.GetValue(repo), parseResult.GetValue(agents)!, parseResult.GetValue(force)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
+    }
+
+    // 022 T022 (FR-001/004): report a repo's Doti version + relation to the installed tool.
+    private static void AddDotiCheckVersion(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("check-version",
+            "Report a repo's Doti version (from .doti/payload.json) + its relation to the installed tool (current/outdated/ahead).");
+        Option<string?> repo = new("--repo") { Description = "Target repository root. Required." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti check-version",
+            () => RunnerCommands.DotiCheckVersion(meta, parseResult.GetValue(repo)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
+    }
+
+    // 022 T032 (FR-005/006): discover every Doti repo under a root + table its version/relation.
+    private static void AddDotiScan(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("scan",
+            "Recursively discover every Doti-enabled repo under --root + report each one's payload version + relation.");
+        Option<string?> root = new("--root") { Description = "Root directory to scan. Required." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(root);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti scan",
+            () => RunnerCommands.DotiScan(meta, parseResult.GetValue(root)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
+    }
+
+    // 022 T045 (FR-008/013/014/015): update one repo's managed assets to the installed payload, reporting before→after.
+    private static void AddDotiUpdate(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("update",
+            "Bring a repo's managed Doti assets up to the installed payload + report the before→after version. Reconciles in a git worktree (--dry-run previews); git required; customizations preserved (--force to overwrite).");
+        Option<string?> repo = new("--repo") { Description = "Target repository root. Required." };
+        Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
+        Option<bool> force = new("--force") { Description = "Overwrite operator-modified managed assets instead of preserving them." };
+        Option<bool> dryRun = new("--dry-run") { Description = "Preview the update in a worktree without applying it back." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(agents);
+        command.Options.Add(force);
+        command.Options.Add(dryRun);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti update",
+            () => RunnerCommands.DotiUpdate(meta, parseResult.GetValue(repo), parseResult.GetValue(agents)!,
+                parseResult.GetValue(force), parseResult.GetValue(dryRun)),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        dotiCommand.Subcommands.Add(command);
+    }
+
+    // 022 T052 (FR-016/017/018): batch-update every Doti repo under a root, fail-soft, with a summary.
+    private static void AddDotiUpdateAll(Command dotiCommand, CliMeta meta)
+    {
+        Command command = new("update-all",
+            "Batch-update every Doti-enabled repo under --root to the installed payload (fail-soft), with per-repo before→after + a summary. --dry-run previews; --force overwrites customizations.");
+        Option<string?> root = new("--root") { Description = "Root directory to scan + update. Required." };
+        Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
+        Option<bool> force = new("--force") { Description = "Overwrite operator-modified managed assets instead of preserving them." };
+        Option<bool> dryRun = new("--dry-run") { Description = "Preview every update in a worktree without applying it back." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(root);
+        command.Options.Add(agents);
+        command.Options.Add(force);
+        command.Options.Add(dryRun);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti update-all",
+            () => RunnerCommands.DotiUpdateAll(meta, parseResult.GetValue(root), parseResult.GetValue(agents)!,
+                parseResult.GetValue(force), parseResult.GetValue(dryRun)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
     }

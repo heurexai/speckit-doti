@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Hx.Doti.Core;
 using Hx.Doti.Core.ManagedAssets;
 using Hx.Scaffold.Core.Prerequisites;
 using Hx.Tooling.Contracts;
@@ -119,11 +120,27 @@ public static class ScaffoldVersionReporter
 
         string root = Path.GetFullPath(repoRoot);
         var diagnostics = new List<string>();
-        ScaffoldVersionIdentity? target = ReadStamp(root, diagnostics);
         ManagedAssetModificationSummary? managed = ReadManagedAssets(root, diagnostics);
-        string relation = target is null
-            ? ScaffoldVersionRelation.Unknown
-            : Compare(running.NormalizedVersion, target.NormalizedVersion);
+
+        // 022 FR-003/020: a doti-adopted repo records its version in .doti/payload.json, NOT the scaffold stamp.
+        // An empty/absent scaffold-version.json was mis-reported as `newer`; prefer payload.json and single-source the
+        // relation through DotiVersionRelationCalculator (the same comparison the `hx doti` commands use). Fall back to
+        // the scaffold stamp only when payload.json is absent (a scaffold-created repo predating payload stamping).
+        string? payloadVersion = RepoPayloadStore.ReadPayloadVersion(root);
+        ScaffoldVersionIdentity? target;
+        string relation;
+        if (payloadVersion is not null)
+        {
+            target = IdentityFromVersion(payloadVersion, "doti-payload");
+            relation = MapRelation(DotiVersionRelationCalculator.Relate(payloadVersion, running.Version));
+        }
+        else
+        {
+            target = ReadStamp(root, diagnostics);
+            relation = target is null
+                ? ScaffoldVersionRelation.Unknown
+                : Compare(running.NormalizedVersion, target.NormalizedVersion);
+        }
 
         return new ScaffoldVersionReport(
             JsonContractDefaults.SchemaVersion,
@@ -208,6 +225,16 @@ public static class ScaffoldVersionReporter
             _ => ScaffoldVersionRelation.Newer,
         };
     }
+
+    // 022 FR-003/020: map the single-sourced repo→tool relation onto the report's running-tool→target vocabulary.
+    // A repo OLDER than the tool means the running tool is NEWER; a repo AHEAD means the tool is BEHIND.
+    private static string MapRelation(DotiVersionRelation relation) => relation switch
+    {
+        DotiVersionRelation.Current => ScaffoldVersionRelation.Equal,
+        DotiVersionRelation.Outdated => ScaffoldVersionRelation.Newer,
+        DotiVersionRelation.Ahead => ScaffoldVersionRelation.Behind,
+        _ => ScaffoldVersionRelation.Unknown,
+    };
 
     private static string? TrySourceCommit(string? buildMetadata)
     {
