@@ -1,6 +1,6 @@
 # {PROJECT_NAME} Constitution
 
-> doti's constitution has **two layers**. **§1 — Inherited doti invariants** are the codified givens every doti project inherits; they are cited here as a fixed reference and a project MUST NOT re-declare, weaken, or override them. **§2 — Project declarations** are the only operator-authored content (the only placeholders) — the project's own domain, stack, style, security, and performance conventions. Author and amend §2 with `/doti-constitution`. Amendments are tracked by the doti cycle + git history; there is **no** SemVer doc-version line or Sync Impact Report (doti codifies versioning). Only **§2** is re-injected and checked by `/03-doti-plan` and `/06-doti-arch-review`; §1 is gate/ArchUnit/Sentrux/GitVersion-enforced and not re-checked by the agent.
+> doti's constitution has **two layers**. **§1 — Inherited doti invariants** are the codified givens every doti project inherits; they are cited here as a fixed reference and a project MUST NOT re-declare, weaken, or override them. **§2 — Project declarations** are the only operator-authored content (the only placeholders) — the project's own domain, stack, style, security, and performance conventions. Author and amend §2 with `/doti-constitution`. Amendments are tracked by the doti cycle + git history; there is **no** SemVer doc-version line or Sync Impact Report (doti codifies versioning). Only **§2** is re-injected and checked by `/03-doti-plan` and `/04-doti-arch-review`; §1 is gate/ArchUnit/Sentrux/GitVersion-enforced and not re-checked by the agent.
 
 ## §1 — Inherited doti invariants (codified; cite, never re-declare)
 
@@ -21,7 +21,7 @@ doti already codifies the following. A project inherits them and MUST NOT add a 
 
 ## §2 — Project declarations (operator-authored — the only fillable content)
 
-The project's own conventions, *beyond* the .NET 10 baseline §1 already guarantees. Fill these with `/doti-constitution`; `/03-doti-plan` and `/06-doti-arch-review` re-inject and evaluate against them.
+The project's own conventions, *beyond* the .NET 10 baseline §1 already guarantees. Fill these with `/doti-constitution`; `/03-doti-plan` and `/04-doti-arch-review` re-inject and evaluate against them.
 
 ### Domain principles
 

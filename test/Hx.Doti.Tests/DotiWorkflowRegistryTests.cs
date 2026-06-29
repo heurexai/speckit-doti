@@ -16,9 +16,9 @@ public sealed class DotiWorkflowRegistryTests
                 "01-doti-specify",
                 "02-doti-clarify",
                 "03-doti-plan",
-                "04-doti-tasks",
-                "05-doti-analyze",
-                "06-doti-arch-review",
+                "04-doti-arch-review",
+                "05-doti-tasks",
+                "06-doti-analyze",
                 "07-doti-implement",
                 "08-doti-drift-review",
                 "09-doti-release"

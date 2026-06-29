@@ -22,7 +22,7 @@ public static class ImpactCommands
     /// <summary>Default audience: the affected-test scope (outcome + selected test projects).</summary>
     public const string AudienceTests = "tests";
 
-    /// <summary>The <c>/06-doti-arch-review</c> audience: the changed-files + affected-projects review context.</summary>
+    /// <summary>The <c>/04-doti-arch-review</c> audience: the changed-files + affected-projects review context.</summary>
     public const string AudienceArchReview = "arch-review";
 
     /// <summary>The <c>/08-doti-drift-review</c> audience (FR-010): the status-rich change context (each file's

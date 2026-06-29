@@ -13,9 +13,9 @@ public sealed class DotiWorkflowRegistryTests
             s => AssertStage(s, 1, "specify", "01-doti-specify"),
             s => AssertStage(s, 2, "clarify", "02-doti-clarify"),
             s => AssertStage(s, 3, "plan", "03-doti-plan"),
-            s => AssertStage(s, 4, "tasks", "04-doti-tasks"),
-            s => AssertStage(s, 5, "analyze", "05-doti-analyze"),
-            s => AssertStage(s, 6, "arch-review", "06-doti-arch-review"),
+            s => AssertStage(s, 4, "arch-review", "04-doti-arch-review"),
+            s => AssertStage(s, 5, "tasks", "05-doti-tasks"),
+            s => AssertStage(s, 6, "analyze", "06-doti-analyze"),
             s => AssertStage(s, 7, "implement", "07-doti-implement"),
             s => AssertStage(s, 8, "drift-review", "08-doti-drift-review"),
             s => AssertStage(s, 9, "release", "09-doti-release"));

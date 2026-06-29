@@ -99,7 +99,7 @@ public sealed class RefreshTests
             "schemaVersion: 2\nname: t\nstages:\n" +
             "  - id: specify\n    command: 01-doti-specify\n    kind: doc\n    produces: docs/specs/{feature}.md\n    prereqs: []\n" +
             "  - id: plan\n    command: 03-doti-plan\n    kind: doc\n    produces: docs/plans/{feature}-plan.md\n    prereqs: [specify]\n" +
-            "  - id: tasks\n    command: 04-doti-tasks\n    kind: doc\n    produces: docs/tasks/{feature}-tasks.md\n    prereqs: [plan]\n");
+            "  - id: tasks\n    command: 05-doti-tasks\n    kind: doc\n    produces: docs/tasks/{feature}-tasks.md\n    prereqs: [plan]\n");
     }
 
     private static string Write(string dir, string relative, string content)

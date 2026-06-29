@@ -52,7 +52,7 @@ public static class SentruxOptimizationTracker
 
         return attempts >= MaxOptimizationAttempts
             ? new SentruxOptimizationResult(SentruxOptimizationVerdict.StructuralReviewRequired, attempts,
-                $"{attempts} optimization attempts stayed in the Sentrux escalation band — STOP blind optimization; run a structural architecture review (/06-doti-arch-review) to decide: functionality-driven growth (evidence-gated rebaseline) vs wrong architecture (refactor).")
+                $"{attempts} optimization attempts stayed in the Sentrux escalation band — STOP blind optimization; run a structural architecture review (/04-doti-arch-review) to decide: functionality-driven growth (evidence-gated rebaseline) vs wrong architecture (refactor).")
             : new SentruxOptimizationResult(SentruxOptimizationVerdict.AttemptRecorded, attempts,
                 $"Sentrux escalation band, attempt {attempts}/{MaxOptimizationAttempts} — one more optimization attempt is allowed before a structural architecture review is required.");
     }

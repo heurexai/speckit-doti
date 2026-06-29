@@ -23,25 +23,25 @@ stages:
     kind: doc
     produces: docs/plans/{feature}-plan.md
     prereqs: [clarify]
+  - id: arch-review
+    command: 04-doti-arch-review
+    kind: review
+    produces: docs/reviews/{feature}-arch-review.md
+    prereqs: [plan]
   - id: tasks
-    command: 04-doti-tasks
+    command: 05-doti-tasks
     kind: doc
     produces: docs/tasks/{feature}-tasks.md
-    prereqs: [plan]
+    prereqs: [arch-review]
   - id: analyze
-    command: 05-doti-analyze
+    command: 06-doti-analyze
     kind: review
     produces: docs/reviews/{feature}-analyze-report.md
     prereqs: [tasks]
-  - id: arch-review
-    command: 06-doti-arch-review
-    kind: review
-    produces: docs/reviews/{feature}-arch-review.md
-    prereqs: [analyze]
   - id: implement
     command: 07-doti-implement
     kind: diff
-    prereqs: [arch-review]
+    prereqs: [analyze]
   - id: drift-review
     command: 08-doti-drift-review
     kind: review

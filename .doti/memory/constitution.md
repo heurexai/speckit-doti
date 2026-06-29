@@ -1,6 +1,6 @@
 # scaffold-dotnet Constitution
 
-> Two layers. **§1 — Inherited doti invariants** are the codified principles this project authors and every doti-generated repo inherits; they are gate/ArchUnit/Sentrux/GitVersion-enforced and not re-declared per feature. **§2 — Project declarations** are this repo's own domain, stack, and style — the content `/03-doti-plan` and `/06-doti-arch-review` re-inject and evaluate. Amendments are tracked by the doti cycle + git history (no SemVer doc-version line; doti codifies versioning). This is a real, filled constitution — it carries **no** placeholder tokens.
+> Two layers. **§1 — Inherited doti invariants** are the codified principles this project authors and every doti-generated repo inherits; they are gate/ArchUnit/Sentrux/GitVersion-enforced and not re-declared per feature. **§2 — Project declarations** are this repo's own domain, stack, and style — the content `/03-doti-plan` and `/04-doti-arch-review` re-inject and evaluate. Amendments are tracked by the doti cycle + git history (no SemVer doc-version line; doti codifies versioning). This is a real, filled constitution — it carries **no** placeholder tokens.
 
 ## §1 — Inherited doti invariants
 

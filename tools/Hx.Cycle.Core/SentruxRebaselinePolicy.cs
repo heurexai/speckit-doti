@@ -30,7 +30,7 @@ public static class SentruxRebaselinePolicy
         if (!archReviewFresh)
         {
             return new SentruxRebaselineAuthorization(false,
-                "no change-set-fresh arch-review record — run /06-doti-arch-review for the current change before rebaselining");
+                "no change-set-fresh arch-review record — run /04-doti-arch-review for the current change before rebaselining");
         }
 
         if (!growthClassified)
