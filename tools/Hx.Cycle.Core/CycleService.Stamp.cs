@@ -19,7 +19,7 @@ public sealed partial class CycleService
         string? prerequisiteProofHash = CycleStageProofHasher.HashPrerequisites(existing, stage.Prereqs);
         IReadOnlyList<string> prerequisiteArtifactHashes =
             CanonicalArtifactHasher.PrerequisiteArtifactHashes(_repositoryRoot, _stageModel, stage.Id, resolvedFeature);
-        string identity = ChangeSetIdentity.Of(_repositoryRoot, resolvedBaseRef, "HEAD");
+        string identity = StageChangeSetIdentity(resolvedBaseRef, resolvedFeature);
         CycleStageProof proof = CreateStageProof(
             stage, resolvedFeature, identity, prerequisiteProofHash, prerequisiteArtifactHashes);
         var state = new CycleState(

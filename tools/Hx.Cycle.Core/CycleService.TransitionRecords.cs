@@ -23,7 +23,7 @@ public sealed partial class CycleService
         string newBaseRef,
         string feature)
     {
-        string rebasedIdentity = ChangeSetIdentity.Of(_repositoryRoot, newBaseRef, "HEAD");
+        string rebasedIdentity = StageChangeSetIdentity(newBaseRef, feature);
         var rebased = new List<CycleStageProof>();
         foreach (CycleStageProof proof in proofs)
         {

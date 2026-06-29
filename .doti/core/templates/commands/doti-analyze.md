@@ -12,12 +12,12 @@ Read-only toward the **artifacts under review**: report findings and propose rem
 4. **Severity.** CRITICAL = a constitution violation, a missing core artifact, or a requirement with zero coverage that blocks baseline behavior; then HIGH / MEDIUM / LOW. **A constitution conflict is automatically CRITICAL** — resolve it by adjusting the spec/plan/tasks, never by diluting the principle.
 5. **doti drift pass (scaffold-specific).** Compare source assets under `.doti/` with the installed bootstrap files; look for drift, overclaiming, missing command-availability notes, and scaffold payload parity. `Hx.Runner.Cli doti render-skills --check` is the authority for skill / agent-context and scaffold-payload drift.
 6. Record which findings are proven by files and which are advisory judgments.
-7. **Always write the durable report** to `docs/reviews/{feature}-analyze-report.md` (FR-004) — the coverage map, the findings by severity, and the verdict. This report is the stage's bound `produces` artifact (so `analyze` can be safely re-interpreted on a runner bump, SC-021), and the record `/06`/`/08` can refer back to.
+7. **Always write the durable report** to `docs/reviews/{feature}-analyze-report.md` (FR-004) — the coverage map, the findings by severity, and the verdict. This report is the stage's bound `produces` artifact (so `analyze` can be safely re-interpreted on a runner bump, SC-021), and the record `/04`/`/08` can refer back to.
 
-Next-action rule: if any CRITICAL finding exists, recommend resolving it before `/06-doti-arch-review` and `/07-doti-implement`.
+Next-action rule: if any CRITICAL finding exists, recommend resolving it before `/07-doti-implement` (arch-review already ran before analyze).
 
 Expected output: the durable report at `docs/reviews/{feature}-analyze-report.md` — findings ordered by severity, the requirement-coverage map with a coverage count, constitution-alignment issues, and file references where possible.
 
 ## Next
 
-Run `/06-doti-arch-review` to review architecture impacts and rule coverage.
+Run `/07-doti-implement` to implement the tasks.

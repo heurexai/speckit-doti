@@ -16,8 +16,8 @@ public sealed class SentruxSourceScopeTests
     [InlineData("docs/specs/008.md", false)]
     [InlineData(".doti/core/templates/commands/doti-analyze.md", false)]
     [InlineData(".doti/core/skills.json", false)]
-    [InlineData(".claude/skills/05-doti-analyze/SKILL.md", false)]
-    [InlineData(".agents/skills/05-doti-analyze/SKILL.md", false)]
+    [InlineData(".claude/skills/06-doti-analyze/SKILL.md", false)]
+    [InlineData(".agents/skills/06-doti-analyze/SKILL.md", false)]
     public void IsInScope_excludes_prose_and_includes_code(string path, bool expected) =>
         Assert.Equal(expected, SentruxSourceScope.IsInScope(path, Policy));
 

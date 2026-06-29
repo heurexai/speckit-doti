@@ -162,7 +162,7 @@ public static class ErrorCodes
         new("VAL0029", "validation", "VAL", 29, Severity.Error, ExitClass.Validation, "validation.cycle-refresh-not-bound",
             "A stale stage cannot be re-stamped because its produced artifact is absent.", "Re-run the stage's command to produce its artifact before stamping; refresh refuses to bind an absent artifact."),
         new("VAL0030", "validation", "VAL", 30, Severity.Error, ExitClass.Validation, "validation.sentrux-structural-review-required",
-            "Two Sentrux optimization attempts stayed in the escalation band.", "Stop blind optimization; run a structural architecture review (/06-doti-arch-review) to decide functionality-driven growth (evidence-gated rebaseline) vs wrong architecture (refactor)."),
+            "Two Sentrux optimization attempts stayed in the escalation band.", "Stop blind optimization; run a structural architecture review (/04-doti-arch-review) to decide functionality-driven growth (evidence-gated rebaseline) vs wrong architecture (refactor)."),
         new("VAL0031", "validation", "VAL", 31, Severity.Error, ExitClass.Validation, "validation.sentrux-rebaseline-refused",
             "A Sentrux rebaseline was refused.", "A rebaseline needs explicit operator intent AND a change-set-fresh arch-review record classifying the growth as functionality-driven; refactor instead if the architecture is wrong."),
         new("VAL0032", "validation", "VAL", 32, Severity.Error, ExitClass.Validation, "validation.release-train-drift",

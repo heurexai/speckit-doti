@@ -1,6 +1,6 @@
 # doti-constitution
 
-Purpose: author or amend the project **constitution** — the **§2 project declarations** (domain, tech stack, coding style, security, performance) that `/03-doti-plan` and `/06-doti-arch-review` re-inject and evaluate against. The constitution is a **project-level artifact**, authored once and amended occasionally — NOT a per-feature cycle stamp, NOT a numbered `/0N` stage. Runs anytime, outside the numbered cycle.
+Purpose: author or amend the project **constitution** — the **§2 project declarations** (domain, tech stack, coding style, security, performance) that `/03-doti-plan` and `/04-doti-arch-review` re-inject and evaluate against. The constitution is a **project-level artifact**, authored once and amended occasionally — NOT a per-feature cycle stamp, NOT a numbered `/0N` stage. Runs anytime, outside the numbered cycle.
 
 ## Behavior
 
@@ -15,4 +15,4 @@ Expected output: an authored/amended `.doti/memory/constitution.md` with a real,
 
 ## Next
 
-Resume your active cycle stage; the next `/03-doti-plan` and `/06-doti-arch-review` evaluate against the fresh §2 automatically.
+Resume your active cycle stage; the next `/03-doti-plan` and `/04-doti-arch-review` evaluate against the fresh §2 automatically.
