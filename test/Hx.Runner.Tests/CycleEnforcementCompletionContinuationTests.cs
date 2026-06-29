@@ -7,6 +7,51 @@ namespace Hx.Runner.Tests;
 public sealed partial class CycleEnforcementTests
 {
     [Fact]
+    public void ChangeSetBoundStage_StaysFresh_AgainstItsOwnInRangeOwnedDoc()
+    {
+        // 026 regression: the stamp, the transition-rebase, and the freshness check must all compute the
+        // SAME change-set identity (the feature's OWN doc/review artifacts subtracted). Before the fix the
+        // stamp/rebase stored the RAW identity while the check excluded owned paths (the 021 fix only reached
+        // the check), so a change-set-bound stage (drift-review) read a FALSE "stale" against its own
+        // committed doc — exactly what blocked the 026 release stamp until I realised it was non-blocking.
+        string dir = InitRepo();
+        try
+        {
+            WriteWorkflow(dir,
+                "schemaVersion: 2\nstages:\n" +
+                "  - id: specify\n    kind: doc\n    produces: docs/specs/{feature}.md\n    prereqs: []\n" +
+                "  - id: implement\n    kind: diff\n    prereqs: [specify]\n" +
+                "  - id: drift-review\n    kind: review\n    produces: docs/reviews/{feature}-drift-review.md\n    prereqs: [implement]\n" +
+                "  - id: release\n    kind: release\n    prereqs: [drift-review]\n");
+
+            var service = new CycleService(dir);
+            Directory.CreateDirectory(Path.Combine(dir, "docs", "specs"));
+            File.WriteAllText(Path.Combine(dir, "docs", "specs", "001-f.md"), "spec body");
+            Git(dir, "add", "docs/specs/001-f.md");
+            service.Stamp("specify", "001-f", null);
+            service.Stamp("implement", null, null); // specify->implement commits the spec
+
+            WritePassingGateProofForCurrentDiff(dir);
+            service.Stamp("drift-review", null, null); // implement->drift-review (needs gate proof)
+
+            // drift-review's OWN owned artifact, edited + committed, lands in base..HEAD after the stage base.
+            Directory.CreateDirectory(Path.Combine(dir, "docs", "reviews"));
+            File.WriteAllText(Path.Combine(dir, "docs", "reviews", "001-f-drift-review.md"), "drift review body");
+            Git(dir, "add", "docs/reviews/001-f-drift-review.md");
+            Git(dir, "commit", "-q", "-m", "drift review doc");
+            service.Stamp("drift-review", null, null); // re-bind in place (no advance, no rebase)
+
+            // The change-set-bound stage must NOT read stale against its own in-range owned doc.
+            CycleCheckReport check = service.Check("release");
+            Assert.Contains(check.Prerequisites, p => p.Stage == "drift-review" && p.Status == "fresh");
+        }
+        finally
+        {
+            ForceDelete(dir);
+        }
+    }
+
+    [Fact]
     public void AmbiguousHeadMovementDuringPendingTransition_FailsClosed()
     {
         string dir = InitRepo();

@@ -8,7 +8,7 @@ State the user-facing outcome and why it matters.
 
 ## User Scenarios & Testing
 
-**Priority Mode** — declare which fits this change (`/04-doti-tasks` orders the build by it): *code / generated-code* → independently testable user-value slices (the user stories below); *docs / Doti-prose* → authoritative-truth correctness → source-of-truth / rendered-asset drift prevention → operator readability → polish; *workflow / tooling* → fail-closed safety + deterministic proof before ergonomics; *mixed* → declare the **dominant** mode + note exceptions. For a non-code mode, replace the user-story scaffold below with prioritised work items in that mode's order.
+**Priority Mode** — declare which fits this change (`/05-doti-tasks` orders the build by it): *code / generated-code* → independently testable user-value slices (the user stories below); *docs / Doti-prose* → authoritative-truth correctness → source-of-truth / rendered-asset drift prevention → operator readability → polish; *workflow / tooling* → fail-closed safety + deterministic proof before ergonomics; *mixed* → declare the **dominant** mode + note exceptions. For a non-code mode, replace the user-story scaffold below with prioritised work items in that mode's order.
 
 Prioritised user stories (code mode) — journeys ordered by importance. **Each story MUST be INDEPENDENTLY TESTABLE**: implementing just one yields a viable MVP slice that delivers value. Assign priorities `P1` (most critical), `P2`, `P3`, …; the tasks build order follows these priorities (P1 = MVP).
 

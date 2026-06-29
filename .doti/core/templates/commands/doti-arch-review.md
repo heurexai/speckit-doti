@@ -15,7 +15,7 @@ This is a **design review, not a structural-rule pass.** Sentrux and ArchUnitNET
    - **Constitution §2 (codified delivery, 009 FR-008/FR-012).** The same `review-context` output carries `data.constitution` — the project's fresh **§2** declarations, delivered automatically as part of this command (not a separate step to remember). Scope your review by the §2 **tech stack + coding style**: when a changed file violates a §2-declared convention, write a finding that **cites §2** (severity per its impact). This evaluation is **agent-judged**, not a fail-closed gate (the deterministic gate — build/test/ArchUnit/Sentrux/hygiene — is unchanged); a change that conforms to §2 cites nothing. If `data.constitution.exists` is false, proceed — surface the absence (`run /doti-constitution`); §1 stays gate-enforced regardless.
    - **Sub-agents:** *if you are capable of spawning sub-agents, run each applicable lens as its own clean-context sub-agent IN PARALLEL.* Hand each sub-agent: the lens's **Look for** checklist (below), the changed-files list (step 2), the spec `FR`/`SC` IDs + plan decisions + tasks, and pointers to the current code it should read. If you cannot spawn sub-agents, run the applicable lenses yourself, sequentially, one focused pass per lens.
 5. Each finding carries **severity** (BLOCKER / HIGH / MEDIUM / LOW), **evidence** (a spec/plan/task ref or `file:line` — never an unverified assertion), and a **concrete recommendation**. Synthesize into one report ordered by severity; de-duplicate; adversarially verify high-stakes claims (a second pass that tries to refute).
-6. **Verdict + backstop:** an open **BLOCKER** in an *applicable* lens, or a **missing *applicable* lens**, blocks `/07-doti-implement`. A correctly-skipped lens does **not** block. Record proven-vs-advisory and which lenses **ran** vs. **skipped (not applicable)**.
+6. **Verdict + backstop:** an open **BLOCKER** in an *applicable* lens, or a **missing *applicable* lens**, blocks `/05-doti-tasks` (and thus the rest of the cycle). A correctly-skipped lens does **not** block. Record proven-vs-advisory and which lenses **ran** vs. **skipped (not applicable)**.
 
 ## Lens panel (applicability + pre-canned "Look for")
 
@@ -39,4 +39,4 @@ This stage is an advisory design review — no single command mints its proof. T
 
 ## Next
 
-Run `/07-doti-implement` to implement the tasks — only once no BLOCKER is open in an applicable lens.
+Run `/05-doti-tasks` to break the reviewed plan into tasks — only once no BLOCKER is open in an applicable lens.

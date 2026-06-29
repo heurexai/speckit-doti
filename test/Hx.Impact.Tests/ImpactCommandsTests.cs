@@ -66,7 +66,7 @@ public sealed class ImpactCommandsTests
         Assert.Empty(result.NextActions);
     }
 
-    // 007 T040 (FR-043): the same plan, presented for the /06-doti-arch-review audience.
+    // 007 T040 (FR-043): the same plan, presented for the /04-doti-arch-review audience.
     [Fact]
     public void ArchReview_audience_summarizes_changed_files_and_affected_projects()
     {

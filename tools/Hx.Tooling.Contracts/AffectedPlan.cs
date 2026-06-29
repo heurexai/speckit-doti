@@ -30,7 +30,7 @@ public sealed record AffectedPlan(
 {
     /// <summary>
     /// 007 T040 (FR-043): the change set's non-generated changed files — the machine-readable arch-review context
-    /// <c>Hx.Impact.Cli plan --for arch-review</c> emits so <c>/06-doti-arch-review</c> can triage the footprint and
+    /// <c>Hx.Impact.Cli plan --for arch-review</c> emits so <c>/04-doti-arch-review</c> can triage the footprint and
     /// inject one verbatim file list into every lens (no per-lens rediscovery). Populated in every outcome (it is the
     /// change set, not a narrowing), so a <c>full-gate-required</c> or <c>no-tests-required</c> plan still carries it;
     /// empty only for bootstrap/planner-error plans with no change set in scope. Deliberately NOT part of

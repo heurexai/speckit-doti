@@ -92,13 +92,24 @@ public sealed partial class CycleService
     /// new-feature start (<paramref name="additionalExcluded"/>) — must not move the identity that decides whether a
     /// DIFF-kind prerequisite (implement) is still fresh. Safe: the only diff-kind stage produces no artifact, so no
     /// code edit is ever subtracted; doc/review artifacts are bound by their own proof hashes, not this identity.</summary>
-    private string FreshnessIdentity(CycleState? state, IReadOnlyList<string>? additionalExcluded = null)
+    private string FreshnessIdentity(CycleState? state, IReadOnlyList<string>? additionalExcluded = null) =>
+        StageChangeSetIdentity(
+            state?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot), state?.Feature, additionalExcluded);
+
+    /// <summary>
+    /// 026: the SINGLE source of a stage proof's change-set identity — <c>base..HEAD</c> with the feature's OWN
+    /// doc/review artifacts subtracted. The stamp, the transition-rebase, AND the freshness check MUST all use this
+    /// same computation. Before 026 the stamp/rebase stored the RAW identity while the check subtracted owned paths
+    /// (the 021 fix only reached the check), so a change-set-bound stage (implement/drift-review/release) read a FALSE
+    /// stale against its own in-range owned doc — an identity the owned-path-excluding check could never match.
+    /// </summary>
+    private string StageChangeSetIdentity(
+        string baseRef, string? feature, IReadOnlyList<string>? additionalExcluded = null)
     {
-        string baseRef = state?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
         var excluded = new List<string>();
-        if (state is not null)
+        if (!string.IsNullOrWhiteSpace(feature))
         {
-            excluded.AddRange(FeatureArtifactScope.OwnedPaths(_stageModel, state.Feature));
+            excluded.AddRange(FeatureArtifactScope.OwnedPaths(_stageModel, feature));
         }
 
         if (additionalExcluded is { Count: > 0 })

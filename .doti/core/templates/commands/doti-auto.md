@@ -5,10 +5,10 @@ Purpose: drive the numbered Doti cycle (`/01`–`/09`) **automatically** to a ta
 ## Behavior
 
 1. Read `.doti/agent-context.md` and `hx doti cycle status --repo .`. Resolve the **current stage** and the **target** — the `--until <stage>` argument, default `release`. If already at/past the target, report "already at/past `<stage>`" and stop.
-2. **Loop from the current stage to the target.** For each stage in order (specify → clarify → plan → tasks → analyze → arch-review → implement → drift-review → release): run that stage's `/0N` skill behavior, produce its artifact, pass its gate where one applies (`gate run` at `/07` and `/09`), and stamp it with `hx doti cycle stamp`. Then evaluate the **stop conditions** (step 3). If none trip and the target is not reached, advance to the next stage **automatically** — do NOT wait for the operator to type the next command.
+2. **Loop from the current stage to the target.** For each stage in order (specify → clarify → plan → arch-review → tasks → analyze → implement → drift-review → release): run that stage's `/0N` skill behavior, produce its artifact, pass its gate where one applies (`gate run` at `/07` and `/09`), and stamp it with `hx doti cycle stamp`. Then evaluate the **stop conditions** (step 3). If none trip and the target is not reached, advance to the next stage **automatically** — do NOT wait for the operator to type the next command.
 3. **Stop conditions — halt and surface the decision in the Operator-Question Protocol (do not guess past these):**
    - **Operator question / ambiguity:** `/02-clarify` would raise a blocking question, or any stage hits a genuine `[NEEDS CLARIFICATION]` or a design decision you cannot make at ≥95% confidence.
-   - **Arch-review BLOCKER:** `/06` finds an open BLOCKER in an applicable lens (or a missing applicable lens).
+   - **Arch-review BLOCKER:** `/04` finds an open BLOCKER in an applicable lens (or a missing applicable lens).
    - **Unrecoverable gate failure:** a `gate run` failure you cannot resolve by a mechanical in-cycle fix (see step 4).
    - **Publish:** reaching `release` performs only the **local** `hx release`; the remote `v*` tag/branch push is ALWAYS a separate explicit operator step — surface it, never perform it.
    - **Genuine blocker:** missing access, an unverifiable premise, or anything the workflow requires the operator to decide.
