@@ -41,10 +41,13 @@ Core that MUST exist before any user story. **No user-story work begins until th
 
 ## Phase: Polish & Cross-cutting
 
-Docs, cleanup, hardening across stories; the final `gate run --profile release`.
+Cleanup and hardening across stories, then the **mandatory documentation sweep** as the FINAL task, then the final `gate run --profile release`.
 
-- [ ] TXXX — Update README / docs when behavior changes
-- [ ] TXXX — Update installed bootstrap files / re-render when the change touches doti assets
+- [ ] T0XX [P] — <cleanup / hardening as needed> — `path`
+
+**Final task — ALWAYS PRESENT in every cycle (the LAST task; never dropped, never made conditional on "no behavior change"):**
+
+- [ ] T0XX — **Documentation sweep:** update EVERY document that describes what changed so the docs match the code — `README.md` (including any stage/command/order lists and tables), `CHANGELOG.md`, the agent context (`CLAUDE.md` / `AGENTS.md` / `.doti/agent-context.md`), each affected rendered skill, and the `hx describe` / `--help` surface — then re-render installed doti assets. This is permanent: the `/08` code↔docs drift axis and the `release-documentation` gate (every included feature slug must appear in **both** `README.md` **and** `CHANGELOG.md`) enforce it.
 
 ## Dependencies & Execution Order
 
