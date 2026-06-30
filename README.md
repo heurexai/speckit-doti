@@ -213,7 +213,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx doti update-all --root <dir> [--force] [--dry-run]` | Batch-update every Doti repo under a root, fail-soft, with an updated/already-current/failed summary. |
 | `hx doti cycle status/check/stamp` | Report, enforce, or stamp stage proofs. |
 | `hx doti cycle refresh-plan` | Show stale proof recovery steps without mutating anything. |
-| `hx doti cycle refresh --apply-safe` | Rebind only safe-to-reinterpret stale proofs. |
+| `hx doti cycle refresh --apply-safe` | Rebind safe-to-reinterpret **and** content-equal stale proofs (a content change, review stage, or code-bound stage still earns a re-run). |
+| `hx doti cycle review-rebind --target <stage> --attest no-impact [--reason]` | After reading the surfaced upstream diff, record an agent's reviewed **no-impact** verdict on an upstream-changed stage (recorded + decaying); a bare `stamp` of such a stage refuses. |
 | `hx doti task-hash stamp` | Stamp canonical hashes for completed tasks. |
 | `hx doti review-context` | Emit deterministic review context for the current change set. |
 | `hx doti constitution` | Emit the project constitution (§2 declarations) for fresh plan and arch-review context. |
@@ -232,6 +233,10 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 > The doti repo version-lifecycle commands (`check-version` / `scan` / `update` / `update-all`) and the `version --repo` payload-relation fix shipped in `022-doti-repo-version-lifecycle`.
 
 > The development cycle reviews the design before the work that depends on it: `arch-review` runs at `04` (immediately after `plan`), then `tasks` (`05`) and `analyze` (`06`) — shipped in `026-arch-review-after-plan`.
+
+> Stamp reconciliation is codified, not manual: re-running the one genuinely-changed stage auto-rebinds its content-unchanged dependents (a content change, a review stage, or a code-bound stage always earns a real re-run — never a rubber-stamp), and `hx doti update` prunes skill dirs a payload renamed away — shipped in `027-stamp-reconcile-orphan-prune`.
+
+> Reconciliation is also agent-gated and self-describing: when an upstream changes, the engine surfaces the diff and the agent records an explicit re-author or `cycle review-rebind --attest no-impact` verdict (recorded + decaying) — a bare `stamp` of an upstream-changed stage refuses, closing the agent-rubber-stamp hole the engine alone could not. And the workflow's next-step commands are generated from one code model (`DotiActionModel`), never a hand-maintained list that can drift — the §1 *self-describing automation* invariant. Shipped in `028-agent-gated-reconcile`.
 
 ---
 

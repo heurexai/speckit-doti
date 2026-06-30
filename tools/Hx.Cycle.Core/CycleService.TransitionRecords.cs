@@ -31,12 +31,19 @@ public sealed partial class CycleService
             string? prereqHash = CycleStageProofHasher.HashPrerequisites(
                 new CycleState(JsonContractDefaults.SchemaVersion, feature, newBaseRef, stage.Id, rebased),
                 stage.Prereqs);
+            // 027 FR-007: recompute the prerequisite-ARTIFACT binding too. The rebase already re-binds everything
+            // else; without this the proof keeps its pre-transition PrerequisiteArtifactHashes, so the next check
+            // reads a FALSE PrereqArtifactChanged stale even though no upstream content changed across the transition.
+            IReadOnlyList<string> prereqArtifactHashes =
+                CanonicalArtifactHasher.PrerequisiteArtifactHashes(_repositoryRoot, _stageModel, stage.Id, feature);
             rebased.Add(proof with
             {
                 ChangeSetId = rebasedIdentity,
                 ArtifactHashes = ArtifactHashes(stage, feature),
                 StampedAtCommit = newBaseRef,
                 PrerequisiteProofHash = prereqHash,
+                PrerequisiteArtifactHashes = prereqArtifactHashes,
+                StageGraphFingerprint = StageGraphFingerprint(stage),
             });
         }
 

@@ -121,6 +121,75 @@ public sealed class FreshnessReasonTests
     }
 
     [Fact]
+    public void PrereqRebindable_when_own_fresh_and_only_prereq_set_moved_with_identical_shared_content()
+    {
+        // 027 FR-001: own artifact unchanged, change-set identity NOT required, and the bound prereq set differs
+        // from the current closure ONLY by a dropped edge — every SHARED path's content hash is byte-identical.
+        // A pure edge/reorder move that the chokepoint may auto-rebind once upstreams are Fresh.
+        string dir = NewTempDir();
+        try
+        {
+            StageModel model = TwoStageModel(dir);
+            string specHash = Write(dir, "docs/specs/001-test.md", "spec content");
+            string planHash = Write(dir, "docs/plans/001-test-plan.md", "plan");
+            var evaluator = new FreshnessEvaluator(dir, model);
+            CycleStageProof proof = Proof("plan", "ID", [planHash],
+                [$"docs/specs/001-test.md:{specHash}", "docs/specs/001-dropped.md:OLD-EDGE-HASH"]);
+
+            StageFreshnessResult result = evaluator.Evaluate(proof, Feature, "ID", requireChangeSetIdentity: false);
+
+            Assert.Equal(StageFreshness.Stale, result.Freshness);
+            Assert.Equal(StaleReason.PrereqRebindable, result.StaleReason);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void PrereqArtifactChanged_not_rebindable_when_a_shared_prereq_content_value_differs()
+    {
+        // The SAFE invariant's negative: a SHARED path whose content hash differs is a real content VALUE change,
+        // never a pure edge move — it stays PrereqArtifactChanged (RerunRequired), even with identity unrequired.
+        string dir = NewTempDir();
+        try
+        {
+            StageModel model = TwoStageModel(dir);
+            Write(dir, "docs/specs/001-test.md", "spec content");
+            string planHash = Write(dir, "docs/plans/001-test-plan.md", "plan");
+            var evaluator = new FreshnessEvaluator(dir, model);
+            // Same shared path, DIFFERENT bound hash for it (a content value change) + a dropped edge.
+            CycleStageProof proof = Proof("plan", "ID", [planHash],
+                ["docs/specs/001-test.md:CHANGED-VALUE-HASH", "docs/specs/001-dropped.md:OLD-EDGE-HASH"]);
+
+            StageFreshnessResult result = evaluator.Evaluate(proof, Feature, "ID", requireChangeSetIdentity: false);
+
+            Assert.Equal(StaleReason.PrereqArtifactChanged, result.StaleReason);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Change_set_bound_stage_never_rebinds_even_when_only_prereq_set_moved()
+    {
+        // The SAFE invariant locks the 021/026 fix: a change-set-bound stage with a moved identity hits
+        // ChangeSetDiffers first and can NEVER be reclassified as the auto-rebindable PrereqRebindable.
+        string dir = NewTempDir();
+        try
+        {
+            StageModel model = TwoStageModel(dir);
+            string specHash = Write(dir, "docs/specs/001-test.md", "spec content");
+            string planHash = Write(dir, "docs/plans/001-test-plan.md", "plan");
+            var evaluator = new FreshnessEvaluator(dir, model);
+            CycleStageProof proof = Proof("plan", "STAMPED-ID", [planHash],
+                [$"docs/specs/001-test.md:{specHash}", "docs/specs/001-dropped.md:OLD-EDGE-HASH"]);
+
+            StageFreshnessResult result = evaluator.Evaluate(proof, Feature, "MOVED-ID", requireChangeSetIdentity: true);
+
+            Assert.Equal(StaleReason.ChangeSetDiffers, result.StaleReason);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void Fresh_carries_no_stale_reason()
     {
         string dir = NewTempDir();

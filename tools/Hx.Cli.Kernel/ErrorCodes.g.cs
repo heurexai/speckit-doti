@@ -63,6 +63,9 @@ public static class ErrorCodes
     public const string Validation_DotiVersionUnknown = "VAL0034";
     public const string Validation_GitRequired = "VAL0035";
     public const string Integrity_DotiUpdateFailed = "ITG0015";
+    public const string Validation_CycleReviewRebindRequiresAttest = "VAL0036";
+    public const string Validation_CycleReviewRebindIneligible = "VAL0037";
+    public const string Validation_CycleReviewRebindNotStale = "VAL0038";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -175,5 +178,11 @@ public static class ErrorCodes
             "Git is required for this command but was unavailable.", "Install Git and run inside a Git repository; `hx doti update`/`update-all` apply changes in a git worktree."),
         new("ITG0015", "integrity", "ITG", 15, Severity.Error, ExitClass.Integrity, "integrity.doti-update-failed",
             "A Doti repository update failed.", "See the per-repo reason (for example a dirty worktree or a git error) and re-run after resolving it."),
+        new("VAL0036", "validation", "VAL", 36, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-requires-attest",
+            "A bare stamp cannot clear a stage stale only on a prerequisite content change.", "Read the surfaced upstream diff, then re-author the stage OR record a reviewed-no-impact verdict: `doti cycle review-rebind --target <stage> --attest no-impact`."),
+        new("VAL0037", "validation", "VAL", 37, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-ineligible",
+            "The target stage is not eligible for a reviewed-no-impact rebind.", "Only a doc/non-review, non-change-set-bound stage stale solely on a prerequisite content change can be attested; re-run the stage's command instead."),
+        new("VAL0038", "validation", "VAL", 38, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-not-stale",
+            "The target stage is not stale; there is nothing to attest.", "Run `doti cycle status` to confirm the stage's freshness; review-rebind only applies to a stage stale on a prerequisite content change."),
     ];
 }

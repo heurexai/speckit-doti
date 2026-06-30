@@ -23,6 +23,10 @@ Use the shared **Operator-Question Protocol** (rendered in this skill's `SKILL.m
 
 Expected output: each clarified decision recorded in the spec's `## Clarifications`, with any unresolved questions explicitly listed if the operator stops early.
 
+## Reconciling after an upstream change
+
+If you are re-running this stage because an upstream artifact changed, the engine has already done the bookkeeping: the stale stage carries the changed upstream paths + the line-level diff. Read it and assess impact before acting — re-author here if the change affects this stage's artifact; if you review the diff and it provably does not, record `hx doti cycle review-rebind --target <this-stage> --attest no-impact --reason "<why>"` instead. Clearing the stale flag without assessing the diff is a rubber-stamp and is forbidden — a bare `hx doti cycle stamp` of an upstream-changed stage refuses and routes you to the verb.
+
 ## Next
 
 Run `/03-doti-plan` to author the implementation plan.

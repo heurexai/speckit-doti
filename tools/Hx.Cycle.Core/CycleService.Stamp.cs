@@ -4,17 +4,29 @@ namespace Hx.Cycle.Core;
 
 public sealed partial class CycleService
 {
+    // 027 FR-006: re-entrancy guard for the on-stamp auto-cascade. A successful Stamp auto-rebinds its
+    // content-equal dependents by re-running the safe refresh; those nested Stamp calls must NOT themselves
+    // trigger another cascade (Stamp -> Refresh -> Stamp -> Refresh ...). [ThreadStatic] so a parallel test's
+    // service instance is unaffected; the field is per-thread ambient state, reset in a finally.
+    [ThreadStatic]
+    private static bool _cascadeInProgress;
+
     public CycleState Stamp(string stageId, string? feature, string? baseRef, string? releaseIntent = null)
     {
         CycleStage stage = _stageModel.Find(stageId); // fail-closed on an unknown stage
         string? normalizedReleaseIntent = NormalizeReleaseIntent(stage, releaseIntent);
-        RecoveryEvaluation recovery = RecoverStateIfNeeded();
+        var recovery = RecoverStateIfNeeded();
         CycleState? existing = ResolveExistingForStamp(stage, feature, recovery);
         string resolvedFeature = ResolveStampFeature(feature, existing);
 
         EnsureNumberedFeatureSlugOnInitialStamp(stage, feature);
         existing = TransitionBeforeStamp(stage, feature, existing, normalizedReleaseIntent);
         string resolvedBaseRef = baseRef ?? existing?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
+        // 028 FR-004/B1: the in-Stamp eligibility fence. A bare `doti cycle stamp` must not silently clear an
+        // ATTESTABLE stale of the target (own artifact unchanged, only prerequisite content diverged) — that is the
+        // exact agent rubber-stamp this cycle closes. Evaluate the target's OWN freshness (EnsurePrerequisitesFresh
+        // below only checks its prerequisites) and refuse, routing to the recorded `review-rebind` verb.
+        RefuseBareStampOnAttestableStale(stage, existing, resolvedBaseRef, resolvedFeature);
         EnsurePrerequisitesFresh(stage);
         string? prerequisiteProofHash = CycleStageProofHasher.HashPrerequisites(existing, stage.Prereqs);
         IReadOnlyList<string> prerequisiteArtifactHashes =
@@ -32,7 +44,72 @@ public sealed partial class CycleService
             CompletedUnreleasedCycles: existing?.CompletedUnreleasedCycles,
             ReleasedCycles: existing?.ReleasedCycles);
         _store.Write(state);
+        CascadeSafeRebindAfterStamp(stage);
         return state;
+    }
+
+    /// <summary>
+    /// 027 FR-006: after a stage is stamped, auto-rebind its content-equal dependents so re-running the ONE
+    /// genuinely-changed stage settles the rest with zero manual stamps. The cascade is the SAME safe refresh the
+    /// chokepoint already computes (one projection, never a second evaluator), bounded to the stamped stage's
+    /// dependents (the most-downstream dependent's prerequisite closure is exactly the stamped stage + everything
+    /// between), prerequisite-first, and re-entrancy-guarded (its own nested Stamp calls do not re-cascade). The
+    /// planner gate guarantees ONLY <see cref="RestampSafety.ReBindContentEqual"/> / <see cref="RestampSafety.SafeReinterpret"/>
+    /// steps are stamped — a RerunRequired / ChangeSetDiffers / inserted-stage step is never auto-stamped. A cascade
+    /// failure is isolated: it never fails or rolls back the primary stamp.
+    /// </summary>
+    private void CascadeSafeRebindAfterStamp(CycleStage stamped)
+    {
+        if (_cascadeInProgress)
+        {
+            return; // a nested stamp issued BY the cascade itself — do not recurse.
+        }
+
+        CycleStage? deepestDependent = MostDownstreamDependent(stamped);
+        if (deepestDependent is null)
+        {
+            return; // no stage depends on the stamped stage — nothing to cascade.
+        }
+
+        _cascadeInProgress = true;
+        try
+        {
+            // Refresh --apply-safe is the deterministic projection: it stamps only planner-safe steps
+            // (ReBindContentEqual gated by all-upstreams-Fresh + not-review-kind; SafeReinterpret migrations),
+            // prereq-first, re-deriving after each so a chain settles, and terminates.
+            Refresh(deepestDependent.Id, applySafe: true);
+        }
+        catch (Exception)
+        {
+            // FR-006: a cascade failure must never fail or roll back the primary stamp. The primary stamp is
+            // already persisted; any un-rebound dependent simply re-surfaces as stale on the next check.
+        }
+        finally
+        {
+            _cascadeInProgress = false;
+        }
+    }
+
+    /// <summary>The most-downstream stage whose transitive prerequisite closure contains <paramref name="stamped"/>
+    /// (the last-declared dependent). Refreshing it bounds the cascade to the stamped stage's dependents. Null when
+    /// no stage depends on the stamped stage.</summary>
+    private CycleStage? MostDownstreamDependent(CycleStage stamped)
+    {
+        CycleStage? deepest = null;
+        int deepestOrdinal = -1;
+        for (int i = 0; i < _stageModel.Stages.Count; i++)
+        {
+            CycleStage candidate = _stageModel.Stages[i];
+            bool dependsOnStamped = _stageModel.TransitivePrereqStages(candidate.Id)
+                .Any(p => string.Equals(p.Id, stamped.Id, StringComparison.OrdinalIgnoreCase));
+            if (dependsOnStamped && i > deepestOrdinal)
+            {
+                deepest = candidate;
+                deepestOrdinal = i;
+            }
+        }
+
+        return deepest;
     }
 
     private static string? NormalizeReleaseIntent(CycleStage stage, string? releaseIntent)
@@ -133,6 +210,41 @@ public sealed partial class CycleService
         }
     }
 
+    /// <summary>
+    /// 028 FR-004 / B1: the in-Stamp eligibility fence. If an EXISTING proof for the target stage is stale in the
+    /// ATTESTABLE way (own artifact content unchanged, only a prerequisite artifact's content diverged, and the stage
+    /// is non-review + non-change-set-bound — <see cref="ReviewRebindEligibility.IsAttestable"/>), a bare
+    /// <c>doti cycle stamp</c> would clear the flag with no impact assessment and no record — the agent rubber-stamp.
+    /// Refuse it, throwing a <see cref="CycleInputException"/> routed to <c>Validation_CycleReviewRebindRequiresAttest</c>
+    /// and directing the agent to <c>doti cycle review-rebind --attest no-impact</c>. A real re-author (own-artifact
+    /// hash changed) is NOT attestable, so it stamps normally; a first stamp (no existing proof) is never fenced.
+    /// </summary>
+    private void RefuseBareStampOnAttestableStale(
+        CycleStage stage, CycleState? existing, string resolvedBaseRef, string resolvedFeature)
+    {
+        CycleStageProof? targetProof = existing?.Stages.FirstOrDefault(
+            s => string.Equals(s.Stage, stage.Id, StringComparison.OrdinalIgnoreCase));
+        if (targetProof is null)
+        {
+            return; // first stamp of this stage — nothing to clear, never fenced.
+        }
+
+        bool requiresChangeSetIdentity = RequiresChangeSetIdentity(stage.Id);
+        string identity = StageChangeSetIdentity(resolvedBaseRef, resolvedFeature);
+        var evaluator = new FreshnessEvaluator(_repositoryRoot, _stageModel);
+        StageFreshnessResult freshness = evaluator.Evaluate(
+            targetProof, resolvedFeature, identity, requiresChangeSetIdentity);
+
+        if (ReviewRebindEligibility.IsAttestable(freshness, stage, requiresChangeSetIdentity))
+        {
+            throw new CycleReviewRebindRequiredException(
+                $"Stage '{stage.Id}' is stale only because a prerequisite artifact's content changed; a bare stamp cannot "
+                + "clear it. Read the surfaced upstream diff, then either re-author the stage or record a reviewed-no-impact "
+                + $"verdict: `doti cycle review-rebind --target {stage.Id} --attest no-impact`.",
+                stage.Id);
+        }
+    }
+
     private void EnsurePrerequisitesFresh(CycleStage stage)
     {
         if (stage.Prereqs.Count == 0)
@@ -166,7 +278,14 @@ public sealed partial class CycleService
             ArtifactHashes(stage, resolvedFeature),
             GitRefs.TryHeadSha(_repositoryRoot),
             prerequisiteProofHash,
-            prerequisiteArtifactHashes);
+            prerequisiteArtifactHashes,
+            StageGraphFingerprint(stage));
+
+    /// <summary>027 FR-010: the ordered transitive prerequisite STAGE-ID set the proof is stamped against
+    /// (declaration order — deterministic). Records the stage GRAPH the proof was bound to, so an edge/reorder is
+    /// distinguishable from a content change and detectable across a stage-model migration.</summary>
+    private IReadOnlyList<string> StageGraphFingerprint(CycleStage stage) =>
+        _stageModel.TransitivePrereqStages(stage.Id).Select(s => s.Id).ToList();
 
     private IReadOnlyList<string> ArtifactHashes(CycleStage stage, string resolvedFeature)
     {

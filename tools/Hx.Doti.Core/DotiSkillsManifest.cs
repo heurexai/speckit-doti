@@ -20,4 +20,8 @@ public sealed record DotiSkillEntry(
     string Description,
     string? ArgumentHint,
     IReadOnlyList<string> Highlights,
-    string NextStage);
+    // 028 FR-010: the next-step prose is rehomed onto the model-backed DotiWorkflowPresentation (the deleted
+    // DotiWorkflowRegistry + skills.json nextStage). This field is now optional/unused — kept nullable so the
+    // manifest deserializes without it (skills.json no longer declares nextStage) and the renderer's call-site
+    // signature stays source-compatible.
+    string? NextStage = null);

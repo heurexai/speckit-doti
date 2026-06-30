@@ -11,4 +11,9 @@
     <!-- The stage model lives in workflow.yml. -->
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- 028 H5: the cycle unit tests use the internal CycleService(repo, store, stageModel) test seam to exercise the
+         review-rebind verb + its one-write atomicity without re-deriving the store/model from a real repo. -->
+    <InternalsVisibleTo Include="Hx.Cycle.Tests" />
+  </ItemGroup>
 </Project>

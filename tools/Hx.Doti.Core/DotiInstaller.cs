@@ -91,21 +91,9 @@ public static class DotiInstaller
         CopyPrerequisitePolicy(payloadRoot, targetRepoRoot);
         IReadOnlyList<string> gitIgnoreWrites = DotiGitIgnore.Ensure(targetRepoRoot);
 
-        IReadOnlyList<ManagedAssetHashEntry> obsoleteAssets = RemoveObsoleteLegacyDotiAssets(
-            targetRepoRoot, force, removed, preserved, blocked);
-
-        ManagedAssetScanner.WriteBaseline(targetRepoRoot, DotiRenderer.BuildTargets(targetRepoRoot, agents), obsoleteAssets);
-        installed.Add(new DotiInstallPathEffect(ManagedAssetManifestStore.RelativePath, "canonical managed-asset baseline written"));
-        copied.AddRange(gitIgnoreWrites);
-        installed.AddRange(gitIgnoreWrites.Select(path => new DotiInstallPathEffect(path, "Doti runtime state ignore entries ensured")));
-
-        // 007 T030: stamp .doti/payload.json with the bundled payload version (verbatim from the descriptor) so the
-        // next install can branch absent/equal/older/newer. Written atomically so a crash re-runs to a clean state.
-        if (bundledVersion is not null)
-        {
-            RepoPayloadStore.Write(targetRepoRoot, bundledVersion, ReadBundledToolVersion(payloadRoot) ?? bundledVersion);
-            installed.Add(new DotiInstallPathEffect(".doti/payload.json", "repo payload version stamped from the bundled descriptor"));
-        }
+        FinalizeManagedBaseline(
+            payloadRoot, targetRepoRoot, agents, gitIgnoreWrites, bundledVersion, force,
+            copied, installed, preserved, removed, blocked);
 
         MaterializeRepoTemplates(payloadRoot, targetRepoRoot, copied, installed);
 
@@ -131,6 +119,53 @@ public static class DotiInstaller
             removed,
             skipped,
             blocked);
+    }
+
+    /// <summary>
+    /// Finalize the managed-asset baseline after the payload reconcile + render: sweep obsolete assets (legacy
+    /// <c>doti/</c> twin + 027 FR-008 orphaned renamed skill dirs the new render no longer targets), write the
+    /// canonical managed-asset baseline over the current render targets, record the gitignore effects, and stamp
+    /// <c>.doti/payload.json</c> with the bundled version. Extracted from <see cref="Install"/> as one cohesive
+    /// finalize step so <c>Install</c> stays within the Sentrux function-size budget.
+    /// </summary>
+    private static void FinalizeManagedBaseline(
+        string payloadRoot,
+        string targetRepoRoot,
+        IReadOnlyList<DotiAgentTarget> agents,
+        IReadOnlyList<string> gitIgnoreWrites,
+        string? bundledVersion,
+        bool force,
+        List<string> copied,
+        List<DotiInstallPathEffect> installed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> removed,
+        List<DotiInstallPathEffect> blocked)
+    {
+        IReadOnlyList<DotiRenderTarget> renderTargets = DotiRenderer.BuildTargets(targetRepoRoot, agents);
+
+        IReadOnlyList<ManagedAssetHashEntry> legacyObsolete = RemoveObsoleteLegacyDotiAssets(
+            targetRepoRoot, force, removed, preserved, blocked);
+
+        // 027 FR-008: prune managed skill dirs the NEW render no longer targets (a stage renumber renames the dir
+        // and would otherwise leave the old one), sourced from an on-disk scan so a pre-category repo with an empty
+        // prior manifest is still covered; only baseline-clean files are deleted (operator-edited orphans preserved).
+        IReadOnlyList<ManagedAssetHashEntry> orphanObsolete = PruneOrphanedManagedSkillDirs(
+            targetRepoRoot, agents, renderTargets, force, removed, preserved, blocked);
+
+        IReadOnlyList<ManagedAssetHashEntry> obsoleteAssets = [.. legacyObsolete, .. orphanObsolete];
+
+        ManagedAssetScanner.WriteBaseline(targetRepoRoot, renderTargets, obsoleteAssets);
+        installed.Add(new DotiInstallPathEffect(ManagedAssetManifestStore.RelativePath, "canonical managed-asset baseline written"));
+        copied.AddRange(gitIgnoreWrites);
+        installed.AddRange(gitIgnoreWrites.Select(path => new DotiInstallPathEffect(path, "Doti runtime state ignore entries ensured")));
+
+        // 007 T030: stamp .doti/payload.json with the bundled payload version (verbatim from the descriptor) so the
+        // next install can branch absent/equal/older/newer. Written atomically so a crash re-runs to a clean state.
+        if (bundledVersion is not null)
+        {
+            RepoPayloadStore.Write(targetRepoRoot, bundledVersion, ReadBundledToolVersion(payloadRoot) ?? bundledVersion);
+            installed.Add(new DotiInstallPathEffect(".doti/payload.json", "repo payload version stamped from the bundled descriptor"));
+        }
     }
 
     /// <summary>
@@ -316,6 +351,158 @@ public static class DotiInstaller
         }
 
         return obsoleteEntries;
+    }
+
+    /// <summary>
+    /// 027 FR-008: prune managed skill dirs (category skill-generated-instruction, under an agent
+    /// <see cref="DotiAgentTarget.SkillsRoot"/>) the new render no longer targets — the renumber-orphan fix. Candidate
+    /// dirs come from an ON-DISK scan of each SkillsRoot for <c>*doti-*</c> dirs (so a pre-category repo whose prior
+    /// manifest is empty is still covered, the chicken-and-egg the adversarial pass flagged), minus the dirs the
+    /// current render targets. Each orphan's files are deleted ONLY when baseline-clean (the prior manifest's recorded
+    /// canonical hash matches); an operator-edited or unbaselined orphan file is preserved and its dir is blocked (no
+    /// <c>--force</c> destruction of operator edits). Emptied dirs are pruned; the removed files are returned so the
+    /// new baseline records them in <c>ObsoleteAssets</c>.
+    /// </summary>
+    private static IReadOnlyList<ManagedAssetHashEntry> PruneOrphanedManagedSkillDirs(
+        string targetRepoRoot,
+        IReadOnlyList<DotiAgentTarget> agents,
+        IReadOnlyList<DotiRenderTarget> renderTargets,
+        bool force,
+        List<DotiInstallPathEffect> removed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> blocked)
+    {
+        HashSet<string> keptDirs = RenderedSkillDirs(renderTargets);
+        ManagedAssetManifest? priorManifest = ManagedAssetManifestStore.Read(targetRepoRoot);
+        Dictionary<string, ManagedAssetHashEntry> baseline = priorManifest is null
+            ? new Dictionary<string, ManagedAssetHashEntry>(StringComparer.OrdinalIgnoreCase)
+            : priorManifest.Assets
+                .GroupBy(a => a.Path.Replace('\\', '/'), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var obsolete = new List<ManagedAssetHashEntry>();
+        foreach (DotiAgentTarget agent in agents)
+        {
+            string skillsRootFull = ResolveInside(targetRepoRoot, agent.SkillsRoot);
+            if (!Directory.Exists(skillsRootFull))
+            {
+                continue;
+            }
+
+            foreach (string dir in Directory.GetDirectories(skillsRootFull))
+            {
+                string dirName = Path.GetFileName(dir);
+                string relDir = $"{agent.SkillsRoot}/{dirName}".Replace('\\', '/');
+                if (!dirName.Contains("doti-", StringComparison.OrdinalIgnoreCase) || keptDirs.Contains(relDir))
+                {
+                    continue; // not a managed Doti skill dir, or the current render still targets it
+                }
+
+                PruneOneOrphanDir(targetRepoRoot, dir, relDir, baseline, force, removed, preserved, blocked, obsolete);
+            }
+        }
+
+        return obsolete;
+    }
+
+    /// <summary>The set of skill dirs (<c>{SkillsRoot}/{skillId}</c>) the current render targets — the immediate
+    /// child dir under any agent SkillsRoot for every rendered file. A dir absent from this set but present on disk
+    /// is an orphan.</summary>
+    private static HashSet<string> RenderedSkillDirs(IReadOnlyList<DotiRenderTarget> renderTargets)
+    {
+        var dirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (DotiAgentTarget agent in DotiAgentTarget.All)
+        {
+            string prefix = agent.SkillsRoot.Replace('\\', '/') + "/";
+            foreach (DotiRenderTarget target in renderTargets)
+            {
+                string path = target.RelativePath.Replace('\\', '/');
+                if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string remainder = path[prefix.Length..];
+                int slash = remainder.IndexOf('/');
+                if (slash > 0)
+                {
+                    dirs.Add(prefix + remainder[..slash]);
+                }
+            }
+        }
+
+        return dirs;
+    }
+
+    private static void PruneOneOrphanDir(
+        string targetRepoRoot,
+        string dirFull,
+        string relDir,
+        IReadOnlyDictionary<string, ManagedAssetHashEntry> baseline,
+        bool force,
+        List<DotiInstallPathEffect> removed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> blocked,
+        List<ManagedAssetHashEntry> obsolete)
+    {
+        bool anyPreserved = false;
+        foreach (string file in Directory.GetFiles(dirFull, "*", SearchOption.AllDirectories))
+        {
+            string rel = Path.GetRelativePath(targetRepoRoot, file).Replace('\\', '/');
+            if (force)
+            {
+                File.Delete(file);
+                removed.Add(new DotiInstallPathEffect(rel, "orphaned managed skill asset force-removed (render no longer targets this dir)"));
+                continue;
+            }
+
+            if (!baseline.TryGetValue(rel, out ManagedAssetHashEntry? entry))
+            {
+                anyPreserved = true;
+                blocked.Add(new DotiInstallPathEffect(rel, "orphaned skill asset has no managed baseline; preserved (operator-owned), rerun with --force to remove"));
+                continue;
+            }
+
+            CanonicalHash current = CanonicalContentHasher.HashFile(file, entry.HashProfile);
+            if (!string.Equals(current.Sha256, entry.Sha256, StringComparison.Ordinal))
+            {
+                anyPreserved = true;
+                blocked.Add(new DotiInstallPathEffect(rel, "orphaned managed skill asset was operator-modified; preserved, rerun with --force to remove"));
+                continue;
+            }
+
+            File.Delete(file);
+            removed.Add(new DotiInstallPathEffect(rel, "obsolete managed skill asset removed after canonical baseline match (render renamed this dir away)"));
+            obsolete.Add(entry);
+        }
+
+        PruneEmptyOrphanDir(dirFull, relDir, anyPreserved, removed, preserved);
+    }
+
+    private static void PruneEmptyOrphanDir(
+        string dirFull,
+        string relDir,
+        bool anyPreserved,
+        List<DotiInstallPathEffect> removed,
+        List<DotiInstallPathEffect> preserved)
+    {
+        foreach (string sub in Directory.GetDirectories(dirFull, "*", SearchOption.AllDirectories).OrderByDescending(d => d.Length))
+        {
+            if (!Directory.EnumerateFileSystemEntries(sub).Any())
+            {
+                Directory.Delete(sub);
+            }
+        }
+
+        if (!Directory.EnumerateFileSystemEntries(dirFull).Any())
+        {
+            Directory.Delete(dirFull);
+            removed.Add(new DotiInstallPathEffect(relDir + "/", "obsolete managed skill dir removed after all files matched baseline"));
+        }
+        else if (anyPreserved)
+        {
+            preserved.Add(new DotiInstallPathEffect(relDir + "/", "orphaned skill dir preserved; contains operator-edited or unbaselined content"));
+        }
     }
 
     private static void RemoveEmptyDirectories(string repoRoot, string root, List<DotiInstallPathEffect> removed)

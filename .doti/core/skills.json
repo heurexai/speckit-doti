@@ -10,8 +10,7 @@
       "name": "doti-specify",
       "description": "Create or refine a scaffold-dotnet specification in command-aware-advisory mode.",
       "argumentHint": "[feature or goal]",
-      "highlights": [],
-      "nextStage": "Run `/02-doti-clarify` to resolve ambiguities, or `/03-doti-plan` when no clarification is needed."
+      "highlights": []
     },
     {
       "name": "doti-clarify",
@@ -19,8 +18,7 @@
       "argumentHint": "[question or request]",
       "highlights": [
         "Clarify specifics: ask blocking questions one at a time as PLAIN PROSE (one question per message — NOT a multiple-choice dialog/widget like AskUserQuestion; render the full protocol in the message so the operator reads the reasoning and replies in their own words), fold each answer into the spec's `## Clarifications` before asking the next, and let the operator stop at any point. Use the shared operator-question format above (Context / Why it matters / Options / Recommendation / Assumptions / Confidence + the evidence requirement) for every question."
-      ],
-      "nextStage": "Run `/03-doti-plan` to author the implementation plan."
+      ]
     },
     {
       "name": "doti-plan",
@@ -28,22 +26,19 @@
       "argumentHint": "[implementation goal]",
       "highlights": [
         "This stage ORIGINATES the best design (arch-review later challenges it; implement preserves it). Two rules: (1) Assess the existing architecture BEFORE deciding — read the similar existing code, the *.Core vs *.Cli boundary the change lands in, the command->CliResult->error-code convention, rules/architecture.json + .sentrux/rules.toml, and any scaffold/templates/** implications; the design must fit those patterns or justifiably change them (name which). (2) Choose the SIMPLEST CORRECT, MODULAR design — effort is NOT a design criterion: never pick an approach because it is less work. Prefer the simplest design that satisfies the FR/SCs, fits the existing patterns, preserves deterministic proof (gates stay fail-closed, nothing downgraded enforced->advisory), and avoids future drift; and make it modular — small single-responsibility units, a named *.Core type per behavior, one concern per file/class, composed rather than INLINED (right-sized, not premature abstraction). Reject alternatives by architectural trade-off, not by convenience. Record Decision/Rationale/Alternatives-rejected and the architecture delta (the ArchUnit family + Sentrux boundary) so the design is enforced, not just described."
-      ],
-      "nextStage": "Run `/04-doti-arch-review` — required when the change has architecture impact (production code, contracts, CLI, dependencies, or scaffold-template code), advisory (a quick no-op review record) when it has none."
+      ]
     },
     {
       "name": "doti-tasks",
       "description": "Convert scaffold-dotnet plans into executable tasks without hiding missing gates.",
       "argumentHint": "[plan or scope]",
-      "highlights": [],
-      "nextStage": "Run `/06-doti-analyze` for a cross-artifact consistency review."
+      "highlights": []
     },
     {
       "name": "doti-analyze",
       "description": "Analyze scaffold-dotnet source, installed assets, docs, and advisory gaps.",
       "argumentHint": "[files or topic]",
-      "highlights": [],
-      "nextStage": "Run `/07-doti-implement` to implement the tasks."
+      "highlights": []
     },
     {
       "name": "doti-arch-review",
@@ -51,8 +46,7 @@
       "argumentHint": "[architecture change]",
       "highlights": [
         "A multi-lens DESIGN review of the plan's design — run right after /03-doti-plan and before tasks/analyze, so a design flaw is caught before the build work depends on it. The stage ALWAYS runs (a hard prereq of /05-doti-tasks) but its DEPTH is conditional (FR-028/SC-013): TRIAGE the change first, then activate ONLY the lenses it actually touches — a lens whose concern the change does not touch EXITS 'not applicable' and spawns no sub-agent. CRUCIAL triage split: 'templates' is not one thing — Doti PROSE (command templates under .doti/core/templates/commands/, skills, agent-context, docs) is no-code and skips the code lenses; but GENERATED-CODE templates under `scaffold/templates/**` (the .cs/.csproj/tests/rules that become a real generated repo) ARE code — run the code lenses there exactly like production ('it's a template' is no excuse). Run the applicable lenses (design-soundness, edge-case/failure-mode, data-contract, security, blast-radius, simpler-alternative, modularity-design-smells, testability, fit-with-current-architecture) — each carries a pre-canned 'look for' checklist; if you are capable of sub-agents, run one clean-context sub-agent per lens IN PARALLEL — against the spec/plan/tasks + current code, with the changed-files context fetched ONCE (`hx impact plan --for arch-review --json`, or `git diff` fallback) and injected into every lens; each finding carries severity (BLOCKER/HIGH/MEDIUM/LOW) + evidence (`file:line` or spec/plan ref) + a fix. ALWAYS write the review to `docs/reviews/{NNN-slug}-arch-review.md` — the review record /08-drift-review reads (a future cycle binds it as the stage's produces artifact); a no-code change still writes a minimal no-op record naming the triage result, it does not skip the stage. Sentrux/ArchUnitNET are NOT run here — they measure implemented code and are enforced by `gate run` at `/07` (the `cliSurfaceConfinement`/`cliDelegation` ArchUnitNET families + the Sentrux layer/cycle boundaries). An open BLOCKER in an applicable lens, or a missing applicable lens, blocks `/05-doti-tasks` (and thus the rest of the cycle); a correctly-skipped lens does not."
-      ],
-      "nextStage": "Run `/05-doti-tasks` to break the reviewed plan into executable tasks."
+      ]
     },
     {
       "name": "doti-implement",
@@ -61,8 +55,7 @@
       "highlights": [
         "Implement REINFORCES the approved design — it is NOT where design happens. Make narrow edits aligned with the spec/plan/tasks, built MODULARLY — extract each distinct concern into a named, separately-testable method/type (logic in a *.Core type; the CLI stays parse->delegate->render), composed rather than INLINED; keep methods within the Sentrux function-size limit (don't over-split either). If implementation reveals the plan/arch-review is materially wrong (a better architecture, or a design that won't satisfy an FR/SC), STOP — do not silently code a different design (drift /08 + the gate can't fully catch) and do not force-fit a plan you've found wrong. Report the mismatch and re-run /03-doti-plan (then /05-doti-tasks / /04-doti-arch-review as needed) before coding through it.",
         "Engineering discipline (required): RCA root causes — don't patch symptoms; validate every assumption by reading the code, running the command, or observing the output (never assume; prove claims with evidence); take no shortcuts (don't silence checks, hard-code around problems, or declare done without proof); hold a 95%-confidence bar — if not ≥95% confident the solution and code are correct, keep finding better approaches or validating until you are; if truly blocked, surface it with what you tried rather than guess; report honestly (what was validated, what remains, deferrals with rationale)."
-      ],
-      "nextStage": "Run `/08-doti-drift-review` to check the diff against the approved design."
+      ]
     },
     {
       "name": "doti-drift-review",
@@ -70,8 +63,7 @@
       "argumentHint": "[optional scope]",
       "highlights": [
         "SCOPE FROM THE IMPLEMENTATION DIFF first, don't scan blind — resolve the cycle base (`baseRef` in `.doti/cycle-state.json`, the commit BEFORE implementation) and take `git diff <baseRef>..HEAD` plus the working tree: the before→after change set. Every axis works from what CHANGED this cycle, not the whole repo. (Agent-run `git diff` for now; a future cycle folds the diff into hx as a first-class command, like the T040 arch-review changed-files context.) Then THREE drift axes, not just asset parity — a green gate proves the code is internally sound; drift-review proves it still AGREES with everything around it. (1) spec↔code: each changed hunk satisfies its FR/SC with a real enforcing mechanism and matches the approved arch-review/plan design — nothing silently downgraded from enforced to advisory, no logic that belongs in *.Core landing in *.Cli; back it with `hx doti converge` for the (not-diff-bound) spec→tasks coverage gap, then spot-check the covering code. The SPEC is the source of truth — a spec↔code gap is an implementation bug fixed by correcting the CODE in THIS cycle, NEVER by amending/downgrading the spec to match the code and never by deferring the gap (do not even offer that as an option). (2) code↔docs: for each CODE change in the diff, the doc that describes it (README/CHANGELOG/packaging + the agent context CLAUDE.md/AGENTS.md/.doti/agent-context.md + each rendered skill's Command-availability + `hx describe`/`--help`) must have changed to match — a code change with NO doc change is the prime suspect; and for each symbol the diff REMOVED/renamed, grep the repo so the old name survives in no doc (the stale-Velopack class of miss). (3) source↔installed: run BOTH parity authorities — `doti render-skills --check` (rendered skills/agent-context/entrypoints) AND `doti payload check --repo .` (the full installed `.doti` payload, static assets + rendered) — plus thin AGENTS.md/CLAUDE.md entrypoints, no hand-edited installed skills (fix the `.doti/core` source + re-render). Then `gate run --profile normal` (blocking) and stamp drift-review ONLY on a clean review — the stamp is fail-closed (a clean stamp is the readiness proof; there is no `commit` stage, the coded transition into /09 owns the commit) — open drift in any applicable axis blocks the stamp. Triage the diff first (a docs-only diff skips the spec↔code design checks); if you can spawn sub-agents, run each applicable axis as a parallel pass over the diff."
-      ],
-      "nextStage": "Run `/09-doti-release` to release, or `/01-doti-specify` to add another feature to this release train."
+      ]
     },
     {
       "name": "doti-release",
@@ -79,8 +71,7 @@
       "argumentHint": "[release intent]",
       "highlights": [
         "Default version intent is cycle-type-aware (FR-044/SC-016): a feature cycle defaults to `minor` — the release-stage transition (`doti cycle stamp --stage release`) writes `+semver: minor` into the automatic transition commit, so GitVersion calculates a minor bump and `hx release`'s blank intent (which follows that bump) validates by default rather than failing 'Release intent mismatch'. A bug-fix-only cycle (the FR-034 assess->fix->test mini-cycle) never hits that transition, so it writes no minor signal and defaults to `patch`. An explicit `--major|--minor|--patch` overrides the +semver trailer and the release default together (kept in lockstep)."
-      ],
-      "nextStage": "Cycle complete. Start the next feature with `/01-doti-specify`."
+      ]
     },
     {
       "name": "doti-upgrade",
@@ -88,8 +79,7 @@
       "argumentHint": "[optional]",
       "highlights": [
         "Drives BOTH update planes. Plane A updates the hx tool on this machine — `dotnet tool update -g Heurex.SpeckitDoti` for the NuGet global-tool channel, or the Microsoft Store for an MSIX install. Plane B reconciles THIS repo's `.doti` via `hx doti install --repo .`: the version-aware reconciliation preserves operator-modified managed files (a modified asset is kept and the bundled version is staged as a `.new` sidecar; an operator-deleted asset is not resurrected without `--force`; a repo whose payload is ahead of the bundled one is refused). Report the tool vX->vY transition (or 'already current') and the repo install/migrate/preserve/block result, flagging any `.new` sidecars to merge."
-      ],
-      "nextStage": "Resume your active cycle stage, or start a feature with `/01-doti-specify`."
+      ]
     },
     {
       "name": "doti-bug",
@@ -97,8 +87,7 @@
       "argumentHint": "[bug summary or id]",
       "highlights": [
         "ENFORCED assess -> fix -> test via `hx doti bug assess|fix|test`, recorded under `.doti/bugs/<bugId>/`. assess is read-only (verdict/severity/remediation contract; writes no code); fix is the only writer and fails closed unless bound to a CONFIRMED assessment (`bug-assessment-missing` / `bug-fix-unbound`); test is an honest verification where a `pass` requires evidence (an evidence-free pass is downgraded — no over-claiming). Each stage is proof-bound: the fix binds to the assessment's content hash, the test to the fix's. Per-stage detail: `extensions/bug/commands/speckit.bug.{assess,fix,test}.md`."
-      ],
-      "nextStage": "A passing test closes the bug. Resume your active cycle stage, or start a feature with `/01-doti-specify`."
+      ]
     },
     {
       "name": "doti-converge",
@@ -106,8 +95,7 @@
       "argumentHint": "[feature slug]",
       "highlights": [
         "Find the requirement coverage gap deterministically with `hx doti converge --spec docs/specs/<NNN-slug>.md --tasks docs/tasks/<NNN-slug>-tasks.md` — it reports every FR-###/SC-### the spec defines that NO task covers (fails closed `converge-input` if a file is missing). For each uncovered requirement, ASSESS it against the codebase (genuinely unbuilt vs already-built-but-unmapped — read/reproduce, don't assume), then append the genuinely-missing work as new tasks in the right phase (the spec's declared Priority Mode order — MVP-first for code, truth-first for docs, safety-first for workflow), mapped `[covers FR-/SC-]`. converge never rewrites the ledger for you; you append and the ordered-task gate keeps the order honest. Ties to `/08-doti-drift-review` (spec->tasks gap vs source->installed gap)."
-      ],
-      "nextStage": "Continue with `/07-doti-implement` to build the appended tasks, or `/08-doti-drift-review` to reconcile installed assets."
+      ]
     },
     {
       "name": "doti-amend",
@@ -115,8 +103,7 @@
       "argumentHint": "[stage or note]",
       "highlights": [
         "Reconcile, never guess. Classify what changed with `hx doti review-context --repo .` (change categories + which arch-review lenses the edit touches), then derive the recovery plan with `hx doti cycle refresh-plan --target <stage>` — per transitively-required stage it reports `SafeReinterpret` (artifact unchanged under canonical hashing → the stamp can be re-bound to the new change set), `RerunRequired` (artifact changed → re-run that stage's `/0N` skill), or `NotBound`. `hx doti cycle refresh --target <stage> --apply-safe` re-binds ONLY the safe stages and never fabricates a stamp for a `RerunRequired` one; re-run those by hand so their proof is earned. Finish on a green `hx doti cycle check` (every transitive prerequisite stamped + fresh). amend reconciles within the cycle — it never invents a stage or changes the `/01`–`/09` order."
-      ],
-      "nextStage": "Resume your active cycle stage; if the amendment touched code already under review, run `/08-doti-drift-review`."
+      ]
     },
     {
       "name": "doti-drift-fix",
@@ -124,8 +111,7 @@
       "argumentHint": "[drift finding]",
       "highlights": [
         "The spec is the source of truth: close a spec↔code gap by fixing the CODE in-cycle, never by downgrading or deferring the spec. Classify blast radius with `hx doti review-context --repo .`; take the ADVISORY semantic hint from `hx doti drift-candidates --repo .` (changed-code chunks semantically close to a doc/skill/help section — drift the deterministic grep can miss; it reports the active engine and skips when no model is provisioned). CRUCIAL: an empty candidate list is NOT a clean-bill signal — only the deterministic `/08-doti-drift-review` axes clear drift, so confirm or dismiss every candidate deterministically. Fix the wrong side modularly (as `/07-doti-implement` requires), then reconcile with `hx doti cycle refresh-plan`/`refresh --apply-safe` and a green `hx doti cycle check` — leaving the spec untouched."
-      ],
-      "nextStage": "Re-run `/08-doti-drift-review` to confirm the diff now matches the approved design, then resume your cycle."
+      ]
     },
     {
       "name": "doti-constitution",
@@ -133,8 +119,7 @@
       "argumentHint": "[what to declare or amend]",
       "highlights": [
         "doti's constitution has TWO layers. §1 (Inherited doti invariants) is CODIFIED — deterministic gates, library-first/pure-core, thin CLI + CliResult, GitVersion versioning, Sentrux complexity, cross-platform, hygiene/SAST, the codified cycle, engineering discipline, operator decisions — cited, NEVER re-declared, weakened, or given a placeholder (no versioning policy, no CLI/output-shape, no quality-gate/workflow rules). §2 (Project declarations) is the ONLY operator-authored content: Domain principles, Tech stack (beyond the .NET 10 baseline), Coding style, Security & compliance, Performance. Read the current constitution with `hx doti constitution --section full --repo .` (surface-and-proceed when absent); initialize a missing one from `.doti/core/templates/constitution-template.md` with the project name AUTO-derived (never a placeholder); edit §2 only and write `.doti/memory/constitution.md`. Amendments are tracked by the doti cycle + git history — no SemVer doc-version line or Sync Impact Report. Only §2 is re-injected and checked by `/03-doti-plan` and `/04-doti-arch-review`; §1 stays gate/ArchUnit/Sentrux/GitVersion-enforced."
-      ],
-      "nextStage": "Resume your active cycle stage; the next `/03-doti-plan` and `/04-doti-arch-review` evaluate against the fresh §2 automatically."
+      ]
     },
     {
       "name": "doti-auto",
@@ -142,8 +127,7 @@
       "argumentHint": "[--until <stage>]",
       "highlights": [
         "Auto mode is ORCHESTRATION over the enforced stages, never a bypass. Resolve the current stage + target (`--until <stage>`, default `release`) from `hx doti cycle status`; if already at/past the target, report that and stop. Otherwise LOOP stage→stage: run each `/0N` skill's behavior, produce its artifact, pass its gate where one applies (`gate run` at `/07`/`/09`), and stamp it with `hx doti cycle stamp` — advancing to the next stage AUTOMATICALLY when the current one completes with NO operator-blocking condition (do not wait for the operator to type the next command). STOP and surface the decision in the Operator-Question Protocol at any blocker (never guess past these): a `/02-clarify` ambiguity or a `[NEEDS CLARIFICATION]`; a `/04-arch-review` BLOCKER or a missing applicable lens; a `gate run` failure you cannot resolve by a mechanical in-cycle fix; the PUBLISH boundary (a `release` run performs only the LOCAL `hx release` — the remote `v*` tag/branch push is ALWAYS a separate explicit operator step you surface, never perform); or any genuine blocker (missing access, an unverifiable premise, a design decision you cannot make at ≥95% confidence). Auto-FIX what you are ≥95% sure of (a function over the Sentrux size limit → extract; a stale doc reference → update; a missing test → add), re-verify, and continue; a spec↔code gap is fixed in the CODE in-cycle, NEVER by relaxing the spec. NEVER weaken the workflow — never skip a check or downgrade enforced→advisory, stamp every diff-bound proof, honor the chokepoints (`doti cycle check`, the gate, the pre-commit hook), and let the coded transitions own every commit. REPORT honestly at every boundary: stages completed, current stage, the stop reason, and — for a blocker — what you tried and the decision the operator must make. Auto mode adds NO numbered stage, no reorder of /01–/09, and replaces no chokepoint — it chains the existing stage skills between operator-decision points. Release-train usage: invoke per member with `--until drift-review` (the member completes to drift-review/completed-unreleased; the operator starts the next member and runs the final aggregated `/09-doti-release`)."
-      ],
-      "nextStage": "When auto mode stops at a blocker, resolve it and re-invoke `/doti-auto` to resume from the current stage; when it reaches the target, the cycle sits at that stage (the local release, or your `--until` bound)."
+      ]
     }
   ]
 }

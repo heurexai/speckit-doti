@@ -4,7 +4,33 @@ public static class CycleStageOutcome
 {
     /// <summary>The stage was completed and its evidence recorded (the default stamp outcome).</summary>
     public const string Stamped = "stamped";
+
+    /// <summary>028 FR-005: the stage's prerequisite binding was rebound to the current upstream content by an
+    /// agent-recorded reviewed-no-impact verdict (not a re-author). The proof carries the new prerequisite content
+    /// hashes; freshness decays normally on a later upstream edit (the rebind is an ordinary content-bound proof, not
+    /// a snapshot). The verdict + before→after hashes are recorded in <see cref="CycleState.ReviewedRebinds"/>.</summary>
+    public const string ReviewedNoImpactRebound = "reviewed-no-impact-rebound";
 }
+
+/// <summary>
+/// 028 FR-005: the immutable audit record of an agent-gated reviewed-no-impact rebind. When an upstream artifact's
+/// content changed but the agent attested (after reading the surfaced diff) that the change does not affect a
+/// dependent stage, the engine rebinds ONLY that dependent's <see cref="CycleStageProof.PrerequisiteArtifactHashes"/>
+/// to the current upstream content and records this verdict. Stored in a dedicated additive
+/// <see cref="CycleState.ReviewedRebinds"/> field (NOT <see cref="CycleState.Transitions"/>, which is typed for the
+/// release-train scan). <see cref="BeforeHashes"/>/<see cref="AfterHashes"/> are the dependent's bound vs the
+/// freshly-computed prerequisite content hashes; <see cref="ChangedUpstreams"/> are the prerequisite stage ids whose
+/// produced artifact content diverged.
+/// </summary>
+public sealed record CycleReviewedRebindRecord(
+    int SchemaVersion,
+    string DependentStage,
+    IReadOnlyList<string> ChangedUpstreams,
+    IReadOnlyList<string> BeforeHashes,
+    IReadOnlyList<string> AfterHashes,
+    string Verdict,
+    string? Reason,
+    string AtUtc);
 
 /// <summary>
 /// A durable intent written immediately before the sanctioned <c>git commit</c> subprocess is invoked.
@@ -90,7 +116,13 @@ public sealed record CycleStageProof(
     // Living-Spec (FR-027): canonical content hashes of this stage's transitive prerequisite artifacts,
     // captured at stamp. Binds a dependent to upstream CONTENT (not the upstream proof object), so a real
     // upstream edit stales it while a no-content re-stamp does not. Null on proofs from a pre-FR-027 runner.
-    IReadOnlyList<string>? PrerequisiteArtifactHashes = null);
+    IReadOnlyList<string>? PrerequisiteArtifactHashes = null,
+    // 027 FR-010: the ordered transitive prerequisite STAGE-ID set this proof was stamped against (the stage
+    // GRAPH, distinct from the prerequisite CONTENT bound above). Makes the edge-only-vs-content distinction
+    // first-class and a stage-model reorder migration-detectable. Additive/nullable trailing: null on proofs
+    // from a pre-027 runner (the runner never reads it for enforcement — freshness is still re-derived from the
+    // content bindings), so existing proofs never wedge and no schema-version bump is forced.
+    IReadOnlyList<string>? StageGraphFingerprint = null);
 
 /// <summary>
 /// The persistent doti cycle state (<c>.doti/cycle-state.json</c>, gitignored). Tracks the active
@@ -107,7 +139,11 @@ public sealed record CycleState(
     CycleCompletionRecord? Completion = null,
     IReadOnlyList<CycleTransitionRecord>? Transitions = null,
     IReadOnlyList<CycleCompletionRecord>? CompletedUnreleasedCycles = null,
-    IReadOnlyList<CycleCompletionRecord>? ReleasedCycles = null);
+    IReadOnlyList<CycleCompletionRecord>? ReleasedCycles = null,
+    // 028 FR-005/B3: the agent-gated reviewed-no-impact rebind audit log. Additive nullable trailing (mirrors
+    // CompletedUnreleasedCycles/ReleasedCycles), so old readers tolerate it and no schemaVersion bump is forced.
+    // Kept distinct from Transitions (typed CycleTransitionRecord, scanned by the release-train).
+    IReadOnlyList<CycleReviewedRebindRecord>? ReviewedRebinds = null);
 
 public sealed record CycleReleaseTrainFeature(
     string Feature,

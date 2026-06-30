@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Hx.Cycle.Core.Actions;
 using Hx.Doti.Core.Workflow;
 using Hx.Tooling.Contracts;
 
@@ -51,14 +52,17 @@ public static class DotiRenderer
         DotiSkillsManifest manifest = LoadManifest(repoRoot);
         string footnote = LoadAvailabilityFootnote(repoRoot);
         string rootMaturityNote = LoadRootMaturityNote(repoRoot);
+        // 028 FR-010: the workflow affordances (skill identity, next-step prose, the agent-context command-availability
+        // block) project from the engine's StageModel + action model — one source, no hand-authored stage list.
+        DotiWorkflowPresentation workflow = DotiWorkflowPresentation.Load(repoRoot);
         List<DotiRenderTarget> targets = [];
 
         foreach (DotiSkillEntry skill in manifest.Skills)
         {
-            (string skillId, _, _) = DotiWorkflowRegistry.ResolveSkillIdentity(skill.Name, skill.NextStage);
+            (string skillId, _, _) = workflow.ResolveSkillIdentity(skill.Name, skill.NextStage);
             foreach (DotiAgentTarget agent in agents)
             {
-                string content = SkillMarkdownRenderer.Render(manifest, skill, agent, footnote);
+                string content = SkillMarkdownRenderer.Render(manifest, skill, agent, footnote, workflow);
                 targets.Add(new DotiRenderTarget($"{agent.SkillsRoot}/{skillId}/SKILL.md", content));
             }
         }
@@ -71,12 +75,23 @@ public static class DotiRenderer
 
         // Shared agent context is rendered from its template (single source), with the manifest-level
         // operator-question protocol substituted in so the same block that lands in every SKILL.md is
-        // also in the agent context — one source (skills.json), no second literal copy.
+        // also in the agent context — one source (skills.json), no second literal copy. 028 FR-010: the
+        // {commandAvailability} placeholder is substituted with the WORKFLOW-affordance availability generated from
+        // the action model (the {operatorQuestionProtocol} precedent) — no hand-authored workflow command prose.
         string contextTemplate = Resolve(repoRoot, AgentContextTemplateRelativePath);
         string contextContent = File.ReadAllText(contextTemplate);
         if (!string.IsNullOrEmpty(manifest.OperatorQuestionProtocol))
         {
             contextContent = contextContent.Replace("{operatorQuestionProtocol}", manifest.OperatorQuestionProtocol);
+        }
+
+        // Substitute the workflow-affordance availability only when the template uses the placeholder — so a minimal
+        // (non-cycle) agent-context template never forces building the full action model over a partial stage chain.
+        if (contextContent.Contains("{commandAvailability}", StringComparison.Ordinal))
+        {
+            string commandAvailability =
+                CommandAvailabilityRenderer.Render(workflow, new DotiActionModel(workflow.StageModel));
+            contextContent = contextContent.Replace("{commandAvailability}", commandAvailability);
         }
 
         targets.Add(new DotiRenderTarget(AgentContextOutputRelativePath, contextContent));

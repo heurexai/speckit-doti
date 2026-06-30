@@ -1,10 +1,15 @@
 using Hx.Doti.Core;
+using Hx.Doti.Core.Workflow;
 using Xunit;
 
 namespace Hx.Doti.Tests;
 
 public sealed class SkillMarkdownRendererTests
 {
+    // 028 FR-010: the model-backed presentation supplies the skill identity + next-step prose (formerly the registry +
+    // skills.json nextStage).
+    private static readonly DotiWorkflowPresentation Workflow = WorkflowPresentationFixture.Load();
+
     private static DotiSkillsManifest Manifest(params DotiSkillEntry[] skills) => new(
         SchemaVersion: 1,
         Maturity: "command-aware-advisory",
@@ -27,8 +32,8 @@ public sealed class SkillMarkdownRendererTests
     public void OutputIsLfOnlyAndByteStable()
     {
         DotiSkillsManifest m = Manifest(Sample);
-        string a = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Claude, Footnote);
-        string b = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Claude, Footnote);
+        string a = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Claude, Footnote, Workflow);
+        string b = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Claude, Footnote, Workflow);
 
         Assert.DoesNotContain("\r", a);          // LF-only, never CRLF
         Assert.Equal(a, b);                       // idempotent / deterministic
@@ -43,8 +48,8 @@ public sealed class SkillMarkdownRendererTests
     public void ClaudeFlavorHasTheClaudeOnlyKeys_CodexDoesNot()
     {
         DotiSkillsManifest m = Manifest(Sample);
-        string claude = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Claude, Footnote);
-        string codex = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Codex, Footnote);
+        string claude = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Claude, Footnote, Workflow);
+        string codex = SkillMarkdownRenderer.Render(m, Sample, DotiAgentTarget.Codex, Footnote, Workflow);
 
         Assert.Contains("  - claude", claude);
         Assert.Contains("argument-hint: \"[feature or goal]\"", claude);
@@ -65,7 +70,7 @@ public sealed class SkillMarkdownRendererTests
             Name = "doti-clarify",
             Highlights = ["First highlight paragraph.", "Second highlight paragraph."],
         };
-        string rendered = SkillMarkdownRenderer.Render(Manifest(withHighlights), withHighlights, DotiAgentTarget.Claude, Footnote);
+        string rendered = SkillMarkdownRenderer.Render(Manifest(withHighlights), withHighlights, DotiAgentTarget.Claude, Footnote, Workflow);
 
         int intro = rendered.IndexOf("follow `.doti/core", System.StringComparison.Ordinal);
         int first = rendered.IndexOf("First highlight", System.StringComparison.Ordinal);
@@ -93,8 +98,8 @@ public sealed class SkillMarkdownRendererTests
         DotiSkillEntry specify = Sample;
         DotiSkillEntry clarify = Sample with { Name = "doti-clarify", NextStage = "Run `/doti-plan`." };
 
-        string a = SkillMarkdownRenderer.Render(m, specify, DotiAgentTarget.Claude, Footnote);
-        string b = SkillMarkdownRenderer.Render(m, clarify, DotiAgentTarget.Codex, Footnote);
+        string a = SkillMarkdownRenderer.Render(m, specify, DotiAgentTarget.Claude, Footnote, Workflow);
+        string b = SkillMarkdownRenderer.Render(m, clarify, DotiAgentTarget.Codex, Footnote, Workflow);
 
         Assert.Contains(Protocol, a);                                   // present in every skill...
         Assert.Contains(Protocol, b);                                   // ...byte-identical (one source string)
@@ -105,7 +110,7 @@ public sealed class SkillMarkdownRendererTests
     [Fact]
     public void OperatorQuestionProtocolIsOmittedWhenManifestHasNone()
     {
-        string rendered = SkillMarkdownRenderer.Render(Manifest(Sample), Sample, DotiAgentTarget.Claude, Footnote);
+        string rendered = SkillMarkdownRenderer.Render(Manifest(Sample), Sample, DotiAgentTarget.Claude, Footnote, Workflow);
         Assert.DoesNotContain("Asking the operator a question", rendered); // null protocol ⇒ no block
     }
 }

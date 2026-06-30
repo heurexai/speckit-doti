@@ -13,35 +13,42 @@ stages:
     kind: doc
     produces: docs/specs/{feature}.md
     prereqs: []
+    next: [clarify]
   - id: clarify
     command: 02-doti-clarify
     kind: doc
     produces: docs/specs/{feature}.md
     prereqs: [specify]
+    next: [plan]
   - id: plan
     command: 03-doti-plan
     kind: doc
     produces: docs/plans/{feature}-plan.md
     prereqs: [clarify]
+    next: [arch-review]
   - id: arch-review
     command: 04-doti-arch-review
     kind: review
     produces: docs/reviews/{feature}-arch-review.md
     prereqs: [plan]
+    next: [tasks]
   - id: tasks
     command: 05-doti-tasks
     kind: doc
     produces: docs/tasks/{feature}-tasks.md
     prereqs: [arch-review]
+    next: [analyze]
   - id: analyze
     command: 06-doti-analyze
     kind: review
     produces: docs/reviews/{feature}-analyze-report.md
     prereqs: [tasks]
+    next: [implement]
   - id: implement
     command: 07-doti-implement
     kind: diff
     prereqs: [analyze]
+    next: [drift-review]
   - id: drift-review
     command: 08-doti-drift-review
     kind: review
@@ -52,6 +59,7 @@ stages:
     command: 09-doti-release
     kind: release
     prereqs: [drift-review]
+    next: []
 rules:
   commandAvailability: planned commands must be labeled unavailable until implemented
   deterministicProof: advisory checks are not gate proof

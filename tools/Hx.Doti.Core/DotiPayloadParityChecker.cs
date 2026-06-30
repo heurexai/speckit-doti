@@ -18,6 +18,7 @@ public static class DotiPayloadParityChecker
             List<DotiPayloadFileStatus> files = [];
             files.AddRange(CheckStaticFiles(source, temp));
             files.AddRange(CheckRenderedFiles(source, temp));
+            files.AddRange(CheckSurplusSkillDirs(source));
             string[] drifted = files
                 .Where(file => !file.Matches)
                 .Select(file => file.InstalledPath)
@@ -84,6 +85,56 @@ public static class DotiPayloadParityChecker
             string installed = Path.Combine(target, installedRelative.Replace('/', Path.DirectorySeparatorChar));
             yield return CompareFile(
                 coreFile, installed, ".doti/core/templates/" + relativeToCore, installedRelative, "materialized-doti");
+        }
+    }
+
+    /// <summary>
+    /// 027 FR-009: flag a SURPLUS managed skill dir — a <c>*doti-*</c> dir present under an agent
+    /// <see cref="DotiAgentTarget.SkillsRoot"/> in the source repo that the current render no longer targets (a stage
+    /// renumber that renamed the dir and left the old one). Emits one non-matching <see cref="DotiPayloadFileStatus"/>
+    /// (kind <c>surplus-doti</c>) per orphan dir so <c>payload check</c> fails closed on the orphan. Scanning the
+    /// source (not the freshly-installed temp, which only ever contains the render targets) is what makes this visible.
+    /// </summary>
+    private static IEnumerable<DotiPayloadFileStatus> CheckSurplusSkillDirs(string source)
+    {
+        HashSet<string> rendered = new(StringComparer.OrdinalIgnoreCase);
+        foreach (DotiRenderTarget target in DotiRenderer.BuildTargets(source, DotiAgentTarget.All))
+        {
+            string path = target.RelativePath.Replace('\\', '/');
+            foreach (DotiAgentTarget agent in DotiAgentTarget.All)
+            {
+                string prefix = agent.SkillsRoot.Replace('\\', '/') + "/";
+                if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string remainder = path[prefix.Length..];
+                    int slash = remainder.IndexOf('/');
+                    if (slash > 0)
+                    {
+                        rendered.Add(prefix + remainder[..slash]);
+                    }
+                }
+            }
+        }
+
+        foreach (DotiAgentTarget agent in DotiAgentTarget.All)
+        {
+            string skillsRoot = Path.Combine(source, agent.SkillsRoot.Replace('/', Path.DirectorySeparatorChar));
+            if (!Directory.Exists(skillsRoot))
+            {
+                continue;
+            }
+
+            foreach (string dir in Directory.GetDirectories(skillsRoot))
+            {
+                string dirName = Path.GetFileName(dir);
+                string relDir = $"{agent.SkillsRoot}/{dirName}".Replace('\\', '/');
+                if (dirName.Contains("doti-", StringComparison.OrdinalIgnoreCase) && !rendered.Contains(relDir))
+                {
+                    yield return new DotiPayloadFileStatus(
+                        relDir, relDir, "surplus-doti", Matches: false, ExpectedSha256: null, ActualSha256: null,
+                        Reason: "surplus managed skill dir present in the repo but absent from the render targets");
+                }
+            }
         }
     }
 

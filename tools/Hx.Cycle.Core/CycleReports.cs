@@ -24,19 +24,30 @@ public sealed record CycleStatusReport(
 
 /// <summary>One prerequisite's verdict in a <c>cycle check</c>: the stage, its status (fresh|stale|missing|invalid),
 /// a reason, and — when stale — the machine-readable <see cref="FreshnessEvaluator"/> category so a recovery
-/// projection can classify its restamp-safety without re-evaluating.</summary>
-public sealed record StagePrereqResult(string Stage, string Status, bool Ok, string? Reason, StaleReason? StaleReason = null);
+/// projection can classify its restamp-safety without re-evaluating. <see cref="ChangedPrereqPaths"/> (028 FR-002)
+/// carries the prerequisite artifact paths whose content diverged (when the stale reason is prerequisite-driven), so
+/// the self-describing recovery seam can surface the exact "what changed" set + a line-level diff. Null otherwise.</summary>
+public sealed record StagePrereqResult(
+    string Stage,
+    string Status,
+    bool Ok,
+    string? Reason,
+    StaleReason? StaleReason = null,
+    IReadOnlyList<string>? ChangedPrereqPaths = null);
 
 /// <summary>One stage in a <see cref="CycleRecoveryPlan"/>: its status + reason, the restamp-safety verdict (null
 /// when the stage is not stale, e.g. missing/invalid), the stage's own re-run command, and the single recommended
-/// next command (a safe refresh, or re-running the stage).</summary>
+/// next command (a safe refresh, the agent-gated reviewed-no-impact rebind, or re-running the stage).
+/// <see cref="ChangedPrereqPaths"/> (028 FR-002) carries the changed prerequisite artifact paths — the self-describing
+/// delta the CLI/recovery seam renders (and diffs line-level). Null when the step is not prerequisite-content-driven.</summary>
 public sealed record StageRecoveryStep(
     string Stage,
     string Status,
     string? Reason,
     RestampSafety? Safety,
     string RequiredRerun,
-    string NextCommand);
+    string NextCommand,
+    IReadOnlyList<string>? ChangedPrereqPaths = null);
 
 /// <summary>The <c>doti cycle refresh-plan</c> projection: the per-stage recovery steps for a target, and whether
 /// <c>doti cycle refresh --apply-safe</c> would FULLY recover it (every blocking step is a safe re-interpret).</summary>
