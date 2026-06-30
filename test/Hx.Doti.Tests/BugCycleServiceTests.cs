@@ -1,4 +1,5 @@
 using Hx.Doti.Core.Bug;
+using Hx.Tooling.Contracts;
 using Xunit;
 
 namespace Hx.Doti.Tests;
@@ -114,6 +115,86 @@ public sealed class BugCycleServiceTests
 
         Assert.Throws<ArgumentException>(() =>
             BugCycleService.Assess(repo.Root, new BugAssessment(1, bugId, BugVerdict.Confirmed, "high", "r", "s")));
+    }
+
+    // ---- 030 (bug-release-bridge): release-ready bug-cycle members for the release train ----
+
+    [Fact]
+    public void ReleaseReadyBugMembers_includes_a_test_passed_bound_bug_cycle()
+    {
+        using var repo = new TempRepo();
+        DriveTestPassedBug(repo, "030-bug-release-bridge");
+
+        IReadOnlyList<CycleReleaseTrainFeature> members = BugCycleService.ReleaseReadyBugMembers(repo.Root);
+
+        CycleReleaseTrainFeature member = Assert.Single(members);
+        Assert.Equal("030-bug-release-bridge", member.Feature);
+        Assert.Equal("bug", member.CompletedStage);
+        Assert.Equal("included", member.InclusionStatus);
+        Assert.Equal("pass", member.TaskCompletionStatus);
+        Assert.Empty(member.Blockers);
+    }
+
+    [Fact]
+    public void ReleaseReadyBugMembers_excludes_an_assessed_only_bug_cycle()
+    {
+        using var repo = new TempRepo();
+        // Confirmed assessment but no fix + no test → not release-ready (fail-closed: omitted, not a blocking member).
+        BugCycleService.Assess(repo.Root, new BugAssessment(1, "b", BugVerdict.Confirmed, "high", "r", "s"));
+
+        Assert.Empty(BugCycleService.ReleaseReadyBugMembers(repo.Root));
+    }
+
+    [Fact]
+    public void ReleaseReadyBugMembers_excludes_a_bug_cycle_whose_test_did_not_pass()
+    {
+        using var repo = new TempRepo();
+        BugStageResult assess = BugCycleService.Assess(repo.Root,
+            new BugAssessment(1, "b", BugVerdict.Confirmed, "high", "r", "s"));
+        BugCycleService.Fix(repo.Root, "b", assess.ArtifactSha256!, "fix", ["src/X.cs"]);
+        // An evidence-free pass is honestly downgraded to fail by the test stage → NOT release-ready.
+        BugStageResult test = BugCycleService.Test(repo.Root, "b", BugStageOutcome.Pass, evidence: "");
+        Assert.Equal(BugStageOutcome.Fail, test.Outcome);
+
+        Assert.Empty(BugCycleService.ReleaseReadyBugMembers(repo.Root));
+    }
+
+    [Fact]
+    public void ReleaseReadyBugMembers_is_empty_when_there_are_no_bug_cycles()
+    {
+        using var repo = new TempRepo();
+
+        Assert.Empty(BugCycleService.ReleaseReadyBugMembers(repo.Root));
+    }
+
+    [Fact]
+    public void ReleaseReadyBugMembers_excludes_an_already_released_bug_cycle()
+    {
+        using var repo = new TempRepo();
+        DriveTestPassedBug(repo, "021-old-shipped");
+
+        // 030: the injected released-predicate reports the bug already shipped → the bridge omits it (no re-release).
+        Assert.Empty(BugCycleService.ReleaseReadyBugMembers(repo.Root, _ => true));
+    }
+
+    [Fact]
+    public void ReleaseReadyBugMembers_keeps_an_unreleased_bug_cycle()
+    {
+        using var repo = new TempRepo();
+        DriveTestPassedBug(repo, "030-bug-release-bridge");
+
+        // 030: nothing released (a fresh/untagged repo) → the test-passed bug stays a member.
+        CycleReleaseTrainFeature member = Assert.Single(BugCycleService.ReleaseReadyBugMembers(repo.Root, _ => false));
+        Assert.Equal("030-bug-release-bridge", member.Feature);
+    }
+
+    private static void DriveTestPassedBug(TempRepo repo, string bugId)
+    {
+        BugStageResult assess = BugCycleService.Assess(repo.Root,
+            new BugAssessment(1, bugId, BugVerdict.Confirmed, "high", "remediate", "summary"));
+        BugCycleService.Fix(repo.Root, bugId, assess.ArtifactSha256!, "guarded the path", ["src/Login.cs"]);
+        BugStageResult test = BugCycleService.Test(repo.Root, bugId, BugStageOutcome.Pass, "12 tests green; repro fixed");
+        Assert.Equal(BugStageOutcome.Pass, test.Outcome);
     }
 
     private sealed class TempRepo : IDisposable

@@ -93,6 +93,89 @@ public static class BugCycleService
         return File.Exists(path) ? HashJson(path) : null;
     }
 
+    /// <summary>
+    /// 030 (bug-release-bridge): the release-train members for every test-passed <c>/doti-bug</c> mini-cycle under
+    /// <c>.doti/bugs/</c>. A bug cycle is RELEASE-READY only when the full proof chain holds — the assessment verdict is
+    /// <c>confirmed</c>, the fix is bound to that assessment's content hash, AND the test recorded an honest <c>pass</c>
+    /// bound to that fix's content hash. Such a cycle becomes an <c>included</c> member (<see cref="CycleReleaseTrainFeature"/>
+    /// with the bug id as the feature, stage marker <c>bug</c>); anything short of a bound, test-passed cycle is NOT a
+    /// member (fail-closed — it is omitted, not surfaced as a blocking member). The shape matches the delegate the
+    /// release-aware callers wire into <c>CycleService</c>, so Hx.Cycle.Core enumerates bug cycles WITHOUT a forbidden
+    /// edge to Hx.Doti.Core. A bug cycle that has ALREADY shipped (its fix commit reachable from the latest <c>v*</c>
+    /// release tag, per <see cref="BugReleaseGit"/>) is excluded, so a historical bug is never re-counted in a later
+    /// train.
+    /// </summary>
+    public static IReadOnlyList<CycleReleaseTrainFeature> ReleaseReadyBugMembers(string repoRoot)
+    {
+        string? latestTag = BugReleaseGit.LatestReleaseTag(repoRoot);
+        return ReleaseReadyBugMembers(repoRoot, dir => BugReleaseGit.IsReleased(repoRoot, dir, latestTag));
+    }
+
+    /// <summary>
+    /// 030 (bug-release-bridge) testable seam: the same enumeration with an INJECTED released-predicate (over the bug
+    /// record dir). A bug cycle reported released is EXCLUDED, so the bridge counts only UNRELEASED bugs and never
+    /// re-lists a historical bug in every new train; a repo that reports nothing released keeps each test-passed bug as
+    /// a member (the bug-fix-only first release works). The default predicate is git-reachability from the latest
+    /// release tag (<see cref="BugReleaseGit.IsReleased"/>).
+    /// </summary>
+    public static IReadOnlyList<CycleReleaseTrainFeature> ReleaseReadyBugMembers(
+        string repoRoot, Func<string, bool> isReleased)
+    {
+        string bugsDir = Path.Combine(Path.GetFullPath(repoRoot), ".doti", "bugs");
+        if (!Directory.Exists(bugsDir))
+        {
+            return [];
+        }
+
+        var members = new List<CycleReleaseTrainFeature>();
+        foreach (string dir in Directory.EnumerateDirectories(bugsDir).OrderBy(d => d, StringComparer.Ordinal))
+        {
+            if (ReleaseReadyBugMember(Path.GetFileName(dir), dir) is { } member && !isReleased(dir))
+            {
+                members.Add(member);
+            }
+        }
+
+        return members;
+    }
+
+    /// <summary>Validate one bug dir's assess→fix→test proof chain; returns an <c>included</c> member only when the test
+    /// passed and every binding holds, else null (a non-test-passed bug cycle is fail-closed out of the train).</summary>
+    private static CycleReleaseTrainFeature? ReleaseReadyBugMember(string bugId, string dir)
+    {
+        string assessmentPath = Path.Combine(dir, AssessmentFile);
+        string fixPath = Path.Combine(dir, FixFile);
+        string testPath = Path.Combine(dir, TestFile);
+        if (!File.Exists(assessmentPath) || !File.Exists(fixPath) || !File.Exists(testPath))
+        {
+            return null;
+        }
+
+        BugAssessment? assessment = ReadJson<BugAssessment>(assessmentPath);
+        BugFixRecord? fix = ReadJson<BugFixRecord>(fixPath);
+        BugTestRecord? test = ReadJson<BugTestRecord>(testPath);
+        bool confirmed = string.Equals(assessment?.Verdict, BugVerdict.Confirmed, StringComparison.OrdinalIgnoreCase);
+        bool fixBound = fix is not null
+            && string.Equals(fix.BoundAssessmentSha256, HashJson(assessmentPath), StringComparison.OrdinalIgnoreCase);
+        bool testPassed = test is not null
+            && string.Equals(test.Outcome, BugStageOutcome.Pass, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(test.BoundFixSha256, HashJson(fixPath), StringComparison.OrdinalIgnoreCase);
+        if (!confirmed || !fixBound || !testPassed)
+        {
+            return null;
+        }
+
+        return new CycleReleaseTrainFeature(
+            Feature: bugId,
+            CompletedStage: "bug",
+            CommitSha: "", // the bug mini-cycle records no fix commit sha; the test-pass proof is the release evidence
+            StageCommitRange: null,
+            TaskCompletionStatus: "pass",
+            GateProofStatus: "not-required", // a bug mini-cycle is gated by its own honest test stage, not a gate proof
+            InclusionStatus: "included",
+            Blockers: []);
+    }
+
     private static BugStageResult Recorded(
         string stage, string bugId, string repoRoot, string path, string outcome, string? boundSha) =>
         new(stage, bugId, outcome, RepoRelative(repoRoot, path), HashJson(path), boundSha, FailureCode: null, FailureMessage: null);

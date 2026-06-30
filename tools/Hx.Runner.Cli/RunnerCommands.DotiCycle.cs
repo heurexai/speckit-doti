@@ -35,7 +35,9 @@ public static partial class RunnerCommands
 
         try
         {
-            CycleState state = new CycleService(repo).Stamp(
+            // 030 (bug-release-bridge): wire the bug-cycle members so the release-stage transition readiness counts a
+            // test-passed /doti-bug mini-cycle (and a single drift-review-complete feature), consistent with `hx release`.
+            CycleState state = new CycleService(repo, Hx.Doti.Core.Bug.BugCycleService.ReleaseReadyBugMembers).Stamp(
                 stage,
                 string.IsNullOrWhiteSpace(feature) ? null : feature,
                 string.IsNullOrWhiteSpace(baseRef) ? null : baseRef,
@@ -77,7 +79,8 @@ public static partial class RunnerCommands
         // Non-enforcing: a STALE stage is reported in data, not gated. 028 FR-010: the agent's "what next" affordances
         // are projected from the action model (CliActionRendering), not hand-authored — the status surface carries the
         // valid workflow next-actions for the current decision point.
-        var service = new CycleService(repo);
+        // 030 (bug-release-bridge): the status train surfaces bug-cycle members so it agrees with `hx release`.
+        var service = new CycleService(repo, Hx.Doti.Core.Bug.BugCycleService.ReleaseReadyBugMembers);
         CycleStatusReport report = service.Status();
         IReadOnlyList<CliNextAction> nextActions = WorkflowNextActions(repo, service, report);
         return CliResults.Ok(meta, "doti cycle status", "Cycle status.", report, nextActions: nextActions);
@@ -90,7 +93,8 @@ public static partial class RunnerCommands
             return Usage(meta, "doti cycle check", "--stage is required.");
         }
 
-        var service = new CycleService(repo);
+        // 030 (bug-release-bridge): wire bug-cycle members so `doti cycle check release` agrees with `hx release`.
+        var service = new CycleService(repo, Hx.Doti.Core.Bug.BugCycleService.ReleaseReadyBugMembers);
         CycleCheckReport report = service.Check(stage);
         if (report.Passed)
         {

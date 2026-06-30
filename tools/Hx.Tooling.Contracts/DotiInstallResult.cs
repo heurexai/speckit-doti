@@ -13,7 +13,17 @@ public sealed record DotiInstallResult(
     IReadOnlyList<DotiInstallPathEffect> Preserved,
     IReadOnlyList<DotiInstallPathEffect> Removed,
     IReadOnlyList<DotiInstallPathEffect> Skipped,
-    IReadOnlyList<DotiInstallPathEffect> Blocked);
+    IReadOnlyList<DotiInstallPathEffect> Blocked,
+    // 029 D8 (additive trailing-optional): the setup-config projection effect on the install path — the .doti-layer
+    // fields written + any new-only field reported as ignored (FR-002). Null/omitted on the no-config path (SC-007).
+    SetupConfigEffect? Setup = null);
+
+/// <summary>029 FR-002: the install-path setup-config effect — the paths the Install-subset projection wrote +
+/// the keys it ignored (new-only on install, or preserved).</summary>
+public sealed record SetupConfigEffect(
+    IReadOnlyList<string> Written,
+    IReadOnlyList<DotiInstallPathEffect> Ignored,
+    string? Persisted);
 
 public sealed record DotiInstallPathEffect(string Path, string Reason);
 

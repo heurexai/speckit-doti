@@ -8,13 +8,42 @@ Every setting Doti and `hx` read, grouped by **what it drives**. For each: what 
 
 A value is determined by the first layer that supplies it:
 
-1. **`hx new` / CLI flag** — `--name`, `--company`, `--output`, `--agents`, `--profile`, `--force`.
-2. **Tracked config file** — `.doti/release.json`, `rules/*.json`, `.sentrux/rules.toml`, `GitVersion.yml`, `Directory.Build.props`, `.doti/memory/constitution.md`.
-3. **Machine-local file / env var** — executable-adjacent `hx.config.json`, `DOTI_RELEASE_ROOT` (not committed).
-4. **Derived** — computed from name + company + project layout.
-5. **Default** — the built-in fallback.
+1. **`--config` / `--interactive`** (`029`) — `hx new` and `hx doti install` take a setup JSON (`--config <doti-setup.json>`) or a wizard (`--interactive`); the resolved choices persist to a tracked `.doti/setup.json`, and `hx doti config show [--json]` shows the effective result with default-vs-custom provenance.
+2. **`hx new` / CLI flag** — `--name`, `--company`, `--output`, `--agents`, `--profile`, `--force` (override the matching `--config` field).
+3. **Tracked config file** — `.doti/release.json`, `rules/*.json`, `.sentrux/rules.toml`, `GitVersion.yml`, `Directory.Build.props`, `.doti/memory/constitution.md`.
+4. **Machine-local file / env var** — executable-adjacent `hx.config.json`, `DOTI_RELEASE_ROOT` (not committed).
+5. **Derived** — computed from name + company + project layout.
+6. **Default** — the built-in fallback.
 
 The **`Set by`** column below uses: `flag` · `.csproj`/`props` · `.doti file` · `env` · `/doti-constitution` · **derived** · **auto** (set by code, e.g. the first-smoke baseline) · **payload-fixed** (ships in the payload; not meant to be edited) · **operator-manual** (GitHub/nuget.org-side; `hx` documents the intent but cannot execute it).
+
+---
+
+## Setup config — one file or a wizard (`029`)
+
+`hx new --config <doti-setup.json>` (agent) and `hx new --interactive` (human wizard) capture the operator surface in one pass — mutually exclusive, 1:1 over one schema, validated **before** any file is written, and persisted to a tracked `.doti/setup.json` (repo-portable fields only — a machine-local `release.directory`/`release.enabled` is never written there). The same flags work on `hx doti install` for the doti-layer subset of an existing repo. **`hx doti config show [--json]`** renders the effective config grouped as below, marking each key **default** or **custom** (the resolved model carries `value` / `source` / `default` per key; an absent `.doti/setup.json` shows the all-default view). Operator-only steps (the NuGet OIDC policy, the `NUGET_USER` secret, branch protection, the `v*` tag push) print as an inert **checklist** — never executed.
+
+Minimal `doti-setup.json` — every field is optional except `schemaVersion`; an omitted field takes its documented default:
+
+```jsonc
+{
+  "schemaVersion": 1,
+  "identity": {
+    "name": "Acme.Widget",
+    "company": "Acme",
+    "description": "Acme Widget CLI.",
+    "license": "MIT",
+    "repositoryUrl": "https://github.com/acme/widget"
+  },
+  "versioning": { "nextVersion": "0.1.0" },
+  "agents": ["codex", "claude"],
+  "publish": { "enabled": true, "owner": "acme", "repo": "widget" },
+  "constitution": {
+    "domainPrinciples": "...", "techStack": "...", "codingStyle": "...",
+    "securityCompliance": "...", "performance": "..."
+  }
+}
+```
 
 ---
 

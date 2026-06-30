@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Hx.Doti.Core.ManagedAssets;
+using Hx.Doti.Core.Setup;
 using Hx.Tooling.Contracts;
+using Hx.Tooling.Contracts.Setup;
 
 namespace Hx.Doti.Core;
 
@@ -21,7 +23,8 @@ public static class DotiInstaller
         IReadOnlyList<DotiAgentTarget> agents,
         string repoName,
         bool force = false,
-        string? projectNameOverride = null)
+        string? projectNameOverride = null,
+        ResolvedSetupConfig? setup = null)
     {
         DotiTargetClassification classification = DotiTargetClassifier.Classify(targetRepoRoot);
         bool targetCreated = !classification.Exists;
@@ -101,6 +104,10 @@ public static class DotiInstaller
         // own constitution), filling the auto-derived project name; preserve an operator-edited one (managed-asset).
         InitializeConstitution(targetRepoRoot, projectNameOverride, installed, preserved);
 
+        // 029 FR-002/D8/D10: project the Install-subset setup config (the .doti-layer fields) + persist the intent.
+        // D10 no-op fence: a null setup early-returns inside Project before any write (install no-config byte-identical).
+        SetupConfigEffect? setupEffect = ProjectSetup(targetRepoRoot, setup);
+
         string? nextStep = classification.Classification is DotiInstallClassification.InstalledNewTarget
             or DotiInstallClassification.InstalledEmptyTarget
             ? "Run `hx new --output <target> --name <project-name>` or the scaffold creation command for this repository."
@@ -118,7 +125,30 @@ public static class DotiInstaller
             preserved,
             removed,
             skipped,
-            blocked);
+            blocked,
+            setupEffect);
+    }
+
+    /// <summary>
+    /// 029 FR-002/FR-003/D8/D10: run the Install-subset setup projection (the doti-layer writers — GitVersion seed,
+    /// release env-var, constitution §2) and persist the repo-portable intent to <c>.doti/setup.json</c>. New-only
+    /// fields reached here are reported as ignored (never silently dropped). The no-op fence is enforced by
+    /// <see cref="SetupConfigProjector.Project"/> (a null <paramref name="setup"/> touches nothing → byte-identical).
+    /// </summary>
+    private static SetupConfigEffect? ProjectSetup(string targetRepoRoot, ResolvedSetupConfig? setup)
+    {
+        if (setup is null)
+        {
+            return null;
+        }
+
+        SetupProjectionResult projection = SetupConfigProjector.Project(
+            setup, targetRepoRoot, SetupTargetWriters.ForInstall());
+        string? persisted = SetupConfigStore.WriteFromResolved(targetRepoRoot, setup);
+        IReadOnlyList<DotiInstallPathEffect> ignored = projection.Ignored
+            .Select(i => new DotiInstallPathEffect(i.Key, i.Reason))
+            .ToList();
+        return new SetupConfigEffect(projection.Written, ignored, persisted);
     }
 
     /// <summary>

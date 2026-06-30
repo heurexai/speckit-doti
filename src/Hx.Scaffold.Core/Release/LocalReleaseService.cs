@@ -34,7 +34,9 @@ public static class LocalReleaseService
         LocalReleaseTarget target = ReleaseTargetManifest.Load(repo);
         LocalReleaseRootDecision rootDecision = ResolveRootFromConfiguration(
             request.Configuration, target.DefaultReleaseRootEnvironmentVariable);
-        var cycle = new CycleService(repo);
+        // 030 (bug-release-bridge): wire the bug-cycle members so a single drift-review-complete feature cycle AND a
+        // bug-fix-only repo (a test-passed /doti-bug mini-cycle) both yield a VALID release train.
+        var cycle = new CycleService(repo, Hx.Doti.Core.Bug.BugCycleService.ReleaseReadyBugMembers);
         CycleReleaseTrain releaseTrain = cycle.GetReleaseTrain();
         if (!releaseTrain.Valid)
         {

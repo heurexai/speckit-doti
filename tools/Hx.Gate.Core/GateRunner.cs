@@ -87,7 +87,10 @@ public static class GateRunner
         {
             documentationProof = ReleaseDocumentationInspector.Inspect(
                 repositoryRoot,
-                new CycleService(repositoryRoot).GetReleaseTrain());
+                // 030 (bug-release-bridge): wire the bug-cycle members so the release-lane train bridges a
+                // test-passed /doti-bug mini-cycle (a bug-fix-only repo releases) and counts a single
+                // drift-review-complete feature — consistent with `hx release`.
+                new CycleService(repositoryRoot, Hx.Doti.Core.Bug.BugCycleService.ReleaseReadyBugMembers).GetReleaseTrain());
             Emit(ReleaseDocumentationStep(documentationProof));
         }
 

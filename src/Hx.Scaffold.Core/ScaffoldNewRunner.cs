@@ -43,6 +43,15 @@ public static class ScaffoldNewRunner
         ScaffoldDotiInstaller.Install(sourceRepoRoot, targetRoot, request, scaffoldVersion);
         Emit("doti-install", "pass");
 
+        // 029 FR-002/FR-006/D3/D10: project the resolved operator setup config into the just-generated repo (the
+        // .csproj metadata, GitVersion seed, release env-var, constitution §2) + persist the repo-portable intent.
+        // Runs AFTER doti-install so the constitution + release.json exist with their template defaults. The
+        // projector/writer/intent-store type fan-out is confined to SetupProjectionStep. D10 no-op fence: a null
+        // Setup early-returns inside the step before any write — SC-007 byte-identical.
+        Emit("setup-config", "running");
+        SetupProjectionStep.Apply(request.Setup, targetRoot, request.Name);
+        Emit("setup-config", "pass");
+
         // 2b. Populate the shared tool store from the vendored binaries so the generated solution resolves
         // tools from one machine-global store (no ~127MB per-solution copy). Best-effort + fail-closed:
         // a missing/absent binary is skipped (the generated repo can self-provision in-repo via `tools fetch`).

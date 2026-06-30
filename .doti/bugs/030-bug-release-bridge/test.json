@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "030-bug-release-bridge",
+  "boundFixSha256": "563ad030868d5c540ce8caa756df1a73c0ed9909531de1c632e805545259103f",
+  "outcome": "pass",
+  "evidence": "13 regression tests green (dotnet build -c Release 0/0; dotnet test default output). ReleaseTrainBridgeTests 5/5; BugCycleServiceTests 6/6 (incl. released-bug exclusion); CycleEnforcementReleaseTrainRegressionTests 3 \u2014 single feature@drift-review no-anchor valid; 023 own-commit re-validation; \u002BNEW ReleaseTrain_ActiveDriftReviewFeature_StaysValid_AfterOnTopCommitReGateAndRestamp (the 030-on-029 repro: an on-top source fix re-gated\u002Bre-stamped keeps the active drift-review feature a valid member \u2014 fails without the current-HEAD validation fix). Live verify with freshly-built hx: train resolves valid with exactly 029 \u002B 030 included; released 021/023/024 dropped. Full suite green: Cycle 134, Doti 165, Runner 251."
+}

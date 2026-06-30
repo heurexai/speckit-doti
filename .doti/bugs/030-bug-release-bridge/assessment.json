@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "030-bug-release-bridge",
+  "verdict": "confirmed",
+  "severity": "high",
+  "remediation": "Extend CycleService.BuildReleaseTrain (tools/Hx.Cycle.Core/CycleService.ReleaseTrain.cs) to recognize two additional releasable members so a single completed cycle can anchor its own release: (a) the active feature cycle when it has completed drift-review (currentStage=drift-review with a fresh drift-review proof \u002B its implement-\u003Edrift-review gate proof), not only at currentStage=release \u2014 fixing the single-feature-cycle-with-no-prior-anchor blocker; and (b) a test-passed /doti-bug mini-cycle (.doti/bugs/\u003Cid\u003E/ with a passed test-stage proof) as a patch-level member when no feature cycle is present \u2014 the missing bug-release bridge. Both backed by their existing proofs; release-train validity \u002B documentation \u002B version-policy checks unchanged (LocalReleaseVersionPolicy already defaults bug-only to patch). Net: hx release \u002B gate --profile release succeed for a single drift-review-complete feature cycle AND a bug-fix-only repo, consistent with the /09 skill. Add regression tests for both member kinds.",
+  "summary": "hx release \u002B gate --profile release block a single completed cycle: the release train under-counts releasable members (no active-drift-review feature cycle, no bug mini-cycle)"
+}

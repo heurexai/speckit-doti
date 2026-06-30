@@ -10,6 +10,7 @@ public static partial class RunnerCommandFactory
         Command dotiCommand = new("doti", "Doti self-hosting: render skills, cycle state, hooks, operator-question protocol.");
         AddDotiRenderSkills(dotiCommand, meta);
         AddDotiInstall(dotiCommand, meta);
+        AddDotiConfig(dotiCommand, meta);
         AddDotiCheckVersion(dotiCommand, meta);
         AddDotiScan(dotiCommand, meta);
         AddDotiUpdate(dotiCommand, meta);
@@ -225,6 +226,23 @@ public static partial class RunnerCommandFactory
             () => RunnerCommands.DotiInstall(meta, parseResult.GetValue(repo), parseResult.GetValue(agents)!, parseResult.GetValue(force)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
+    }
+
+    // 029 FR-004: show the effective setup config (persisted intent overlaid on defaults) with default-vs-custom provenance.
+    private static void AddDotiConfig(Command dotiCommand, CliMeta meta)
+    {
+        Command configCommand = new("config", "Inspect the repo's Doti setup configuration.");
+        Command showCommand = new("show",
+            "Show the effective setup configuration (.doti/setup.json overlaid on documented defaults) with default-vs-custom provenance; --json for the machine shape. Non-mutating; all-default when no setup.json is present.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        showCommand.Options.Add(repo);
+        showCommand.Options.Add(json);
+        showCommand.SetAction(parseResult => CliHost.Run(meta, "doti config show",
+            () => RunnerCommands.DotiConfigShow(meta, parseResult.GetValue(repo)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        configCommand.Subcommands.Add(showCommand);
+        dotiCommand.Subcommands.Add(configCommand);
     }
 
     // 022 T022 (FR-001/004): report a repo's Doti version + relation to the installed tool.
