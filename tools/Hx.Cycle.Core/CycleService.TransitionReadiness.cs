@@ -12,6 +12,16 @@ public sealed partial class CycleService
         // FR-038/BL-2: on a new-feature start, the incoming feature's OWN paths (e.g. its just-written spec) are
         // not the PRIOR feature's dirty tree — subtract them by exact path (never prefix; a stray sibling still blocks).
         var excluded = new HashSet<string>(excludedOwnedPaths ?? [], StringComparer.OrdinalIgnoreCase);
+        // 031 FR-016 (resolves #42): the ACTIVE feature's own produces docs — authored ahead of the transition that
+        // commits them — are the cycle's own artifacts, never foreign changes. Exclude them from the untracked/unstaged
+        // scope guards below, exactly as Check() already does (CycleService.Check.cs), so authoring a stage's produces
+        // doc before stamping the transition into it never trips the doc-dance. A genuinely foreign untracked/modified
+        // path (NOT one of the feature's produces docs) still blocks — fail-closed transition-scope safety preserved.
+        if (!string.IsNullOrWhiteSpace(state.Feature))
+        {
+            excluded.UnionWith(FeatureArtifactScope.OwnedPaths(_stageModel, state.Feature));
+        }
+
         if (!IsReleaseStageRecovery(state, current, scope))
         {
             // BUG 021: thread the owned paths into the freshness Check too (not just the dirty-tree guards below) so an

@@ -19,14 +19,14 @@ public static class DotiUpdater
         string repoRoot,
         IReadOnlyList<DotiAgentTarget> agents,
         string installedToolVersion,
-        bool force)
+        bool force,
+        string? sourceOrigin = null)
     {
         string root = Path.GetFullPath(repoRoot);
         if (!Directory.Exists(Path.Combine(root, ".doti")))
         {
             return Outcome(root, DotiUpdateStatus.NotARepo, null, null, installedToolVersion,
-                DotiVersionRelation.Unknown, DotiVersionRelation.Unknown, [], [],
-                "No .doti directory — not a Doti-enabled repository.");
+                DotiVersionRelation.Unknown, DotiVersionRelation.Unknown, [], [], null, sourceOrigin, [], []);
         }
 
         string? before = RepoPayloadStore.ReadPayloadVersion(root);
@@ -37,7 +37,8 @@ public static class DotiUpdater
         {
             return Outcome(root, DotiUpdateStatus.Ahead, before, before, installedToolVersion,
                 beforeRelation, beforeRelation, [], [],
-                $"Repo payload {before} is newer than the installed tool {installedToolVersion}; refusing to downgrade.");
+                $"Repo payload {before} is newer than the installed tool {installedToolVersion}; refusing to downgrade.",
+                sourceOrigin, [], []);
         }
 
         DotiInstallResult install;
@@ -48,14 +49,14 @@ public static class DotiUpdater
         catch (Exception ex) when (ex is InvalidOperationException or IOException or DirectoryNotFoundException)
         {
             return Outcome(root, DotiUpdateStatus.Failed, before, before, installedToolVersion,
-                beforeRelation, beforeRelation, [], [], ex.Message);
+                beforeRelation, beforeRelation, [], [], ex.Message, sourceOrigin, [], []);
         }
 
         if (install.Outcome != StageOutcome.Pass)
         {
             return Outcome(root, DotiUpdateStatus.Failed, before, before, installedToolVersion,
                 beforeRelation, beforeRelation, Customizations(install), Changes(install),
-                "Reconciliation did not complete cleanly.");
+                "Reconciliation did not complete cleanly.", sourceOrigin, Pruned(install), MergePending(install));
         }
 
         string? after = RepoPayloadStore.ReadPayloadVersion(root);
@@ -67,7 +68,7 @@ public static class DotiUpdater
             ? "No managed-asset baseline was present; reconciled forward with operator content preserved as .new sidecars."
             : null;
         return Outcome(root, status, before, after, installedToolVersion, beforeRelation, afterRelation,
-            Customizations(install), Changes(install), reason);
+            Customizations(install), Changes(install), reason, sourceOrigin, Pruned(install), MergePending(install));
     }
 
     // FR-009/010: the operator customizations the reconcile preserved (or blocked without --force) — kept + reported.
@@ -76,17 +77,28 @@ public static class DotiUpdater
             .Concat(install.Blocked.Select(e => new DotiAssetOutcome(e.Path, "blocked", e.Reason)))
             .ToArray();
 
-    // The managed-asset changes the reconcile applied (installed/removed/skipped).
+    // The managed-asset changes the reconcile applied (installed/removed/skipped). Rendered files are already in
+    // Installed (DotiInstaller adds the render Written set there), so this is the full touched set + skips.
     private static IReadOnlyList<DotiAssetOutcome> Changes(DotiInstallResult install) =>
         install.Installed.Select(e => new DotiAssetOutcome(e.Path, "installed", e.Reason))
             .Concat(install.Removed.Select(e => new DotiAssetOutcome(e.Path, "removed", e.Reason)))
             .Concat(install.Skipped.Select(e => new DotiAssetOutcome(e.Path, "skipped", e.Reason)))
             .ToArray();
 
+    // 031 FR-004: the pruned-orphan paths (the subset of Removed) — reported on the outcome + named in the commit msg.
+    private static IReadOnlyList<string> Pruned(DotiInstallResult install) =>
+        install.Removed.Select(e => e.Path.Replace('\\', '/')).ToList();
+
+    // 031 FR-006: the .new merge-pending sidecars staged because an operator's version was preserved (D3).
+    private static IReadOnlyList<DotiAssetOutcome> MergePending(DotiInstallResult install) =>
+        (install.MergePending ?? []).Select(e => new DotiAssetOutcome(e.Path, "merge-pending", e.Reason)).ToArray();
+
     private static DotiUpdateOutcome Outcome(
         string root, string status, string? before, string? after, string installedToolVersion,
         DotiVersionRelation beforeRelation, DotiVersionRelation afterRelation,
-        IReadOnlyList<DotiAssetOutcome> customizations, IReadOnlyList<DotiAssetOutcome> changes, string? reason) =>
+        IReadOnlyList<DotiAssetOutcome> customizations, IReadOnlyList<DotiAssetOutcome> changes, string? reason,
+        string? sourceOrigin, IReadOnlyList<string> pruned, IReadOnlyList<DotiAssetOutcome> mergePending) =>
         new(JsonContractDefaults.SchemaVersion, root, status, before, after, installedToolVersion,
-            beforeRelation, afterRelation, DryRun: false, customizations, changes, reason);
+            beforeRelation, afterRelation, DryRun: false, customizations, changes, reason,
+            sourceOrigin, pruned, mergePending, Commit: null);
 }

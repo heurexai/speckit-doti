@@ -67,6 +67,7 @@ public static class ErrorCodes
     public const string Validation_CycleReviewRebindIneligible = "VAL0037";
     public const string Validation_CycleReviewRebindNotStale = "VAL0038";
     public const string Validation_SetupConfigInvalid = "VAL0039";
+    public const string Validation_DotiPayloadSourceUnresolved = "VAL0040";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -187,5 +188,7 @@ public static class ErrorCodes
             "The target stage is not stale; there is nothing to attest.", "Run `doti cycle status` to confirm the stage's freshness; review-rebind only applies to a stage stale on a prerequisite content change."),
         new("VAL0039", "validation", "VAL", 39, Severity.Error, ExitClass.Validation, "validation.setup-config-invalid",
             "The supplied setup configuration is invalid.", "Fix the named field(s) in the --config / .doti/setup.json (schemaVersion must be 1; agents are a subset of claude/codex; nextVersion is a 3-part SemVer; values carry no XML metacharacters or path traversal), then re-run. No files are created from an invalid config."),
+        new("VAL0040", "validation", "VAL", 40, Severity.Error, ExitClass.Validation, "validation.doti-payload-source-unresolved",
+            "No version-stamped Doti payload source could be resolved for the reconcile.", "Run `hx doti install`/`update`/`update-all` from an installed hx (its payload ships beside the executable), or from inside a Doti source checkout (a `.doti/core/skills.json` ancestor); the command fails closed rather than stamp from a non-payload source."),
     ];
 }

@@ -16,7 +16,11 @@ public sealed record DotiInstallResult(
     IReadOnlyList<DotiInstallPathEffect> Blocked,
     // 029 D8 (additive trailing-optional): the setup-config projection effect on the install path — the .doti-layer
     // fields written + any new-only field reported as ignored (FR-002). Null/omitted on the no-config path (SC-007).
-    SetupConfigEffect? Setup = null);
+    SetupConfigEffect? Setup = null,
+    // 031 D3/FR-006 (additive trailing-optional): the `.new` sidecars the reconcile staged because an operator's
+    // version was preserved — a DISTINCT merge-pending list (not folded silently into Preserved), so the operator
+    // sees what to merge and the self-commit can EXCLUDE every `.new` (a merge-helper, not a managed asset).
+    IReadOnlyList<DotiInstallPathEffect>? MergePending = null);
 
 /// <summary>029 FR-002: the install-path setup-config effect — the paths the Install-subset projection wrote +
 /// the keys it ignored (new-only on install, or preserved).</summary>

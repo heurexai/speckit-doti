@@ -213,17 +213,19 @@ public static partial class RunnerCommandFactory
 
     private static void AddDotiInstall(Command dotiCommand, CliMeta meta)
     {
-        Command command = new("install", "Install, repair, migrate, or update Doti workflow assets in a --repo target (version-aware reconciliation; operator edits preserved).");
+        Command command = new("install", "Install/repair/update Doti workflow assets in a --repo target. Source defaults to the running tool's bundled payload (version-aware reconciliation; operator edits preserved as .new merge-helpers); orphaned rendered-skill dirs are pruned; on a successful reconcile the command makes one sanctioned commit of exactly the touched paths (--no-commit opts out; a non-git target skips it).");
         Option<string?> repo = new("--repo") { Description = "Target repository root to install into. Required; the command never defaults to the current directory." };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
         Option<bool> force = new("--force") { Description = "Replace modified/unknown legacy Doti-owned assets during migration." };
+        Option<bool> noCommit = new("--no-commit") { Description = "Leave the reconciled changes in the working tree instead of making the sanctioned auto-commit." };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
         command.Options.Add(agents);
         command.Options.Add(force);
+        command.Options.Add(noCommit);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti install",
-            () => RunnerCommands.DotiInstall(meta, parseResult.GetValue(repo), parseResult.GetValue(agents)!, parseResult.GetValue(force)),
+            () => RunnerCommands.DotiInstall(meta, parseResult.GetValue(repo), parseResult.GetValue(agents)!, parseResult.GetValue(force), parseResult.GetValue(noCommit)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
     }
@@ -275,46 +277,50 @@ public static partial class RunnerCommandFactory
         dotiCommand.Subcommands.Add(command);
     }
 
-    // 022 T045 (FR-008/013/014/015): update one repo's managed assets to the installed payload, reporting before→after.
+    // 022 T045 (FR-008/013/014/015) + 031: update one repo's managed assets to the installed payload, reporting before→after.
     private static void AddDotiUpdate(Command dotiCommand, CliMeta meta)
     {
         Command command = new("update",
-            "Bring a repo's managed Doti assets up to the installed payload + report the before→after version. Reconciles in a git worktree (--dry-run previews); git required; customizations preserved (--force to overwrite).");
+            "Bring a repo's managed Doti assets up to the running tool's bundled payload + report the before→after version. Source defaults to the bundled payload beside the executable (run from anywhere; fail-closed if unresolvable). Reconciles in a git worktree (--dry-run previews); git required; customizations preserved (--force to overwrite); orphaned rendered-skill dirs pruned; on a successful apply makes one sanctioned commit of exactly the touched paths (--no-commit opts out).");
         Option<string?> repo = new("--repo") { Description = "Target repository root. Required." };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
         Option<bool> force = new("--force") { Description = "Overwrite operator-modified managed assets instead of preserving them." };
         Option<bool> dryRun = new("--dry-run") { Description = "Preview the update in a worktree without applying it back." };
+        Option<bool> noCommit = new("--no-commit") { Description = "Leave the reconciled changes in the working tree instead of making the sanctioned auto-commit." };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
         command.Options.Add(agents);
         command.Options.Add(force);
         command.Options.Add(dryRun);
+        command.Options.Add(noCommit);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti update",
             () => RunnerCommands.DotiUpdate(meta, parseResult.GetValue(repo), parseResult.GetValue(agents)!,
-                parseResult.GetValue(force), parseResult.GetValue(dryRun)),
+                parseResult.GetValue(force), parseResult.GetValue(dryRun), parseResult.GetValue(noCommit)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
     }
 
-    // 022 T052 (FR-016/017/018): batch-update every Doti repo under a root, fail-soft, with a summary.
+    // 022 T052 (FR-016/017/018) + 031: batch-update every Doti repo under a root, fail-soft, with a summary.
     private static void AddDotiUpdateAll(Command dotiCommand, CliMeta meta)
     {
         Command command = new("update-all",
-            "Batch-update every Doti-enabled repo under --root to the installed payload (fail-soft), with per-repo before→after + a summary. --dry-run previews; --force overwrites customizations.");
+            "Batch-update every Doti-enabled repo under --root to the running tool's bundled payload (fail-soft), with per-repo before→after + a summary. Source defaults to the bundled payload beside the executable; each repo gets the same prune + sanctioned auto-commit behavior. --dry-run previews; --force overwrites customizations; --no-commit opts out of the auto-commit.");
         Option<string?> root = new("--root") { Description = "Root directory to scan + update. Required." };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
         Option<bool> force = new("--force") { Description = "Overwrite operator-modified managed assets instead of preserving them." };
         Option<bool> dryRun = new("--dry-run") { Description = "Preview every update in a worktree without applying it back." };
+        Option<bool> noCommit = new("--no-commit") { Description = "Leave each repo's reconciled changes in the working tree instead of making the sanctioned auto-commit." };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(root);
         command.Options.Add(agents);
         command.Options.Add(force);
         command.Options.Add(dryRun);
+        command.Options.Add(noCommit);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti update-all",
             () => RunnerCommands.DotiUpdateAll(meta, parseResult.GetValue(root), parseResult.GetValue(agents)!,
-                parseResult.GetValue(force), parseResult.GetValue(dryRun)),
+                parseResult.GetValue(force), parseResult.GetValue(dryRun), parseResult.GetValue(noCommit)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         dotiCommand.Subcommands.Add(command);
     }
