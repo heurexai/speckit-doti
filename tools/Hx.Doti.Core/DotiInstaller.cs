@@ -60,6 +60,7 @@ public static class DotiInstaller
         var removed = new List<DotiInstallPathEffect>();
         var skipped = new List<DotiInstallPathEffect>();
         var blocked = new List<DotiInstallPathEffect>();
+        var mergePending = new List<DotiInstallPathEffect>();
 
         foreach (string sub in StaticDotiSubdirectories)
         {
@@ -74,7 +75,7 @@ public static class DotiInstaller
             if (Directory.Exists(from))
             {
                 int installedCount = ReconcileManagedTree(
-                    payloadRoot, targetRepoRoot, from, managed, force, installed, preserved, skipped, blocked);
+                    payloadRoot, targetRepoRoot, from, managed, force, installed, preserved, skipped, blocked, mergePending);
                 copied.Add($".doti/{sub}");
                 if (installedCount > 0)
                 {
@@ -126,7 +127,8 @@ public static class DotiInstaller
             removed,
             skipped,
             blocked,
-            setupEffect);
+            setupEffect,
+            mergePending);
     }
 
     /// <summary>
@@ -488,8 +490,15 @@ public static class DotiInstaller
 
             if (!baseline.TryGetValue(rel, out ManagedAssetHashEntry? entry))
             {
-                anyPreserved = true;
-                blocked.Add(new DotiInstallPathEffect(rel, "orphaned skill asset has no managed baseline; preserved (operator-owned), rerun with --force to remove"));
+                // 031 T004/FR-004/FR-005 (D2): a no-baseline orphan reaching here is a *doti-* rendered-skill file
+                // under an agent SkillsRoot that the current render no longer targets (filtered in
+                // PruneOrphanedManagedSkillDirs). A rendered Doti skill is NOT operator content — "hand-edits are
+                // drift" (agent context); the source-bug regression erased these husks' baseline, and the old
+                // conservative "preserve as operator-owned" is exactly what let them survive. Prune it. (Operator
+                // POLICY assets — skills.json under managed-replace-preserve-live-config, the constitution — are a
+                // different code path and are never reached here, so they stay preserved.)
+                File.Delete(file);
+                removed.Add(new DotiInstallPathEffect(rel, "orphaned managed Doti skill dir the render no longer targets; rendered skills are not operator-owned"));
                 continue;
             }
 
@@ -527,7 +536,7 @@ public static class DotiInstaller
         if (!Directory.EnumerateFileSystemEntries(dirFull).Any())
         {
             Directory.Delete(dirFull);
-            removed.Add(new DotiInstallPathEffect(relDir + "/", "obsolete managed skill dir removed after all files matched baseline"));
+            removed.Add(new DotiInstallPathEffect(relDir + "/", "orphaned managed Doti skill dir removed; the render no longer targets it"));
         }
         else if (anyPreserved)
         {
@@ -590,7 +599,8 @@ public static class DotiInstaller
         List<DotiInstallPathEffect> installed,
         List<DotiInstallPathEffect> preserved,
         List<DotiInstallPathEffect> skipped,
-        List<DotiInstallPathEffect> blocked)
+        List<DotiInstallPathEffect> blocked,
+        List<DotiInstallPathEffect> mergePending)
     {
         string payloadDoti = Path.Combine(payloadRoot, ".doti");
         int installedCount = 0;
@@ -605,8 +615,8 @@ public static class DotiInstaller
             {
                 if (status.UpdateConflictPolicy == "managed-replace-preserve-live-config")
                 {
-                    StageSidecar(targetRepoRoot, rel, sourceFile);
-                    preserved.Add(new DotiInstallPathEffect(rel, "operator-modified managed asset preserved; bundled version staged as .new"));
+                    PreserveWithSidecar(targetRepoRoot, rel, sourceFile, preserved, mergePending,
+                        "operator-modified managed asset preserved");
                     continue;
                 }
 
@@ -623,8 +633,8 @@ public static class DotiInstaller
             if (status is null && exists)
             {
                 // Pre-existing operator/foreign content with no managed baseline (brownfield): never blind-overwrite.
-                StageSidecar(targetRepoRoot, rel, sourceFile);
-                preserved.Add(new DotiInstallPathEffect(rel, "pre-existing operator content preserved; bundled version staged as .new"));
+                PreserveWithSidecar(targetRepoRoot, rel, sourceFile, preserved, mergePending,
+                    "pre-existing operator content preserved");
                 continue;
             }
 
@@ -636,11 +646,69 @@ public static class DotiInstaller
         return installedCount;
     }
 
-    private static void StageSidecar(string targetRepoRoot, string rel, string sourceFile)
+    /// <summary>
+    /// 031 T005/FR-006 (D3): preserve an operator file and stage the bundled version as a <c>.new</c> merge-helper —
+    /// but ONLY when the bundled content genuinely differs (the byte-equality guard in <see cref="StageSidecar"/>).
+    /// When a sidecar was written it is surfaced as a DISTINCT merge-pending item (so the operator merges it and the
+    /// self-commit excludes it); when the content matched, the file is preserved with no spurious stray and no
+    /// merge-pending entry.
+    /// </summary>
+    private static void PreserveWithSidecar(
+        string targetRepoRoot,
+        string rel,
+        string sourceFile,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> mergePending,
+        string preservedReason)
     {
+        bool wroteSidecar = StageSidecar(targetRepoRoot, rel, sourceFile);
+        preserved.Add(new DotiInstallPathEffect(rel, wroteSidecar
+            ? preservedReason + "; bundled version staged as .new"
+            : preservedReason + " (matches bundled; no .new staged)"));
+        if (wroteSidecar)
+        {
+            mergePending.Add(new DotiInstallPathEffect(rel + ".new", "bundled version staged as a merge-helper; merge into " + rel + " then delete"));
+        }
+    }
+
+    /// <summary>
+    /// 031 T005/FR-006 (D3): stage the bundled version as a <c>.new</c> sidecar beside the preserved operator file —
+    /// SKIPPING the write (and reporting no merge-pending) when the bundled content is BYTE-IDENTICAL to the
+    /// operator's existing file (no spurious stray). Returns true iff a sidecar was written (a genuine difference the
+    /// operator must merge), so the caller can surface it as a distinct merge-pending item. A stale prior
+    /// <c>.new</c> is removed when the content has since converged, so a re-run never leaves a phantom merge-helper.
+    /// </summary>
+    private static bool StageSidecar(string targetRepoRoot, string rel, string sourceFile)
+    {
+        string dest = ResolveInside(targetRepoRoot, rel);
+        if (File.Exists(dest) && FilesAreByteIdentical(sourceFile, dest))
+        {
+            // The operator's content already equals the bundled version — there is nothing to merge.
+            string stale = ResolveInside(targetRepoRoot, rel + ".new");
+            if (File.Exists(stale))
+            {
+                File.Delete(stale);
+            }
+
+            return false;
+        }
+
         string sidecar = ResolveInside(targetRepoRoot, rel + ".new");
         Directory.CreateDirectory(Path.GetDirectoryName(sidecar)!);
         File.Copy(sourceFile, sidecar, overwrite: true);
+        return true;
+    }
+
+    private static bool FilesAreByteIdentical(string a, string b)
+    {
+        var infoA = new FileInfo(a);
+        var infoB = new FileInfo(b);
+        if (!infoA.Exists || !infoB.Exists || infoA.Length != infoB.Length)
+        {
+            return false;
+        }
+
+        return File.ReadAllBytes(a).AsSpan().SequenceEqual(File.ReadAllBytes(b));
     }
 
     private static IReadOnlyDictionary<string, ManagedAssetStatus> ScanExistingManagedAssets(string targetRepoRoot)

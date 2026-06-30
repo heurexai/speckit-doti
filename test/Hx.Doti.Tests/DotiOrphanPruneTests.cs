@@ -106,6 +106,35 @@ public sealed class DotiOrphanPruneTests
     }
 
     [Fact]
+    public void No_baseline_orphan_doti_skill_dir_is_pruned_not_preserved()
+    {
+        // 031 T004/FR-004/FR-005 (D2): a *doti-* rendered-skill orphan the render no longer targets, with NO managed
+        // baseline entry (the regression that erased its baseline). Old behavior preserved it as "operator-owned";
+        // the fix PRUNES it — rendered Doti skills are not operator content. SC-004: a renamed orphan is removed.
+        string source = NewSourceRepo();
+        string target = NewTempDir();
+        try
+        {
+            SeedOrphanWithoutBaseline(target, OrphanSkillBody);
+
+            DotiInstallResult result = DotiInstaller.Install(source, target, DotiAgentTarget.All, "renumber-repo");
+
+            // The no-baseline orphan is pruned (file + empty dir removed), reported removed, never preserved/blocked.
+            Assert.False(File.Exists(Path.Combine(target, OrphanRel.Replace('/', Path.DirectorySeparatorChar))));
+            Assert.False(Directory.Exists(Path.Combine(target, OrphanDir.Replace('/', Path.DirectorySeparatorChar))));
+            Assert.Contains(result.Removed, e => e.Path.Replace('\\', '/') == OrphanRel
+                && e.Reason.Contains("rendered skills are not operator-owned", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(result.Blocked, e => e.Path.Replace('\\', '/').StartsWith(OrphanDir, StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(result.Preserved, e => e.Path.Replace('\\', '/').StartsWith(OrphanDir, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            ForceDelete(source);
+            ForceDelete(target);
+        }
+    }
+
+    [Fact]
     public void Payload_check_flags_a_surplus_doti_skill_dir_absent_from_render_targets()
     {
         string source = NewSourceRepo();
@@ -177,6 +206,32 @@ public sealed class DotiOrphanPruneTests
         {
             File.WriteAllText(full, body + "\noperator hand-edit after the ordinal was renamed away\n");
         }
+    }
+
+    /// <summary>
+    /// Write the orphan <c>04-doti-tasks/SKILL.md</c> on disk plus a managed-asset baseline that does NOT include it
+    /// (an unrelated entry), so the install reaches <see cref="DotiInstaller"/>'s no-baseline orphan branch — the
+    /// 031 FR-004 prune path. Mirrors the regression where the source bug erased the orphan's baseline entry.
+    /// </summary>
+    private static void SeedOrphanWithoutBaseline(string target, string body)
+    {
+        string full = Path.Combine(target, OrphanRel.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        File.WriteAllText(full, body);
+
+        // A baseline present but WITHOUT the orphan path — and referencing only a NON-payload legacy path so it never
+        // interferes with the forward reconcile of the real payload (skills.json etc.). The orphan has no entry, so
+        // the install reaches the no-baseline orphan branch.
+        var manifest = new ManagedAssetManifest(JsonContractDefaults.SchemaVersion,
+        [
+            new ManagedAssetHashEntry(
+                ".doti/legacy/old-removed-asset.md",
+                ManagedAssetCategory.SkillGeneratedInstruction,
+                CanonicalContentHasher.ProfileForPath(".doti/legacy/old-removed-asset.md"),
+                "0000000000000000000000000000000000000000000000000000000000000000",
+                "markdown", "none", "canonical-content-hash", "managed-replace-preserve-live-config"),
+        ]);
+        ManagedAssetManifestStore.Write(target, manifest);
     }
 
     private static string NewSourceRepo()

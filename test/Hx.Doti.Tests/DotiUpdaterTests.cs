@@ -95,6 +95,86 @@ public sealed class DotiUpdaterTests
     }
 
     [Fact]
+    public void New_sidecar_is_written_and_merge_pending_only_when_operator_version_differs()
+    {
+        // 031 T005/FR-006 (D3, SC-005): a .new sidecar is staged ONLY when the operator's version genuinely differs
+        // from the bundled (no spurious stray when they match); when written it is reported as merge-pending.
+        string source = DotiVersionTestSupport.NewSource("2.0.0");
+        string target = DotiVersionTestSupport.NewTempDir();
+        try
+        {
+            DotiInstaller.Install(source, target, DotiAgentTarget.All, "t");
+            string skills = Path.Combine(target, DotiVersionTestSupport.SkillsRelative);
+
+            // (a) Operator edited skills.json → differs from bundled → a .new is staged AND reported merge-pending.
+            File.WriteAllText(skills, OperatorSkillsEdit);
+            DotiUpdateOutcome differs = DotiUpdater.Update(source, target, DotiAgentTarget.All, "2.0.0", force: false);
+            Assert.True(File.Exists(skills + ".new"), "a .new is staged when the operator version differs");
+            Assert.NotNull(differs.MergePending);
+            Assert.Contains(differs.MergePending!, m => m.Path.Replace('\\', '/') == ".doti/core/skills.json.new");
+
+            // (b) Operator content now byte-identical to the bundled version → NO .new, NOT merge-pending; a stale
+            // prior .new is cleaned up.
+            File.WriteAllText(skills, DotiVersionTestSupport.SkillsJson);
+            DotiUpdateOutcome matches = DotiUpdater.Update(source, target, DotiAgentTarget.All, "2.0.0", force: false);
+            Assert.False(File.Exists(skills + ".new"), "no spurious .new stray when the operator version matches the bundled");
+            Assert.DoesNotContain(matches.MergePending ?? [], m => m.Path.Replace('\\', '/') == ".doti/core/skills.json.new");
+        }
+        finally
+        {
+            Cleanup(source, target);
+        }
+    }
+
+    [Fact]
+    public void Outdated_repo_reconciled_from_a_versioned_source_reports_updated_not_already_current()
+    {
+        // 031 T003/FR-003 (D1, SC-003): the false already-current is resolved by the source fix — Install reads the
+        // bundled payload.manifest.json and stamps the real version, so an outdated repo that reconciles reports
+        // before < after (Updated), NEVER already-current.
+        string oldSource = DotiVersionTestSupport.NewSource("1.0.0");
+        string newSource = DotiVersionTestSupport.NewSource("2.0.0");
+        string target = DotiVersionTestSupport.NewTempDir();
+        try
+        {
+            DotiInstaller.Install(oldSource, target, DotiAgentTarget.All, "t");
+            Assert.Equal("1.0.0", RepoPayloadStore.ReadPayloadVersion(target));
+
+            DotiUpdateOutcome outcome = DotiUpdater.Update(newSource, target, DotiAgentTarget.All, "2.0.0", force: false);
+
+            Assert.Equal(DotiUpdateStatus.Updated, outcome.Status);
+            Assert.NotEqual(DotiUpdateStatus.AlreadyCurrent, outcome.Status);
+            Assert.Equal("1.0.0", outcome.BeforeVersion);
+            Assert.Equal("2.0.0", outcome.AfterVersion);
+        }
+        finally
+        {
+            Cleanup(oldSource, newSource, target);
+        }
+    }
+
+    [Fact]
+    public void Source_origin_is_threaded_into_the_outcome()
+    {
+        // 031 D5/FR-011: the resolved source origin is reported on the outcome.
+        string source = DotiVersionTestSupport.NewSource("2.0.0");
+        string target = DotiVersionTestSupport.NewTempDir();
+        try
+        {
+            DotiInstaller.Install(source, target, DotiAgentTarget.All, "t");
+
+            DotiUpdateOutcome outcome = DotiUpdater.Update(
+                source, target, DotiAgentTarget.All, "2.0.0", force: false, sourceOrigin: "bundled");
+
+            Assert.Equal("bundled", outcome.SourceOrigin);
+        }
+        finally
+        {
+            Cleanup(source, target);
+        }
+    }
+
+    [Fact]
     public void Operator_owned_constitution_is_untouched_even_with_force()
     {
         string source = DotiVersionTestSupport.NewSource("2.0.0", includeConstitution: false);

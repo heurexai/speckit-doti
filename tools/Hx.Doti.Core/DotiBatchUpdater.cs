@@ -16,7 +16,9 @@ public static class DotiBatchUpdater
         IReadOnlyList<DotiAgentTarget> agents,
         string installedToolVersion,
         bool force,
-        bool dryRun)
+        bool dryRun,
+        bool commit = true,
+        string? sourceOrigin = null)
     {
         string fullRoot = Path.GetFullPath(root);
         DotiScanResult scan = DotiRepoScanner.Scan(fullRoot, installedToolVersion);
@@ -26,8 +28,9 @@ public static class DotiBatchUpdater
         {
             try
             {
+                // 031 FR-007/SC-012: per-repo source/prune/commit behavior, fail-soft, with a per-repo summary.
                 results.Add(DotiWorktreeUpdate.Run(
-                    payloadRoot, entry.RepoPath, agents, installedToolVersion, force, dryRun));
+                    payloadRoot, entry.RepoPath, agents, installedToolVersion, force, dryRun, commit, sourceOrigin));
             }
             catch (Exception ex)
             {
@@ -35,7 +38,8 @@ public static class DotiBatchUpdater
                 results.Add(new DotiUpdateOutcome(
                     JsonContractDefaults.SchemaVersion, entry.RepoPath, DotiUpdateStatus.Failed,
                     entry.PayloadVersion, entry.PayloadVersion, installedToolVersion,
-                    entry.Relation, entry.Relation, dryRun, [], [], ex.Message));
+                    entry.Relation, entry.Relation, dryRun, [], [], ex.Message,
+                    sourceOrigin, [], [], Commit: null));
             }
         }
 

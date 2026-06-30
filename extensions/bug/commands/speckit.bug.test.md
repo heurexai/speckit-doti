@@ -4,7 +4,7 @@ The **honest verification** stage of the enforced bug mini-cycle. No over-claimi
 
 Behavior:
 
-1. Verify the fix actually resolves the assessed bug: reproduce the original failure and confirm it is gone, and run the relevant tests.
+1. Verify the fix actually resolves the assessed bug at its **root**: reproduce the original failure and confirm it is gone — because the root cause was corrected, not because the symptom was masked — and run the relevant tests.
 2. Record the result honestly, bound to the fix: `hx doti bug test --repo . --bug <NNN-slug> --outcome <pass|fail> --evidence "<what you ran and observed>"`.
 
 Enforcement (fails closed / no over-claiming):

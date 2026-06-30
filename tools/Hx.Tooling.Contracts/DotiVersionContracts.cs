@@ -67,6 +67,27 @@ public sealed record DotiScanResult(
 /// <summary>022 (FR-009/010): one asset's effect during an update — the reused install path-effect, flattened.</summary>
 public sealed record DotiAssetOutcome(string Path, string Effect, string Reason);
 
+/// <summary>031 (FR-007/008/009/010/011, D4/D5): the outcome of the self-owned sanctioned reconcile commit.</summary>
+public static class DotiCommitStatus
+{
+    public const string Committed = "committed";   // a single sanctioned commit was made over exactly the touched paths
+    public const string NoChange = "no-change";    // nothing staged (idempotent re-run) — no commit
+    public const string NonGit = "non-git";        // target is not a git work tree — reconcile applied, commit skipped
+    public const string Disabled = "disabled";     // --no-commit — reconciled changes left in the working tree
+    public const string Failed = "failed";         // git staging/commit failed (reported, never silently swallowed)
+}
+
+/// <summary>
+/// 031 (FR-007/008/009/010/011, D4): the self-owned reconcile-commit outcome reported on the update/install result.
+/// Carries the commit <see cref="Sha"/> when a commit was made, the exact <see cref="StagedPaths"/> it staged (never
+/// `git add -A`), or the skip <see cref="Reason"/> (no change / non-git / --no-commit / failure).
+/// </summary>
+public sealed record DotiReconcileCommitOutcome(
+    string Status,
+    string? Sha,
+    IReadOnlyList<string> StagedPaths,
+    string? Reason);
+
 /// <summary>022: the per-repo update outcome status.</summary>
 public static class DotiUpdateStatus
 {
@@ -97,7 +118,14 @@ public sealed record DotiUpdateOutcome(
     bool DryRun,
     IReadOnlyList<DotiAssetOutcome> Customizations,
     IReadOnlyList<DotiAssetOutcome> Changes,
-    string? Reason);
+    string? Reason,
+    // 031 D5/FR-011 (additive trailing-optional): the resolved source origin (bundled/dev-cwd), the pruned-orphan
+    // paths, the `.new` merge-pending list (D3), and the self-owned commit outcome (D4) — surfaced in --json + the
+    // human summary. Null/empty on paths that do not set them (e.g. not-a-repo, dry-run, or a pre-031 caller).
+    string? SourceOrigin = null,
+    IReadOnlyList<string>? Pruned = null,
+    IReadOnlyList<DotiAssetOutcome>? MergePending = null,
+    DotiReconcileCommitOutcome? Commit = null);
 
 /// <summary>
 /// 022 (FR-016/017/018): the aggregate of a batch update under a root, the <c>data</c> ring of

@@ -213,6 +213,8 @@ Key capabilities:
 
 `hx doti install --repo <path>` installs or repairs Doti workflow assets in an explicit target repo. It preserves operator changes, refuses unsafe version drift, and does not default to the current directory.
 
+`hx doti install` / `update` / `update-all` are **self-contained**: run one command from any directory and the target repo's managed Doti assets are reconciled to the **running tool's bundled payload** (the payload that ships beside the executable — no `cd` to a source checkout, fail-closed if no version-stamped payload resolves). The reconcile **prunes** rendered-skill dirs a payload version renamed away (rendered skills are not operator content; operator-customized policy assets like `skills.json` and the constitution are always preserved), surfaces preserved customizations as `.new` merge-helpers (only when they genuinely differ), and — in a Git repo — makes a **single sanctioned commit of exactly the touched managed-asset paths** (never `git add -A`, so your unrelated work is untouched). `--no-commit` leaves the reconcile in the working tree; a non-Git target reconciles and skips the commit. Shipped in `031-doti-update-self-contained`.
+
 | Tier | Best for | Gate behavior |
 | --- | --- | --- |
 | `workflow-only` | Any repo, any language. | Enforces the spec-to-release workflow without .NET structure gates. |
@@ -232,11 +234,11 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 | `hx new` | Generate a new .NET solution and install Doti. |
 | `hx version --repo <path>` | Report tool identity and the target repo's installed Doti/scaffold state. |
 | `hx prereq check --for new` | Check .NET SDK, Git, and directory readiness before mutation. |
-| `hx doti install --repo <path>` | Install, repair, migrate, or update Doti workflow assets. |
+| `hx doti install --repo <path> [--no-commit]` | Install, repair, migrate, or update Doti workflow assets from the bundled payload; prunes renamed-away skill dirs; auto-commits exactly the touched paths (opt out with `--no-commit`). |
 | `hx doti check-version --repo <path>` | Report a repo's recorded Doti version + its relation to the installed tool (current/outdated/ahead). |
 | `hx doti scan --root <dir>` | Discover every Doti-enabled repo under a tree and table each one's version + relation. |
-| `hx doti update --repo <path> [--force] [--dry-run]` | Update one repo's managed assets to the installed payload and report the before→after version (reconciled in a git worktree; customizations preserved unless `--force`). |
-| `hx doti update-all --root <dir> [--force] [--dry-run]` | Batch-update every Doti repo under a root, fail-soft, with an updated/already-current/failed summary. |
+| `hx doti update --repo <path> [--force] [--dry-run] [--no-commit]` | Update one repo's managed assets to the running tool's bundled payload and report the before→after version (reconciled in a git worktree; orphaned skill dirs pruned; customizations preserved unless `--force`; auto-commits the touched paths unless `--no-commit`). |
+| `hx doti update-all --root <dir> [--force] [--dry-run] [--no-commit]` | Batch-update every Doti repo under a root, fail-soft, with an updated/already-current/failed summary; same bundled-source + prune + auto-commit behavior per repo. |
 | `hx doti cycle status/check/stamp` | Report, enforce, or stamp stage proofs. |
 | `hx doti cycle refresh-plan` | Show stale proof recovery steps without mutating anything. |
 | `hx doti cycle refresh --apply-safe` | Rebind safe-to-reinterpret **and** content-equal stale proofs (a content change, review stage, or code-bound stage still earns a re-run). |
@@ -261,6 +263,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 > The development cycle reviews the design before the work that depends on it: `arch-review` runs at `04` (immediately after `plan`), then `tasks` (`05`) and `analyze` (`06`) — shipped in `026-arch-review-after-plan`.
 
 > Stamp reconciliation is codified, not manual: re-running the one genuinely-changed stage auto-rebinds its content-unchanged dependents (a content change, a review stage, or a code-bound stage always earns a real re-run — never a rubber-stamp), and `hx doti update` prunes skill dirs a payload renamed away — shipped in `027-stamp-reconcile-orphan-prune`.
+
+> `hx doti install` / `update` / `update-all` are self-contained — one command from any directory reconciles from the tool's bundled payload, prunes renamed-away orphans, and makes a single sanctioned commit of exactly the touched paths (`--no-commit` opts out; non-git skips it). The bug mini-cycle (`/doti-bug`) requires a reproduce → root-cause → validate RCA and a root-cause fix, and forbids a bandaid/symptom patch or a bandaid-vs-root choice — shipped in `031-doti-update-self-contained`.
 
 > Reconciliation is also agent-gated and self-describing: when an upstream changes, the engine surfaces the diff and the agent records an explicit re-author or `cycle review-rebind --attest no-impact` verdict (recorded + decaying) — a bare `stamp` of an upstream-changed stage refuses, closing the agent-rubber-stamp hole the engine alone could not. And the workflow's next-step commands are generated from one code model (`DotiActionModel`), never a hand-maintained list that can drift — the §1 *self-describing automation* invariant. Shipped in `028-agent-gated-reconcile`.
 

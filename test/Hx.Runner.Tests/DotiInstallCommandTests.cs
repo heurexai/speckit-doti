@@ -14,7 +14,8 @@ public sealed class DotiInstallCommandTests
             new CliMeta("runner", "0.0.0-test"),
             targetRepo: null,
             agentsCsv: "codex",
-            force: false);
+            force: false,
+            noCommit: true);
 
         Assert.False(result.Ok);
         Assert.Equal((int)ExitClass.Usage, result.ExitCode);
@@ -31,7 +32,8 @@ public sealed class DotiInstallCommandTests
                 new CliMeta("runner", "0.0.0-test"),
                 targetRepo: target,
                 agentsCsv: "codex",
-                force: false);
+                force: false,
+                noCommit: true);
 
             Assert.True(result.Ok, string.Join("\n", result.Errors.Select(e => e.Message)));
             using JsonDocument doc = JsonDocument.Parse(result.Data!.ToJsonString());
