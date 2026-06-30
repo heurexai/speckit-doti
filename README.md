@@ -101,6 +101,30 @@ The installed `hx` command is the operational path. Source-checkout commands are
 
 ---
 
+## Configuration
+
+`hx new` derives or auto-configures almost everything a repo needs — copyright, package id, namespaces, the Sentrux baseline and boundary layers, the architecture rules, and the hooks. The handful of things **you** actually choose:
+
+| What you set | Default | How |
+| --- | --- | --- |
+| **Project name** | — (required) | `hx new --name` |
+| **Company / owner** | `Heurex` | `hx new --company` |
+| **Output directory** | — (required) | `hx new --output` |
+| **Agent toolchains** | `codex,claude` | `hx new --agents` (subset of `codex`, `claude`) |
+| **Package description** | sample text | `<Description>` in the CLI `.csproj` |
+| **Repository URL** | none | `<RepositoryUrl>` in the CLI `.csproj` |
+| **License** | `MIT` | `<PackageLicenseExpression>` in the CLI `.csproj` |
+| **Version series seed** | `0.1.0` | `next-version` in `GitVersion.yml` |
+| **Local release directory** | unset | `DOTI_RELEASE_ROOT` env var (or `hx.config.json`) — machine-local, not committed |
+| **NuGet publish** | none | parameterizes `.github/workflows/release.yml` + an operator-side OIDC policy/secret |
+| **Constitution §2** | placeholders | `/doti-constitution` (domain, tech stack, coding style, security, performance) |
+
+Everything else — the Sentrux baseline (set by the first build's smoke run), boundary layers and architecture namespaces, package id and copyright, the `dev`/`main` branches, and the pre-commit and DCO hooks — is derived from the above or configured automatically.
+
+**Full reference:** [docs/configuration.md](docs/configuration.md) lists every setting Doti reads, grouped by what it drives, with purpose, valid values, and defaults.
+
+---
+
 ## What `hx new` generates
 
 ```text
