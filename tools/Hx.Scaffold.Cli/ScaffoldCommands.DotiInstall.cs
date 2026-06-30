@@ -7,21 +7,19 @@ namespace Hx.Scaffold.Cli;
 
 public static partial class ScaffoldCommands
 {
-    public static CliResult DotiInstall(CliMeta meta, string? targetRepo, string agentsCsv, bool force, string sourceDirectory)
+    public static CliResult DotiInstall(
+        CliMeta meta, string? targetRepo, string agentsCsv, bool force, string sourceDirectory,
+        string? configPath = null, bool interactive = false, ISetupConsole? console = null)
     {
-        if (string.IsNullOrWhiteSpace(targetRepo))
+        // Thin parse→delegate→render: argument validation + the 029 setup-config resolve live in PrepareInstallSetup;
+        // the checklist projection lives in InstallChecklist. Behaviour is identical to the previous inline body.
+        DotiInstallSetup prepared = PrepareInstallSetup(meta, targetRepo, agentsCsv, configPath, interactive, console);
+        if (prepared.Error is not null)
         {
-            return CliResults.Fail(meta, "doti install", ExitClass.Usage,
-                [Diag.Of(ErrorCodes.Usage_InvalidArguments, "doti install requires an explicit --repo <target-directory>; it never defaults to the current directory.")]);
+            return prepared.Error;
         }
 
-        if (!DotiAgentTarget.TryParseCsv(agentsCsv, out IReadOnlyList<DotiAgentTarget> agents, out string? error))
-        {
-            return CliResults.Fail(meta, "doti install", ExitClass.Usage,
-                [Diag.Of(ErrorCodes.Usage_InvalidArguments, error!)]);
-        }
-
-        string target = Path.GetFullPath(targetRepo);
+        string target = Path.GetFullPath(targetRepo!);
         string? source = FindInstalledDotiSource(sourceDirectory);
         if (source is null)
         {
@@ -55,7 +53,7 @@ public static partial class ScaffoldCommands
         {
             DotiInstallResult result = DotiInstallBootstrapper.Install(
                 source,
-                new DotiInstallBootstrapRequest(target, agents, Force: force));
+                new DotiInstallBootstrapRequest(target, prepared.Agents, Force: force, Setup: prepared.Setup.Resolved));
             if (result.Outcome != StageOutcome.Pass)
             {
                 return CliResults.FromStage(meta, "doti install", result.Outcome, $"Doti install into {target}.",
@@ -77,7 +75,8 @@ public static partial class ScaffoldCommands
             string pathSummary =
                 $" Classification: {result.Classification}; installed={result.Installed.Count}, preserved={result.Preserved.Count}, removed={result.Removed.Count}, skipped={result.Skipped.Count}, blocked={result.Blocked.Count}.";
             return CliResults.FromStage(meta, "doti install", result.Outcome,
-                $"Doti install into {target}.{hookSummary}{pathSummary}", new { install = result, hook });
+                $"Doti install into {target}.{hookSummary}{pathSummary}", new { install = result, hook },
+                nextActions: InstallChecklist(prepared.Setup));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
         {

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "bugId": "030-bug-release-bridge",
+  "boundAssessmentSha256": "8b73ba1d5b0f44f76ca7798cda172d8d687d319b8749186f426a06b56e61d2e1",
+  "summary": "Release train counts the active drift-review feature \u002B UNRELEASED test-passed bug mini-cycles; the active drift-review feature\u0027s live gate proof is validated against the CURRENT HEAD (where the re-stamp re-binds it), not the frozen implement-\u003Edrift-review transition commit, so an on-top fix that grows\u002Bre-gates the change-set keeps the feature a valid member; released bugs excluded via git tag-reachability; bug-member provider injected as a delegate (Doti.Core-\u003ECycle.Core layering preserved)",
+  "changedPaths": [
+    "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+    "test/Hx.Cycle.Tests/ReleaseTrainBridgeTests.cs",
+    "test/Hx.Doti.Tests/BugCycleServiceTests.cs",
+    "test/Hx.Runner.Tests/CycleEnforcementReleaseTrainRegressionTests.cs",
+    "tools/Hx.Cycle.Core/CycleService.ReleaseTrain.cs",
+    "tools/Hx.Cycle.Core/CycleService.cs",
+    "tools/Hx.Doti.Core/Bug/BugCycleService.cs",
+    "tools/Hx.Doti.Core/Bug/BugReleaseGit.cs",
+    "tools/Hx.Gate.Core/GateRunner.cs",
+    "tools/Hx.Runner.Cli/RunnerCommands.DotiCycle.cs"
+  ]
+}

@@ -100,12 +100,17 @@ public static class ScaffoldCommandFactory
         Option<string> output = new("--output") { Description = "Output directory for the generated repo.", DefaultValueFactory = _ => "" };
         Option<string> profile = new("--profile") { Description = "Template profile.", DefaultValueFactory = _ => "dotnet-cli" };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
+        // 029 FR-002/FR-005: provenance-tracked setup configuration — a JSON file (agent) or the interactive wizard (human).
+        Option<string?> config = new("--config") { Description = "Path to a setup config JSON (.doti/setup.json schema); validated before generation." };
+        Option<bool> interactive = new("--interactive") { Description = "Run the human setup wizard (mutually exclusive with --config).", DefaultValueFactory = _ => false };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(name);
         command.Options.Add(company);
         command.Options.Add(output);
         command.Options.Add(profile);
         command.Options.Add(agents);
+        command.Options.Add(config);
+        command.Options.Add(interactive);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.RunWithProgress(meta, "new",
             emit => WithRequiredConfiguration(meta, "new", configurationDirectory,
@@ -116,6 +121,8 @@ public static class ScaffoldCommandFactory
                     parseResult.GetValue(output)!,
                     parseResult.GetValue(profile)!,
                     parseResult.GetValue(agents)!,
+                    parseResult.GetValue(config),
+                    parseResult.GetValue(interactive),
                     emit)),
             forceJson: CliApp.ForceJson(parseResult, json)));
         rootCommand.Subcommands.Add(command);
@@ -218,10 +225,15 @@ public static class ScaffoldCommandFactory
         Option<string?> repo = new("--repo") { Description = "Target repository root to install into. Required; the command never defaults to the current directory." };
         Option<string> agents = new("--agents") { Description = "Comma-separated agents (codex,claude).", DefaultValueFactory = _ => "codex,claude" };
         Option<bool> force = new("--force") { Description = "Replace modified/unknown legacy Doti-owned assets during migration." };
+        // 029 C3: the Install-subset setup config (doti-layer + release/publish/versioning) via a JSON file or the wizard.
+        Option<string?> config = new("--config") { Description = "Path to a setup config JSON; the install-applicable subset is projected (new-only fields reported as ignored)." };
+        Option<bool> interactive = new("--interactive") { Description = "Run the human setup wizard for the install-applicable subset (mutually exclusive with --config).", DefaultValueFactory = _ => false };
         Option<bool> json = CliApp.JsonOption();
         command.Options.Add(repo);
         command.Options.Add(agents);
         command.Options.Add(force);
+        command.Options.Add(config);
+        command.Options.Add(interactive);
         command.Options.Add(json);
         command.SetAction(parseResult => CliHost.Run(meta, "doti install",
             () => WithRequiredConfiguration(meta, "doti install", configurationDirectory,
@@ -230,7 +242,9 @@ public static class ScaffoldCommandFactory
                     parseResult.GetValue(repo),
                     parseResult.GetValue(agents)!,
                     parseResult.GetValue(force),
-                    configurationDirectory)),
+                    configurationDirectory,
+                    parseResult.GetValue(config),
+                    parseResult.GetValue(interactive))),
             forceJson: CliApp.ForceJson(parseResult, json)));
         group.Subcommands.Add(command);
     }

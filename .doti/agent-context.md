@@ -85,7 +85,36 @@ Cross-platform mode:
 
 ## Current Workflow Command Availability
 
-{commandAvailability}
+The valid workflow next-actions are generated from the cycle action model (no hand-authored command info). Each affordance below carries its exact invocation and the condition it is available under.
+
+Numbered cycle stages (`/01-doti-specify` through `/09-doti-release`), in order:
+
+- `/01-doti-specify` (required) — Run `/02-doti-clarify` to resolve ambiguities, or `/03-doti-plan` when no clarification is needed.
+- `/02-doti-clarify` (conditional) — Run `/03-doti-plan` to author the implementation plan.
+- `/03-doti-plan` (required) — Run `/04-doti-arch-review` — required when the change has architecture impact (production code, contracts, CLI, dependencies, or scaffold-template code), advisory (a quick no-op review record) when it has none.
+- `/04-doti-arch-review` (advisory-required) — Run `/05-doti-tasks` to break the reviewed plan into executable tasks.
+- `/05-doti-tasks` (required) — Run `/06-doti-analyze` for a cross-artifact consistency review.
+- `/06-doti-analyze` (required) — Run `/07-doti-implement` to implement the tasks.
+- `/07-doti-implement` (required) — Run `/08-doti-drift-review` to check the diff against the approved design.
+- `/08-doti-drift-review` (required) — Run `/09-doti-release` to release, or `/01-doti-specify` to add another feature to this release train.
+- `/09-doti-release` (terminal) — Cycle complete. Start the next feature with `/01-doti-specify`.
+
+Reconcile + boundary affordances (surfaced on the cycle/recovery result the agent already reads):
+
+- `/01-doti-specify` — No active cycle; begin a numbered specification. Available when there is no active cycle.
+- `doti cycle review-rebind --target {stage} --attest no-impact` — A stage is stale only on a prerequisite content change; read the surfaced diff, then attest no-impact (or re-author). Clearing the flag without assessing impact is forbidden. Available when the recovery plan has a ReviewedNoImpact step.
+- STOP (no command — operator decision) — The local release is proven; pushing the tag + remote CI is an operator decision, never automated. Available when the current stage is 'release' and the stage's prerequisites are all fresh.
+- `/01-doti-specify` — drift-review is complete; begin the next feature's specification on the same release train. Available when the current stage is 'drift-review' and the stage's prerequisites are all fresh.
+
+Unnumbered utility skills (run by name, anytime — always available, never reordering `/01`–`/09`):
+
+- `/doti-bug` — Run a bug fix as an enforced mini-cycle.
+- `/doti-amend` — Amend an already-stamped stage after an approved artifact change.
+- `/doti-converge` — Brownfield/drift reconciliation: append the remaining unbuilt work.
+- `/doti-drift-fix` — Patch a drift by correcting the code (never the spec).
+- `/doti-constitution` — Author or amend the project constitution (§2).
+- `/doti-auto` — Drive the numbered cycle automatically to a target stage.
+- `/doti-upgrade` — Upgrade the installed hx tool and reconcile this repo's assets.
 
 ## Workflow Rules
 

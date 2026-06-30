@@ -66,6 +66,7 @@ public static class ErrorCodes
     public const string Validation_CycleReviewRebindRequiresAttest = "VAL0036";
     public const string Validation_CycleReviewRebindIneligible = "VAL0037";
     public const string Validation_CycleReviewRebindNotStale = "VAL0038";
+    public const string Validation_SetupConfigInvalid = "VAL0039";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -184,5 +185,7 @@ public static class ErrorCodes
             "The target stage is not eligible for a reviewed-no-impact rebind.", "Only a doc/non-review, non-change-set-bound stage stale solely on a prerequisite content change can be attested; re-run the stage's command instead."),
         new("VAL0038", "validation", "VAL", 38, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-not-stale",
             "The target stage is not stale; there is nothing to attest.", "Run `doti cycle status` to confirm the stage's freshness; review-rebind only applies to a stage stale on a prerequisite content change."),
+        new("VAL0039", "validation", "VAL", 39, Severity.Error, ExitClass.Validation, "validation.setup-config-invalid",
+            "The supplied setup configuration is invalid.", "Fix the named field(s) in the --config / .doti/setup.json (schemaVersion must be 1; agents are a subset of claude/codex; nextVersion is a 3-part SemVer; values carry no XML metacharacters or path traversal), then re-run. No files are created from an invalid config."),
     ];
 }

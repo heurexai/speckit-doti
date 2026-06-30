@@ -101,6 +101,32 @@ The installed `hx` command is the operational path. Source-checkout commands are
 
 ---
 
+## Configuration
+
+`hx new` derives or auto-configures almost everything a repo needs — copyright, package id, namespaces, the Sentrux baseline and boundary layers, the architecture rules, and the hooks. The handful of things **you** actually choose — supplied in one shot as a JSON config (`--config`, agent-friendly) or an interactive wizard (`--interactive`, human-friendly), or individually as below:
+
+| What you set | Default | How |
+| --- | --- | --- |
+| **Project name** | — (required) | `hx new --name` (or `--config`/`--interactive`) |
+| **Company / owner** | `Heurex` | `hx new --company` (or `--config`/`--interactive`) |
+| **Output directory** | — (required) | `hx new --output` |
+| **Agent toolchains** | `codex,claude` | `hx new --agents` (subset of `codex`, `claude`) |
+| **Package description** | sample text | `--config`/`--interactive` (or `<Description>` in the CLI `.csproj`) |
+| **Repository URL** | none | `--config`/`--interactive` (or `<RepositoryUrl>`) |
+| **License** | `MIT` | `--config`/`--interactive` (or `<PackageLicenseExpression>`) |
+| **Version series seed** | `0.1.0` | `--config`/`--interactive` (or `next-version` in `GitVersion.yml`) |
+| **Local release directory** | unset | `DOTI_RELEASE_ROOT` env var (or `hx.config.json`) — machine-local, not committed |
+| **NuGet publish** | none | `--config`/`--interactive` (parameterizes `release.yml`; the operator-only OIDC policy/secret/branch-protection print as a checklist, never executed) |
+| **Constitution §2** | placeholders | `--config`/`--interactive`, or `/doti-constitution` (domain, tech stack, coding style, security, performance) |
+
+`--config` and `--interactive` are mutually exclusive and 1:1 over one schema; both validate **before** any file is generated, persist your choices to a tracked `.doti/setup.json` so installs/upgrades reuse the same intent, and are available on `hx doti install` too (it applies the doti-layer subset to an existing repo). **`hx doti config show [--json]`** renders the effective configuration with a **default-vs-custom** indicator for every key. Shipped in `029-scaffold-setup-config`.
+
+Everything else — the Sentrux baseline (set by the first build's smoke run), boundary layers and architecture namespaces, package id and copyright, the `dev`/`main` branches, and the pre-commit and DCO hooks — is derived from the above or configured automatically.
+
+**Full reference:** [docs/configuration.md](docs/configuration.md) lists every setting Doti reads, grouped by what it drives, with purpose, valid values, and defaults.
+
+---
+
 ## What `hx new` generates
 
 ```text
