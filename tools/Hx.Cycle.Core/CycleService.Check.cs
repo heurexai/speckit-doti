@@ -6,7 +6,7 @@ public sealed partial class CycleService
 {
     public CycleStatusReport Status()
     {
-        RecoveryEvaluation recovery = RecoverStateIfNeeded();
+        var recovery = RecoverStateIfNeeded();
         CycleState state = recovery.State
             ?? throw new InvalidOperationException(
                 $"No cycle state at {CycleStateStore.RelativePath}; run `doti cycle stamp --stage <id> --feature <NNN-slug>` first.");
@@ -45,7 +45,7 @@ public sealed partial class CycleService
     public CycleCheckReport Check(string stageId, IReadOnlyList<string>? excludedOwnedPaths)
     {
         CycleStage target = _stageModel.Find(stageId); // fail-closed on an unknown stage
-        RecoveryEvaluation recovery = RecoverStateIfNeeded();
+        var recovery = RecoverStateIfNeeded();
         CycleState? state = recovery.State;
         if (recovery.Report.Verdict == CycleRecoveryVerdict.Ambiguous)
         {

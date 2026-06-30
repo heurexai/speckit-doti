@@ -101,10 +101,15 @@ public sealed class DotiGitIgnoreTests
         string repo = NewTempDir();
         Directory.CreateDirectory(Path.Combine(repo, ".doti", "core", "templates", "commands"));
         Directory.CreateDirectory(Path.Combine(repo, ".doti", "profiles", "dotnet-cli"));
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "workflows", "doti"));
         File.WriteAllText(Path.Combine(repo, ".doti", "core", "skills.json"), SkillsJson);
         File.WriteAllText(Path.Combine(repo, ".doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
         File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "agent-context-template.md"), "context body\n");
         File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "commands", "doti-specify.md"), "# specify\n");
+        // 028 FR-010: the renderer projects the skill identity from the stage model — provide the canonical specify
+        // stage so the install's render step resolves `doti-specify`.
+        File.WriteAllText(Path.Combine(repo, ".doti", "workflows", "doti", "workflow.yml"),
+            "schemaVersion: 2\nstages:\n  - id: specify\n    command: 01-doti-specify\n    kind: doc\n    prereqs: []\n");
         return repo;
     }
 

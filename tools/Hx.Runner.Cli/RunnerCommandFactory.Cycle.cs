@@ -13,7 +13,29 @@ public static partial class RunnerCommandFactory
         AddCycleCheck(cycleCommand, meta);
         AddCycleRefreshPlan(cycleCommand, meta);
         AddCycleRefresh(cycleCommand, meta);
+        AddCycleReviewRebind(cycleCommand, meta);
         dotiCommand.Subcommands.Add(cycleCommand);
+    }
+
+    private static void AddCycleReviewRebind(Command cycleCommand, CliMeta meta)
+    {
+        Command command = new("review-rebind",
+            "Record an agent-gated reviewed-no-impact rebind: after reading the surfaced upstream diff, attest that an upstream content change does not affect the target stage; the engine rebinds ONLY that stage's prerequisite content. The decision is the agent's; clearing the flag without assessing impact is forbidden.");
+        Option<string> target = new("--target") { Description = "Stage id stale solely on a prerequisite content change.", DefaultValueFactory = _ => "" };
+        Option<string> attest = new("--attest") { Description = "The reviewed verdict (no-impact).", DefaultValueFactory = _ => "" };
+        Option<string> reason = new("--reason") { Description = "Optional free-text reason recorded in the audit record.", DefaultValueFactory = _ => "" };
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(target);
+        command.Options.Add(attest);
+        command.Options.Add(reason);
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti cycle review-rebind",
+            () => RunnerCommands.CycleReviewRebind(meta, parseResult.GetValue(repo)!, parseResult.GetValue(target)!,
+                parseResult.GetValue(attest)!, parseResult.GetValue(reason)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        cycleCommand.Subcommands.Add(command);
     }
 
     private static void AddCycleRefreshPlan(Command cycleCommand, CliMeta meta)

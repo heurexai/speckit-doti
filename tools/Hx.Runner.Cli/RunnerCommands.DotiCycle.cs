@@ -42,6 +42,21 @@ public static partial class RunnerCommands
                 string.IsNullOrWhiteSpace(releaseIntent) ? null : releaseIntent);
             return CliResults.Ok(meta, "doti cycle stamp", $"Stamped stage '{stage}'.", state);
         }
+        catch (CycleReviewRebindRequiredException ex)
+        {
+            // 028 FR-004/B1: the in-Stamp eligibility fence refused — route to the recorded reviewed-rebind verb,
+            // not the feature-slug usage error.
+            return CliResults.Fail(meta, "doti cycle stamp", ExitClass.Validation,
+                [Diag.Of(ErrorCodes.Validation_CycleReviewRebindRequiresAttest, ex.Message, target: ex.Target)],
+                $"Stage '{ex.Target}' needs a reviewed-no-impact attestation, not a bare stamp.",
+                nextActions:
+                [
+                    new CliNextAction(
+                        $"Record a reviewed-no-impact verdict for '{ex.Target}'",
+                        "Read the surfaced upstream diff first; clearing the flag without assessing impact is forbidden.",
+                        $"doti cycle review-rebind --target {ex.Target} --attest no-impact"),
+                ]);
+        }
         catch (CycleInputException ex)
         {
             return CliResults.Fail(meta, "doti cycle stamp", ExitClass.Usage,
@@ -57,9 +72,16 @@ public static partial class RunnerCommands
         }
     }
 
-    public static CliResult CycleStatus(CliMeta meta, string repo) =>
-        // Non-enforcing: a STALE stage is reported in data, not gated.
-        CliResults.Ok(meta, "doti cycle status", "Cycle status.", new CycleService(repo).Status());
+    public static CliResult CycleStatus(CliMeta meta, string repo)
+    {
+        // Non-enforcing: a STALE stage is reported in data, not gated. 028 FR-010: the agent's "what next" affordances
+        // are projected from the action model (CliActionRendering), not hand-authored — the status surface carries the
+        // valid workflow next-actions for the current decision point.
+        var service = new CycleService(repo);
+        CycleStatusReport report = service.Status();
+        IReadOnlyList<CliNextAction> nextActions = WorkflowNextActions(repo, service, report);
+        return CliResults.Ok(meta, "doti cycle status", "Cycle status.", report, nextActions: nextActions);
+    }
 
     public static CliResult CycleCheck(CliMeta meta, string repo, string stage)
     {
@@ -79,9 +101,11 @@ public static partial class RunnerCommands
             .Where(p => !p.Ok)
             .Select(p => Diag.Of(ErrorCodes.Validation_Failed, $"{p.Stage}: {p.Status}" + (p.Reason is { } r ? $" ({r})" : ""), target: p.Stage))
             .ToList();
-        // FR-002: every failure carries the single recommended next command (a safe refresh, or re-running the stage).
+        // FR-002: every failure carries the single recommended next command (a safe refresh, the agent-gated
+        // reviewed-no-impact rebind, or re-running the stage). For an attest-eligible step the seam surfaces the exact
+        // upstream diff the verdict needs (self-describing staleness) — computed lazily here, never in the pure leaf.
         List<CliNextAction> nextActions = service.RecoveryPlanFor(report).Steps
-            .Select(s => new CliNextAction($"Recover '{s.Stage}'", s.Reason ?? s.Status, s.NextCommand))
+            .Select(s => RecoveryNextAction(repo, service, s))
             .ToList();
         return CliResults.Fail(meta, "doti cycle check", ExitClass.Validation, errors,
             $"Prerequisites for '{stage}' are not all fresh.", report, nextActions: nextActions);
@@ -114,11 +138,13 @@ public static partial class RunnerCommands
         }
 
         CycleRefreshResult result = new CycleService(repo).Refresh(target, applySafe);
-        List<StageRecoveryStep> blockers = result.Remaining
-            .Where(s => s.Safety != RestampSafety.SafeReinterpret)
-            .ToList();
+        // 027: ReBindContentEqual is auto-refreshable by --apply-safe (content-equal / edge-only rebind), exactly like
+        // SafeReinterpret; only RerunRequired / inserted-stage / unclassified steps are true blockers needing a re-run.
         List<StageRecoveryStep> safe = result.Remaining
-            .Where(s => s.Safety == RestampSafety.SafeReinterpret)
+            .Where(s => s.Safety is RestampSafety.SafeReinterpret or RestampSafety.ReBindContentEqual)
+            .ToList();
+        List<StageRecoveryStep> blockers = result.Remaining
+            .Where(s => s.Safety is not (RestampSafety.SafeReinterpret or RestampSafety.ReBindContentEqual))
             .ToList();
         List<CliNextAction> nextActions = result.Remaining
             .Select(s => new CliNextAction($"Recover '{s.Stage}'", s.Reason ?? s.Status, s.NextCommand))

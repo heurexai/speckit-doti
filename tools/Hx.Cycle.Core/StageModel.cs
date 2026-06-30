@@ -5,8 +5,11 @@ namespace Hx.Cycle.Core;
 
 /// <summary>One declared cycle stage from <c>workflow.yml</c> (schemaVersion 2): its id, the command that
 /// runs it, its <c>kind</c> (doc | review | diff | release), the artifact it <c>produces</c> (a path
-/// pattern with <c>{feature}</c>, or null for stages with no file yet), and its prerequisite stage ids.</summary>
-public sealed record CycleStage(string Id, string Command, string Kind, string? Produces, IReadOnlyList<string> Prereqs);
+/// pattern with <c>{feature}</c>, or null for stages with no file yet), its prerequisite stage ids, and (028 FR-007)
+/// its declared successor stage ids (<c>next</c>) — the forward edges the action model projects stage-advance
+/// affordances from. Additive trailing within schemaVersion 2; empty for the terminal stage.</summary>
+public sealed record CycleStage(
+    string Id, string Command, string Kind, string? Produces, IReadOnlyList<string> Prereqs, IReadOnlyList<string> Next);
 
 /// <summary>
 /// The cycle stage model, read from the installed <c>.doti/workflows/doti/workflow.yml</c>. Fails closed
@@ -80,6 +83,7 @@ public sealed class StageModel
         public string? Kind { get; set; }
         public string? Produces { get; set; }
         public List<string>? Prereqs { get; set; }
+        public List<string>? Next { get; set; }
     }
 
     private static WorkflowDoc ReadWorkflow(string workflowYmlPath)
@@ -114,6 +118,7 @@ public sealed class StageModel
             string.IsNullOrWhiteSpace(entry.Command) ? id : entry.Command!,
             string.IsNullOrWhiteSpace(entry.Kind) ? "diff" : entry.Kind!,
             string.IsNullOrWhiteSpace(entry.Produces) ? null : entry.Produces,
-            entry.Prereqs ?? []);
+            entry.Prereqs ?? [],
+            entry.Next ?? []);
     }
 }

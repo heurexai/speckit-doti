@@ -69,7 +69,8 @@ public sealed partial class CycleService
         if (freshness.Freshness == StageFreshness.Stale)
         {
             evaluating.Remove(prereqId);
-            return new StagePrereqResult(prereqId, "stale", false, freshness.Reason, freshness.StaleReason);
+            return new StagePrereqResult(prereqId, "stale", false, freshness.Reason, freshness.StaleReason,
+                freshness.ChangedPrereqPaths);
         }
 
         string? openMarker = OpenClarificationMarker(prereqId, state.Feature);
@@ -107,26 +108,9 @@ public sealed partial class CycleService
     }
 
     // The transitive prerequisite closure of a stage, returned in workflow declaration order (deterministic).
-    private IReadOnlyList<string> ResolveTransitivePrerequisites(CycleStage target)
-    {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var stack = new Stack<string>(target.Prereqs);
-        while (stack.Count > 0)
-        {
-            string id = stack.Pop();
-            if (!seen.Add(id))
-            {
-                continue;
-            }
-
-            foreach (string parent in _stageModel.Find(id).Prereqs)
-            {
-                stack.Push(parent);
-            }
-        }
-
-        return _stageModel.Stages.Select(s => s.Id).Where(seen.Contains).ToList();
-    }
+    // 028 FR-007/D7: single-sourced on StageModel.TransitivePrereqStages (the DFS lived in two places before).
+    private IReadOnlyList<string> ResolveTransitivePrerequisites(CycleStage target) =>
+        _stageModel.TransitivePrereqStages(target.Id).Select(s => s.Id).ToList();
 
     private bool RequiresChangeSetIdentity(string stageId)
     {

@@ -36,7 +36,7 @@ public sealed class WorkflowSurfaceSearchProofTests
 
         Assert.Empty(violations);
 
-        CliDescribeWorkflow workflow = DotiWorkflowDescribe.Build();
+        CliDescribeWorkflow workflow = DotiWorkflowDescribe.Build(repo);
         Assert.DoesNotContain(workflow.Stages, stage => stage.CommandName.Contains("commit", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(workflow.Stages, stage => stage.StageId.Contains("commit", StringComparison.OrdinalIgnoreCase));
     }

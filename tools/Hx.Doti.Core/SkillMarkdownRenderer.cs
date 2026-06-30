@@ -13,11 +13,20 @@ public static class SkillMarkdownRenderer
 {
     private const char Lf = '\n';
 
+    /// <summary>
+    /// 028 FR-010: the skill identity (numbered skill id + next-step prose) is now RESOLVED from the model-backed
+    /// <see cref="DotiWorkflowPresentation"/> (passed in by <see cref="DotiRenderer"/>), not from the deleted
+    /// <c>DotiWorkflowRegistry</c> or <c>skills.json nextStage</c>. The renderer remains a pure byte-emitter.
+    /// </summary>
     public static string Render(
-        DotiSkillsManifest manifest, DotiSkillEntry skill, DotiAgentTarget agent, string availabilityFootnote)
+        DotiSkillsManifest manifest,
+        DotiSkillEntry skill,
+        DotiAgentTarget agent,
+        string availabilityFootnote,
+        DotiWorkflowPresentation workflow)
     {
         (string skillId, string commandName, string nextStep) =
-            DotiWorkflowRegistry.ResolveSkillIdentity(skill.Name, skill.NextStage);
+            workflow.ResolveSkillIdentity(skill.Name, skill.NextStage);
         string commandTemplate = $"{manifest.CommandTemplateDir}/{commandName}.md";
         var sb = new StringBuilder();
 

@@ -43,6 +43,14 @@ public sealed class RunnerCommandsTests
         AssertUsage(RunnerCommands.CycleCheck(Meta, ".", stage: ""));
 
     [Fact]
+    public void CycleReviewRebind_requires_a_target() =>
+        AssertUsage(RunnerCommands.CycleReviewRebind(Meta, ".", target: "", attest: "no-impact", reason: ""));
+
+    [Fact]
+    public void CycleReviewRebind_requires_an_attest() =>
+        AssertUsage(RunnerCommands.CycleReviewRebind(Meta, ".", target: "plan", attest: "", reason: ""));
+
+    [Fact]
     public void QuestionCheck_requires_a_file() =>
         AssertUsage(RunnerCommands.QuestionCheck(Meta, file: ""));
 

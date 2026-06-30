@@ -40,6 +40,10 @@ The doti cycle is enforced by code, not honored by convention. A stage proceeds 
 
 Behavior lives in `*.Core` libraries and must be drivable from any channel. CLI/entry projects are thin adapters: they parse input, delegate to a core type, and render the `CliResult` — they hold no business logic. A CLI type may construct and inject channel adapters (network, process, console) into pure core, but the logic itself lives in core. Adding a feature means adding it to a `*.Core` library with a command that only wires it — keeping the core reusable across channels (CLI, daemon, HTTP). Enforced by the thin-CLI architecture families (`cliSurfaceConfinement`, `cliDelegation`).
 
+### Self-describing Automation
+
+The program does the bookkeeping and surfaces the exact evidence a decision needs — what changed (the file and the lines), what is stale and why, and the single valid next action — at the point of decision; the agent decides over information the engine has already laid out and never has to go discover it (hand-diffing, hunting for state, or guessing freshness). Determining and presenting the deltas is the program's job; judgment is the agent's. The gate names its own offender; a stale stage names what diverged; every `CliResult` carries its next action; the workflow next-step affordances are generated from one code model, never a hand-maintained list that can drift. Self-describing CI.
+
 ## §2 — Project declarations
 
 ### Domain principles

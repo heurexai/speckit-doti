@@ -7,6 +7,10 @@
     <!-- 022 T014/FR-020: single-source the version relation through GitVersionTool.CompareVersions, the same
          comparison the version report uses. Within-core; acyclic (Hx.Version.Core to Hx.Runner.Core, not Doti.Core). -->
     <ProjectReference Include="..\Hx.Version.Core\Hx.Version.Core.csproj" />
+    <!-- 028 FR-010/B4: explicit, reviewed edge so the renderer projects the workflow affordances from the single
+         DotiActionModel + StageModel (the deleted DotiWorkflowRegistry's presentation is rehomed here). ACYCLIC:
+         Hx.Cycle.Core references Runner.Core/Impact.Core/Contracts and NEVER re-enters Hx.Doti.Core. -->
+    <ProjectReference Include="..\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 </Project>

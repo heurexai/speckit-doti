@@ -30,9 +30,14 @@ public sealed class DotiRendererTests
         string repo = Path.Combine(Path.GetTempPath(), "hx-doti-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(Path.Combine(repo, ".doti", "core", "templates", "commands"));
         Directory.CreateDirectory(Path.Combine(repo, ".doti", "profiles", "dotnet-cli"));
+        Directory.CreateDirectory(Path.Combine(repo, ".doti", "workflows", "doti"));
         File.WriteAllText(Path.Combine(repo, ".doti", "core", "skills.json"), SkillsJson);
         File.WriteAllText(Path.Combine(repo, ".doti", "profiles", "dotnet-cli", "profile.json"), ProfileJson);
         File.WriteAllText(Path.Combine(repo, ".doti", "core", "templates", "agent-context-template.md"), "context body\n");
+        // 028 FR-010: the renderer now projects the skill identity from the stage model — the minimal render repo
+        // carries the canonical specify stage so `doti-specify` resolves to its `01-doti-specify` skill id.
+        File.WriteAllText(Path.Combine(repo, ".doti", "workflows", "doti", "workflow.yml"),
+            "schemaVersion: 2\nstages:\n  - id: specify\n    command: 01-doti-specify\n    kind: doc\n    prereqs: []\n");
         return repo;
     }
 

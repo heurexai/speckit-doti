@@ -15,6 +15,10 @@ Purpose: produce a narrow but rigorous implementation plan — resolve unknowns,
 
 Expected output: a plan with Technical Context, both Constitution-Check verdicts, resolved research decisions (Decision/Rationale/Alternatives), a design that names its architecture rule deltas, command availability, and any Complexity-Tracking justifications.
 
+## Reconciling after an upstream change
+
+If you are re-running this stage because an upstream artifact changed, the engine has already done the bookkeeping: the stale stage carries the changed upstream paths + the line-level diff. Read it and assess impact before acting — re-author here if the change affects this stage's artifact; if you review the diff and it provably does not, record `hx doti cycle review-rebind --target <this-stage> --attest no-impact --reason "<why>"` instead. Clearing the stale flag without assessing the diff is a rubber-stamp and is forbidden — a bare `hx doti cycle stamp` of an upstream-changed stage refuses and routes you to the verb.
+
 ## Next
 
 Run `/04-doti-arch-review` to review the design before breaking it into tasks.
