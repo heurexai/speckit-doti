@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "bugId": "036-reconcile-dir-candidate-commit",
+  "boundAssessmentSha256": "d8c5f09fc170a561dd173081c4f46daecb02ca104e0ae4fd0d31cc2260217d17",
+  "summary": "SanctionedGitCommit.Commit pathspec is now directory-aware via AtOrUnder (a candidate is committed when a staged path equals it or lives under it); reports the expanded staged files. Directory candidates\u0027 files are committed (none left staged); operator pre-staged files outside the candidate set are still never swept.",
+  "changedPaths": [
+    "tools/Hx.Doti.Core/SanctionedGitCommit.cs",
+    "test/Hx.Doti.Tests/DotiReconcileCommitTests.cs"
+  ]
+}

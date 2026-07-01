@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "036-reconcile-dir-candidate-commit",
+  "boundFixSha256": "8339051dfa95d95e7b4b40a024f8bb04f22a8a205cd144f348ef5b9de2ae096d",
+  "outcome": "pass",
+  "evidence": "Hx.Doti.Tests 215/215 incl. the new A_directory_candidate_commits_all_its_staged_files_none_left_staged which reproduces the exact ergon .doti/core case (both files committed, nothing left staged) AND re-proves an out-of-tree operator-staged file is not swept in. Existing pre-staged/gitignored/untracked-orphan tests still green (no regression). Build clean."
+}

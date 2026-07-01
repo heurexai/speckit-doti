@@ -232,6 +232,41 @@ public sealed class DotiReconcileCommitTests
         finally { DeleteDir(dir); }
     }
 
+    // 036 (regression from 035's pathspec-scope): a candidate may be a DIRECTORY — DotiReconcileCommit.TouchedPaths
+    // records `.doti/core` etc. for a whole managed subtree. `git add -- .doti/core` stages its files individually;
+    // the commit pathspec must expand the directory so those files are COMMITTED, not left staged-but-uncommitted
+    // (the file-exact intersection missed them; the old whole-index commit masked it — found verifying an ergon update).
+    [Fact]
+    public void A_directory_candidate_commits_all_its_staged_files_none_left_staged()
+    {
+        string dir = NewGitRepo();
+        try
+        {
+            ArmInsuranceHook(dir);
+            Write(dir, "base.txt", "base");
+            SanctionedCommit(dir, "init");
+
+            Write(dir, ".doti/core/skills.json", "reconciled skills");
+            Write(dir, ".doti/core/templates/commands/doti-bug.md", "reconciled template");
+            Write(dir, "operator-staged.cs", "operator work, already staged");
+            Git(dir, "add", "operator-staged.cs"); // an operator file OUTSIDE the candidate dir must NOT be swept in
+
+            DotiReconcileCommitOutcome outcome = DotiReconcileCommit.Commit(
+                dir, [".doti/core"], beforeVersion: "1.0.0", afterVersion: "2.0.0", prunedPaths: [], commit: true);
+
+            Assert.Equal(DotiCommitStatus.Committed, outcome.Status);
+            string committed = Git(dir, "show", "--name-only", "--format=", "HEAD").Replace('\\', '/');
+            Assert.Contains(".doti/core/skills.json", committed);
+            Assert.Contains(".doti/core/templates/commands/doti-bug.md", committed);
+            // Nothing of the reconcile's own dir is left staged-uncommitted...
+            Assert.DoesNotContain(".doti/core", Git(dir, "diff", "--cached", "--name-only").Replace('\\', '/'));
+            // ...but the operator's out-of-tree pre-staged file is untouched (still staged, not committed).
+            Assert.DoesNotContain("operator-staged.cs", committed);
+            Assert.Contains("operator-staged.cs", Git(dir, "diff", "--cached", "--name-only").Replace('\\', '/'));
+        }
+        finally { DeleteDir(dir); }
+    }
+
     // Arm the real insurance pre-commit hook so the test PROVES the sanctioned commit (DOTI_SANCTIONED_COMMIT=1) gets
     // past it — a bare commit would be blocked. The hook mirrors the shipped stub: sanctioned env → exit 0, else fail.
     private static void ArmInsuranceHook(string dir)

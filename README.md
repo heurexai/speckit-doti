@@ -276,6 +276,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 > The `hx doti update` / release / sanctioned-commit subsystem was hardened against a whole **class** of edge bugs an adversarial Opus review surfaced: a sanctioned commit now commits an **explicit pathspec** (never the whole index, so a file the operator already staged is never swept in) and **skips** any single unstageable candidate (a gitignored path, an untracked orphan) instead of failing the commit; `doti install`'s failed commit no longer swallows to exit-0; and the `release-documentation` gate matches a member slug as a bounded token, not a substring. Both commit paths share one `SanctionedGitCommit` so they can't drift — shipped in `035-commit-update-release-hardening`.
 
+> A fast-follow to the 035 hardening (found by **verifying** a real consumer update, not shipping blind): the sanctioned-commit pathspec is now **directory-aware**, so an `hx doti update` that touches a whole managed subtree (`.doti/core`, …) commits its files cleanly instead of leaving some staged — while still never sweeping an operator's out-of-tree pre-staged work. Shipped in `036-reconcile-dir-candidate-commit`.
+
 ---
 
 ## Distribution and release model
