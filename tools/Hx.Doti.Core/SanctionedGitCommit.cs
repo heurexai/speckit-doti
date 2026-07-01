@@ -55,24 +55,30 @@ public static class SanctionedGitCommit
 
         Stage(root, candidates);
 
-        // The commit pathspec is EXACTLY the caller's candidates that git actually staged — never the whole index, so
-        // any file the operator (or a co-running process) had already staged stays in the index, uncommitted.
-        var mine = new HashSet<string>(candidates, StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<string> staged = StagedPaths(root).Where(mine.Contains).ToList();
-        if (staged.Count == 0)
+        // The commit pathspec is EXACTLY the caller's candidates that actually produced a staged change AT or UNDER
+        // them — a candidate may be a DIRECTORY (e.g. `.doti/core`, as DotiReconcileCommit records for a whole managed
+        // subtree) whose files stage individually, so a file-EXACT intersection would miss them and leave them
+        // staged-but-uncommitted (the old whole-index commit masked that). This still commits ONLY the reconcile's own
+        // paths — an operator's pre-staged file OUTSIDE the candidate set is never swept in.
+        IReadOnlyList<string> stagedAll = StagedPaths(root);
+        List<string> pathspec = candidates.Where(c => stagedAll.Any(s => AtOrUnder(s, c))).ToList();
+        if (pathspec.Count == 0)
         {
             return new Result(DotiCommitStatus.NoChange, null, [], "nothing to commit.");
         }
 
+        // The actual files this commit will contain (each candidate expanded to its staged files) — for reporting.
+        IReadOnlyList<string> committed = stagedAll.Where(s => pathspec.Any(p => AtOrUnder(s, p))).ToList();
+
         var env = Sentinel();
-        ProcessRunResult commit = GitWithLockRetry(root, ["commit", "-m", message, "--", .. staged], env);
+        ProcessRunResult commit = GitWithLockRetry(root, ["commit", "-m", message, "--", .. pathspec], env);
         if (commit.ExitCode != 0)
         {
-            return new Result(DotiCommitStatus.Failed, null, staged,
+            return new Result(DotiCommitStatus.Failed, null, committed,
                 "git commit failed: " + Prefer(commit.StandardError, commit.StandardOutput));
         }
 
-        return new Result(DotiCommitStatus.Committed, HeadSha(root), staged, null);
+        return new Result(DotiCommitStatus.Committed, HeadSha(root), committed, null);
     }
 
     // Stage the candidates, tolerating any single path git refuses. The happy path is one batch `git add`; only on a
@@ -153,6 +159,12 @@ public static class SanctionedGitCommit
             return new ProcessRunResult(127, string.Empty, ex.Message);
         }
     }
+
+    // A staged path is "at or under" a candidate when it equals it (a file candidate) or lives beneath it (a
+    // directory candidate like `.doti/core`). Case-insensitive to match the OrdinalIgnoreCase path handling used here.
+    private static bool AtOrUnder(string staged, string candidate) =>
+        staged.Equals(candidate, StringComparison.OrdinalIgnoreCase)
+        || staged.StartsWith(candidate + "/", StringComparison.OrdinalIgnoreCase);
 
     private static string Prefer(string primary, string fallback) =>
         string.IsNullOrWhiteSpace(primary) ? fallback.Trim() : primary.Trim();

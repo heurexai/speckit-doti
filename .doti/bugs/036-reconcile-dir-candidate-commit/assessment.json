@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "036-reconcile-dir-candidate-commit",
+  "verdict": "confirmed",
+  "severity": "medium",
+  "remediation": "Make SanctionedGitCommit.Commit\u0027s pathspec DIRECTORY-AWARE: commit the candidates that have a staged change AT or UNDER them (AtOrUnder: exact match OR startsWith candidate\u002B\u0027/\u0027), and report the expanded staged files \u2014 so a directory candidate\u0027s files are committed, none left staged, while an operator\u0027s pre-staged file OUTSIDE the candidate set is still never swept in. Regression test: a .doti/core directory candidate commits skills.json \u002B the template with nothing left staged, and an out-of-tree operator-staged file stays uncommitted.",
+  "summary": "Regression from 035\u0027s pathspec-scoped commit: DotiReconcileCommit.TouchedPaths records DIRECTORY candidates (.doti/core, .doti/profiles, tools/sentrux...); git add stages their files individually, but SanctionedGitCommit\u0027s file-exact commit pathspec (mine \u2229 StagedPaths) missed them, so a consumer update left managed source files (.doti/core/skills.json \u002B templates) staged-but-uncommitted. Found verifying an ergon 0.18.3 update; the old whole-index commit had masked it."
+}
