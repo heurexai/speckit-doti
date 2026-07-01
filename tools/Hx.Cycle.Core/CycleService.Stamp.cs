@@ -21,6 +21,7 @@ public sealed partial class CycleService
 
         EnsureNumberedFeatureSlugOnInitialStamp(stage, feature);
         existing = TransitionBeforeStamp(stage, feature, existing, normalizedReleaseIntent);
+        RefuseBugOnlyReleaseStamp(stage, existing);
         string resolvedBaseRef = baseRef ?? existing?.BaseRef ?? GitRefs.ResolveBaseRef(_repositoryRoot);
         // 028 FR-004/B1: the in-Stamp eligibility fence. A bare `doti cycle stamp` must not silently clear an
         // ATTESTABLE stale of the target (own artifact unchanged, only prerequisite content diverged) — that is the
@@ -207,6 +208,29 @@ public sealed partial class CycleService
         if (!CycleFeatureSlug.IsNumbered(suppliedFeature))
         {
             throw new CycleInputException(CycleFeatureSlug.NumberedSlugRequiredMessage(suppliedFeature));
+        }
+    }
+
+    /// <summary>
+    /// 038 (bug-only-release cycle-check hardening): a bug-only repo (no feature <c>.doti/cycle-state.json</c>, hence a
+    /// null <paramref name="existing"/> here) must NEVER be stamped into a fabricated feature cycle. <see cref="Check"/>
+    /// is deliberately bug-only-aware for the RELEASE readiness READ — a bug-only repo IS release-ready — but that
+    /// readiness authorizes the bug-only release PATH (<c>gate run --profile release</c> + <c>hx release</c>, whose
+    /// train self-maintains shipped status by tag-reachability), NOT a cycle STAMP: a bug-only release never stamps
+    /// (033 — the release path never calls Stamp). Because <see cref="EnsurePrerequisitesFresh"/> consumes that same
+    /// bug-only-aware <see cref="Check"/>, a <c>doti cycle stamp --stage release</c> on a bug-only repo would otherwise
+    /// pass and <c>_store.Write</c> a cycle-state.json for a made-up feature — the exact anti-pattern 038 closes.
+    /// Guarded on a null existing state (a legitimate release stamp always transitions an existing feature cycle whose
+    /// drift-review is stamped); runs before the first git touch so it fails closed cleanly on any repo.
+    /// </summary>
+    private static void RefuseBugOnlyReleaseStamp(CycleStage stage, CycleState? existing)
+    {
+        if (existing is null && string.Equals(stage.Id, "release", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Cannot stamp stage 'release' on a repo with no feature cycle: a bug-only release is not stamped — it "
+                + "releases via `gate run --profile release` + `hx release` (the bug-only train self-maintains its "
+                + "shipped status by tag-reachability). Stamping here would fabricate a feature cycle.");
         }
     }
 

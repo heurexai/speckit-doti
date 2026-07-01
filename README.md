@@ -280,6 +280,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 > `hx release` now correctly releases a **non-hx scaffolded product** (the whole point of the `.doti/release.json` vendored-release path): the source-free install smoke runs the target's *own* declared executable — resolving whichever launcher `dotnet tool install` emits (an apphost `.exe` or a framework-dependent `.cmd`) — instead of a hardcoded `hx.exe`, and a bug-only release no longer self-excludes its own bug after tagging. Proven end-to-end against a real generated repo. Shipped in `037-release-non-hx-product`.
 
+> `hx doti cycle check --stage release` is now **bug-only-aware**: on a repo with no `.doti/cycle-state.json` (a bug-only release train) it delegates readiness to the same bug-aware release train the release path already trusts, instead of demanding the eight feature-cycle stamps a bug-only repo never had — a false blocker that previously tempted an agent to *fabricate* a feature cycle. A valid bug train passes; an empty one still fails closed; feature-stage checks are untouched. And an adversarial verification of the fix caught a coupled write-path hole — `cycle stamp --stage release` shares that chokepoint — so a `RefuseBugOnlyReleaseStamp` guard now makes a release *stamp* on a bug-only repo fail closed too: **no `cycle-state.json` is ever fabricated**, on either the read or the stamp path. Proven end-to-end on a real generated repo. Shipped in `038-bug-only-release-cycle-check`.
+
 ---
 
 ## Distribution and release model

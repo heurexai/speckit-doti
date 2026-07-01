@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "bugId": "038-bug-only-release-cycle-check",
+  "boundAssessmentSha256": "b34344db70df221585f484197cd7999ff020da1653fb83aeb33546eeac324f27",
+  "summary": "Two coupled changes: (1) CycleService.Check gains a release-scoped null-state branch (BugOnlyReleaseCheck) delegating bug-only release readiness to the bug-aware release train (BuildReleaseTrain(null)), consistent with 033; (2) an adversarial 3-lens verification surfaced that Stamp consumes the SAME chokepoint via EnsurePrerequisitesFresh, so CycleService.Stamp gains a RefuseBugOnlyReleaseStamp guard that fails a release stamp on a null-state repo closed before the first git touch \u2014 neither path fabricates a cycle-state.",
+  "changedPaths": [
+    "tools/Hx.Cycle.Core/CycleService.Check.cs",
+    "tools/Hx.Cycle.Core/CycleService.Stamp.cs",
+    "test/Hx.Cycle.Tests/CycleTestFixtures.cs",
+    "test/Hx.Cycle.Tests/BugOnlyReleasePathTests.cs",
+    "test/Hx.Runner.Tests/CycleEnforcementTests.cs"
+  ]
+}

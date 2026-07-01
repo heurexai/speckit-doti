@@ -145,6 +145,95 @@ public sealed class BugOnlyReleasePathTests
         finally { Directory.Delete(dir, true); }
     }
 
+    [Fact]
+    public void Check_release_onABugOnlyRepo_withAValidBugTrain_passesWithoutRequiringFeatureStamps()
+    {
+        // 038 (bug-only-release-cycle-check): the false blocker that misled the ergon release agent. Pre-fix,
+        // Check("release") on a null-state repo marked specify+plan "missing" and FAILED, tempting a fabricated feature
+        // cycle. The fix delegates to the bug-aware train: a test-passed unreleased bug makes release READY with no
+        // feature stamps, and — critically — NO "missing" feature-stage result is emitted.
+        string dir = NewTempDir();
+        try
+        {
+            var service = new CycleService(dir, new CycleStateStore(dir), ModelWithRelease(dir), _ => [BugMember("038-bug-x")]);
+
+            CycleCheckReport report = service.Check("release");
+
+            Assert.True(report.Passed, string.Join("; ", report.Prerequisites.Select(p => $"{p.Stage}:{p.Reason}")));
+            Assert.DoesNotContain(report.Prerequisites, p =>
+                string.Equals(p.Status, "missing", StringComparison.Ordinal));
+            Assert.Contains(report.Prerequisites, p => p.Stage == "release-train" && p.Ok);
+            Assert.NotNull(report.ReleaseTrain);
+            Assert.True(report.ReleaseTrain!.Valid);
+            Assert.False(new CycleStateStore(dir).Exists, "checking a bug-only release must never fabricate a cycle-state.json");
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Check_release_onABugOnlyRepo_withNoReleasableBug_stillFailsClosed()
+    {
+        // The fix must NOT turn "no cycle state" into "always pass": a repo with neither a feature cycle nor a
+        // releasable bug fails closed on the train's own blocker — never a fabricated pass.
+        string dir = NewTempDir();
+        try
+        {
+            var service = new CycleService(dir, new CycleStateStore(dir), ModelWithRelease(dir), _ => []);
+
+            CycleCheckReport report = service.Check("release");
+
+            Assert.False(report.Passed);
+            Assert.Contains(report.Prerequisites, p =>
+                p.Stage == "release-train" && !p.Ok && p.Reason!.Contains("no completed unreleased", StringComparison.Ordinal));
+            Assert.False(new CycleStateStore(dir).Exists);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Stamp_release_onABugOnlyRepo_failsClosed_andFabricatesNoCycleState()
+    {
+        // 038 hardening (adversarial-review finding): Check("release") is bug-only-aware, but Stamp consumes the SAME
+        // chokepoint via EnsurePrerequisitesFresh. Without the RefuseBugOnlyReleaseStamp guard, `doti cycle stamp
+        // --stage release` on a bug-only repo — even one with a valid bug train (so the check passes) — would write a
+        // FABRICATED feature cycle-state.json for a made-up feature, the exact anti-pattern 038 closes. The /09 skill
+        // instructs precisely `doti cycle stamp --stage release`, so an agent mis-running it on a bug-only repo must be
+        // stopped. Stamping release with no feature cycle must fail closed and write nothing.
+        string dir = NewTempDir();
+        try
+        {
+            var service = new CycleService(dir, new CycleStateStore(dir), ModelWithRelease(dir), _ => [BugMember("038-bug-x")]);
+
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+                () => service.Stamp("release", "099-fake", null));
+
+            Assert.Contains("a bug-only release is not stamped", ex.Message, StringComparison.Ordinal);
+            Assert.False(
+                new CycleStateStore(dir).Exists,
+                "a refused bug-only release stamp must fabricate no cycle-state.json");
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void Check_aFeatureStage_onABugOnlyRepo_isNotShortCircuited_soThe038BranchIsReleaseScopedOnly()
+    {
+        // The 038 branch fires ONLY for target.Id == "release": a FEATURE-stage check on a null-state repo must NOT be
+        // intercepted by the bug-only path (which would wrongly report a feature stage "ready"). Proof, git-free like
+        // the rest of this file: Check("plan") is NOT short-circuited, so it proceeds to the normal feature-freshness
+        // path, which resolves a change-set identity over git — absent in this temp dir, so it throws. Had the branch
+        // been mis-scoped to `state is null` alone, Check("plan") would have returned via BugOnlyReleaseCheck and NOT
+        // thrown. The throw is therefore the release-only scoping guarantee (the release path itself never reaches git).
+        string dir = NewTempDir();
+        try
+        {
+            var service = new CycleService(dir, new CycleStateStore(dir), ModelWithRelease(dir), _ => [BugMember("038-bug-x")]);
+
+            Assert.ThrowsAny<InvalidOperationException>(() => service.Check("plan"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
     // ---- fixtures ----
 
     private static CycleReleaseTrainFeature BugMember(string bugId) =>
