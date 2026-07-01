@@ -224,6 +224,40 @@ public sealed class BugReleaseDocCommitTests
         finally { DeleteDir(dir); }
     }
 
+    // 035 (A / BLOCKER): the release-doc commit must not sweep a PRE-STAGED operator file either — it shares the
+    // SanctionedGitCommit helper with the reconcile path. (The happy-path test above uses a working-tree-only edit,
+    // which the whole-index sweep never captured — the same gap the reconcile test had.)
+    [Fact]
+    public void Does_not_sweep_a_pre_staged_operator_file_into_the_release_doc_commit()
+    {
+        string dir = NewGitRepo();
+        try
+        {
+            ArmInsuranceHook(dir);
+            Write(dir, "README.md", "old readme");
+            Write(dir, "CHANGELOG.md", "old changelog");
+            SanctionedCommit(dir, "init");
+            ArmReleaseReadyBugMember(dir, "034-bug-only-release-doc-commit");
+            SanctionedCommit(dir, "add bug record");
+
+            Write(dir, "README.md", "old readme + 034-bug-only-release-doc-commit");
+            Write(dir, "CHANGELOG.md", "old changelog + 034-bug-only-release-doc-commit");
+            Write(dir, "src/operator-staged.cs", "operator work, already staged");
+            Git(dir, "add", "src/operator-staged.cs"); // operator pre-stages their own unrelated work
+
+            BugReleaseDocCommitOutcome outcome = BugReleaseDocCommit.Commit(dir, ["034-bug-only-release-doc-commit"]);
+
+            Assert.Equal(DotiCommitStatus.Committed, outcome.Status);
+            string committed = Git(dir, "log", "-1", "--name-only", "--format=").Replace('\\', '/');
+            Assert.Contains("README.md", committed);
+            Assert.Contains("CHANGELOG.md", committed);
+            Assert.DoesNotContain("operator-staged.cs", committed);           // NOT swept into the release-doc commit
+            Assert.DoesNotContain("operator-staged.cs", outcome.StagedPaths);
+            Assert.Contains("operator-staged.cs", Git(dir, "diff", "--cached", "--name-only").Replace('\\', '/'));
+        }
+        finally { DeleteDir(dir); }
+    }
+
     // ---- fixtures ----
 
     // Write a genuine, complete, valid assess->fix->test proof chain for `bugId` — exactly the shape

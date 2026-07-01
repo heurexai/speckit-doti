@@ -145,6 +145,93 @@ public sealed class DotiReconcileCommitTests
         Assert.Contains(".claude/skills/04-doti-tasks/SKILL.md", message);
     }
 
+    // 035 (A / BLOCKER): the regression that was MISSING — the prior test used a working-tree-ONLY operator file
+    // (never git add-ed), which the whole-index sweep never captured, so it proved the wrong property. Here the
+    // operator has ALREADY STAGED an unrelated file; a bare `git commit` would fold it into the reconcile commit.
+    [Fact]
+    public void Does_not_sweep_a_pre_staged_operator_file_into_the_reconcile_commit()
+    {
+        string dir = NewGitRepo();
+        try
+        {
+            ArmInsuranceHook(dir);
+            Write(dir, "base.txt", "base");
+            SanctionedCommit(dir, "init");
+
+            Write(dir, ".doti/core/skills.json", "rendered skills");
+            Write(dir, "operator-staged.cs", "operator work, already staged");
+            Git(dir, "add", "operator-staged.cs"); // operator pre-stages their own unrelated work
+
+            DotiReconcileCommitOutcome outcome = DotiReconcileCommit.Commit(
+                dir, [".doti/core/skills.json"], beforeVersion: "1.0.0", afterVersion: "2.0.0", prunedPaths: [], commit: true);
+
+            Assert.Equal(DotiCommitStatus.Committed, outcome.Status);
+            string committed = Git(dir, "show", "--name-only", "--format=", "HEAD").Replace('\\', '/');
+            Assert.Contains(".doti/core/skills.json", committed);
+            Assert.DoesNotContain("operator-staged.cs", committed);          // NOT swept into the reconcile commit
+            Assert.DoesNotContain("operator-staged.cs", outcome.StagedPaths); // and not reported as committed
+            // The operator's staged work is preserved in the index, not lost.
+            Assert.Contains("operator-staged.cs", Git(dir, "diff", "--cached", "--name-only").Replace('\\', '/'));
+        }
+        finally { DeleteDir(dir); }
+    }
+
+    // 035 (B / BLOCKER): the ergon failure — a consumer repo gitignores the materialized templates via a
+    // TRAILING-SLASH pattern (`.doti/templates/`). The gitignored dir in the touched set must be SKIPPED, not fail
+    // the whole sanctioned commit ("paths are ignored, use -f").
+    [Fact]
+    public void A_gitignored_candidate_is_skipped_and_does_not_fail_the_commit()
+    {
+        string dir = NewGitRepo();
+        try
+        {
+            ArmInsuranceHook(dir);
+            Write(dir, "base.txt", "base");
+            Write(dir, ".gitignore", ".doti/templates/\n");
+            SanctionedCommit(dir, "init");
+
+            Write(dir, ".doti/core/skills.json", "rendered skills");
+            Write(dir, ".doti/templates/commands/doti-bug.md", "materialized, gitignored runtime state");
+
+            DotiReconcileCommitOutcome outcome = DotiReconcileCommit.Commit(
+                dir, [".doti/core/skills.json", ".doti/templates"],
+                beforeVersion: "1.0.0", afterVersion: "2.0.0", prunedPaths: [], commit: true);
+
+            Assert.Equal(DotiCommitStatus.Committed, outcome.Status);
+            string committed = Git(dir, "show", "--name-only", "--format=", "HEAD").Replace('\\', '/');
+            Assert.Contains(".doti/core/skills.json", committed);
+            Assert.DoesNotContain(".doti/templates", committed);
+        }
+        finally { DeleteDir(dir); }
+    }
+
+    // 035 (HIGH): a `removed` candidate that was NEVER git-tracked and is absent on disk (a renamed-skill orphan a
+    // prior --no-commit / failed run left) → `git add` emits "pathspec did not match" (exit 128) and, unhandled,
+    // fails the whole commit. It must be SKIPPED.
+    [Fact]
+    public void An_untracked_orphan_candidate_is_skipped_and_does_not_fail_the_commit()
+    {
+        string dir = NewGitRepo();
+        try
+        {
+            ArmInsuranceHook(dir);
+            Write(dir, "base.txt", "base");
+            SanctionedCommit(dir, "init");
+
+            Write(dir, ".doti/core/skills.json", "rendered skills");
+
+            DotiReconcileCommitOutcome outcome = DotiReconcileCommit.Commit(
+                dir, [".doti/core/skills.json", ".claude/skills/old-renamed-orphan/SKILL.md"],
+                beforeVersion: "1.0.0", afterVersion: "2.0.0", prunedPaths: [], commit: true);
+
+            Assert.Equal(DotiCommitStatus.Committed, outcome.Status);
+            string committed = Git(dir, "show", "--name-only", "--format=", "HEAD").Replace('\\', '/');
+            Assert.Contains(".doti/core/skills.json", committed);
+            Assert.DoesNotContain("old-renamed-orphan", committed);
+        }
+        finally { DeleteDir(dir); }
+    }
+
     // Arm the real insurance pre-commit hook so the test PROVES the sanctioned commit (DOTI_SANCTIONED_COMMIT=1) gets
     // past it — a bare commit would be blocked. The hook mirrors the shipped stub: sanctioned env → exit 0, else fail.
     private static void ArmInsuranceHook(string dir)

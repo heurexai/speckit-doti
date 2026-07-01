@@ -108,7 +108,7 @@ public static class DotiInstaller
             payloadRoot, targetRepoRoot, agents, gitIgnoreWrites, bundledVersion, force,
             copied, installed, preserved, removed, blocked);
 
-        MaterializeRepoTemplates(payloadRoot, targetRepoRoot, copied, installed);
+        MaterializeRepoTemplates(payloadRoot, targetRepoRoot, copied);
 
         // 009 FR-009/010/015: initialize the constitution from the §1/§2 template (the payload excludes this repo's
         // own constitution), filling the auto-derived project name; preserve an operator-edited one (managed-asset).
@@ -244,18 +244,22 @@ public static class DotiInstaller
     /// <summary>
     /// FR-016: materialize <c>.doti/templates</c> from the payload's single-source <c>.doti/core/templates</c>, run
     /// AFTER the obsolete-asset sweep so the just-materialized copy is never removed. Installed repos keep
-    /// <c>.doti/templates</c>; recorded as a copied + installed effect when any file is written.
+    /// <c>.doti/templates</c>; recorded as a COPIED effect only (035 (B): never an `installed` commit candidate).
     /// </summary>
     private static void MaterializeRepoTemplates(
-        string payloadRoot, string targetRepoRoot, List<string> copied, List<DotiInstallPathEffect> installed)
+        string payloadRoot, string targetRepoRoot, List<string> copied)
     {
         IReadOnlyList<string> materialized = DotiTemplateMaterializer.MaterializeFromTo(
             Path.Combine(payloadRoot, ".doti", "core", "templates"),
             Path.Combine(targetRepoRoot, ".doti", "templates"));
         if (materialized.Count > 0)
         {
+            // 035 (B): `.doti/templates` is materialized, GITIGNORED runtime state — reported as copied, but NEVER
+            // added to `installed` (the reconcile-commit candidate set via DotiReconcileCommit.TouchedPaths),
+            // symmetric with .doti/cycle-state.json / gate-proof.json which are likewise never commit candidates.
+            // Adding the bare gitignored dir made `git add -- .doti/templates` fail the whole sanctioned commit on a
+            // consumer repo whose .gitignore uses the trailing-slash pattern `.doti/templates/`.
             copied.Add(".doti/templates");
-            installed.Add(new DotiInstallPathEffect(".doti/templates", "materialized from .doti/core/templates"));
         }
     }
 

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Hx.Cli.Kernel;
 using Hx.Doti.Core;
 using Hx.Runner.Cli;
+using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 using Xunit;
 
@@ -151,7 +152,13 @@ public sealed class DotiSelfContainedCommandTests
         // Arm the HOSTILE hook only AFTER the seed commit — the seed itself must succeed.
         string hooks = Path.Combine(repo, ".git", "hooks");
         Directory.CreateDirectory(hooks);
-        File.WriteAllText(Path.Combine(hooks, "pre-commit"), "#!/bin/sh\nexit 1\n");
+        string hostileHook = Path.Combine(hooks, "pre-commit");
+        File.WriteAllText(hostileHook, "#!/bin/sh\nexit 1\n");
+        // Git SKIPS a non-executable .sh hook on Linux/macOS — without the exec bit the commit would SUCCEED there and
+        // this "commit fails" test would false-pass on Windows only (which runs .sh hooks regardless of the bit). Mark
+        // it executable so the hostile hook fires on all OSes. Previously masked: the reconcile used to fail EARLIER at
+        // `git add` (the 035 (B) `.doti/templates` bug), so the hook was never reached; 035's fix now reaches it.
+        ExecutableFileMode.EnsureExecutable(hostileHook);
     }
 
     private static void Git(string dir, params string[] args) => GitWithEnv(dir, args, null, null);

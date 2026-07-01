@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "bugId": "035-commit-update-release-hardening",
+  "boundAssessmentSha256": "d9f408eebe62830b7c7e86e4f6d097cd049e63229303b2b05ac3f574dcf9557c",
+  "summary": "Extracted a shared SanctionedGitCommit (pathspec-scoped commit \u002B skip-unstageable \u002B add/commit lock-retry) that both DotiReconcileCommit and BugReleaseDocCommit delegate to (A/B/F/HIGH); excluded gitignored .doti/templates from install commit-candidates at the source (B); surfaced doti install\u0027s failed commit as Integrity (C); made update-all buckets mutually exclusive (E); bounded-token release-doc slug match (G); re-check test-evidence \u002B fault-isolate malformed records \u002B HEAD-reachable tag in the release train (H/I/J); \u002B the missing regression tests (pre-staged sweep, gitignored templates, untracked orphan, bounded slug, evidence-free pass, truncated record, unmerged tag).",
+  "changedPaths": [
+    "tools/Hx.Doti.Core/SanctionedGitCommit.cs",
+    "tools/Hx.Doti.Core/DotiReconcileCommit.cs",
+    "tools/Hx.Doti.Core/Bug/BugReleaseDocCommit.cs",
+    "tools/Hx.Doti.Core/DotiInstaller.cs",
+    "tools/Hx.Runner.Cli/RunnerCommands.Doti.Install.cs",
+    "tools/Hx.Doti.Core/DotiBatchUpdater.cs",
+    "tools/Hx.Cycle.Core/Documentation/ReleaseDocumentationInspector.cs",
+    "tools/Hx.Doti.Core/Bug/BugCycleService.cs",
+    "tools/Hx.Doti.Core/Bug/BugReleaseGit.cs",
+    "test/Hx.Doti.Tests/DotiReconcileCommitTests.cs",
+    "test/Hx.Doti.Tests/BugReleaseDocCommitTests.cs"
+  ]
+}

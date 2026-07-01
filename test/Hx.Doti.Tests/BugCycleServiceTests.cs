@@ -197,6 +197,51 @@ public sealed class BugCycleServiceTests
         Assert.Equal(BugStageOutcome.Pass, test.Outcome);
     }
 
+    // ---- 035 Fix H: re-check test-evidence at the release trust boundary ----
+
+    [Fact]
+    public void ReleaseReadyBugMembers_excludes_a_hand_edited_evidence_free_pass()
+    {
+        using var repo = new TempRepo();
+        string bugId = "h-forged-evidence";
+        BugStageResult assess = BugCycleService.Assess(repo.Root,
+            new BugAssessment(1, bugId, BugVerdict.Confirmed, "high", "remediate", "summary"));
+        BugStageResult fix = BugCycleService.Fix(repo.Root, bugId, assess.ArtifactSha256!, "guarded the path", ["src/Login.cs"]);
+
+        // The Test() WRITE guard would downgrade an evidence-free pass to fail, so simulate a hand-edited test.json
+        // that BYPASSES that writer entirely and claims Outcome=pass with blank Evidence, correctly bound to the
+        // fix hash. This is exactly the shape a tampered/forged record would have.
+        string testPath = Path.Combine(repo.Root, ".doti", "bugs", bugId, "test.json");
+        File.WriteAllText(testPath,
+            $$"""{"schemaVersion":1,"bugId":"{{bugId}}","boundFixSha256":"{{fix.ArtifactSha256}}","outcome":"pass","evidence":""}""");
+
+        // The forged pass must NOT buy release-readiness — the trust boundary re-checks evidence independently.
+        Assert.Empty(BugCycleService.ReleaseReadyBugMembers(repo.Root));
+    }
+
+    // ---- 035 Fix I: fault-isolate a malformed bug-record JSON ----
+
+    [Fact]
+    public void ReleaseReadyBugMembers_skips_a_truncated_record_and_still_evaluates_a_valid_sibling()
+    {
+        using var repo = new TempRepo();
+        DriveTestPassedBug(repo, "030-bug-release-bridge"); // a genuine, valid, test-passed sibling bug
+
+        // A second bug dir whose assessment.json is truncated/invalid JSON — JsonDocument.Parse/JsonSerializer.
+        // Deserialize THROW on this. Without fault isolation this crashes the whole enumeration.
+        string corruptDir = Path.Combine(repo.Root, ".doti", "bugs", "i-corrupt-record");
+        Directory.CreateDirectory(corruptDir);
+        File.WriteAllText(Path.Combine(corruptDir, "assessment.json"), "{\"schemaVersion\":1,\"bugId\":\"i-corrupt"); // truncated
+        File.WriteAllText(Path.Combine(corruptDir, "fix.json"), "{}");
+        File.WriteAllText(Path.Combine(corruptDir, "test.json"), "{}");
+
+        IReadOnlyList<CycleReleaseTrainFeature> members = BugCycleService.ReleaseReadyBugMembers(repo.Root);
+
+        // No exception propagated; the corrupt record is skipped (not a member), the valid sibling is still evaluated.
+        CycleReleaseTrainFeature member = Assert.Single(members);
+        Assert.Equal("030-bug-release-bridge", member.Feature);
+    }
+
     private sealed class TempRepo : IDisposable
     {
         public string Root { get; } = Path.Combine(Path.GetTempPath(), "hx-bug-" + Guid.NewGuid().ToString("n"));

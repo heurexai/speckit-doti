@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "035-commit-update-release-hardening",
+  "boundFixSha256": "6c850ae602eb971c88f740e149c75b2726e260a173ed217aa073a1458788b83a",
+  "outcome": "pass",
+  "evidence": "Build clean (0 warnings/0 errors). Hx.Doti.Tests 215/215 (incl. 4 new: pre-staged-file-not-swept on both commit paths, gitignored .doti/templates/ skipped, untracked orphan skipped), Hx.Runner.Tests 260/260, Hx.Cycle.Tests 146/146 (incl. Sonnet\u0027s bounded-slug, evidence-free-pass, truncated-record, unmerged-tag tests). No regression from the SanctionedGitCommit extraction. Reproduced the ergon .doti/templates/ trailing-slash failure in a test and proved the commit now succeeds by skipping the ignored path."
+}
