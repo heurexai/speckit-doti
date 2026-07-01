@@ -64,6 +64,7 @@ public static class ErrorCodes
     public const string Validation_GitRequired = "VAL0035";
     public const string Integrity_DotiUpdateFailed = "ITG0015";
     public const string Integrity_BugReleaseDocsCommitFailed = "ITG0016";
+    public const string Integrity_ReleaseReverted = "ITG0017";
     public const string Validation_CycleReviewRebindRequiresAttest = "VAL0036";
     public const string Validation_CycleReviewRebindIneligible = "VAL0037";
     public const string Validation_CycleReviewRebindNotStale = "VAL0038";
@@ -184,6 +185,8 @@ public static class ErrorCodes
             "A Doti repository update failed.", "See the per-repo reason (for example a dirty worktree or a git error) and re-run after resolving it."),
         new("ITG0016", "integrity", "ITG", 16, Severity.Error, ExitClass.Integrity, "integrity.bug-release-docs-commit-failed",
             "The sanctioned bug release-documentation commit failed after the gate passed.", "See the git reason (for example an index lock or a git error); the release-documentation fix is staged but not committed. Resolve it and re-run `hx doti bug release-docs`."),
+        new("ITG0017", "integrity", "ITG", 17, Severity.Error, ExitClass.Integrity, "integrity.release-reverted",
+            "The release failed and was automatically rolled back to the pre-release state.", "Fix the reported stage failure and re-run; the tag, release-root directory, and cycle-state were reverted. A residual means a compensation itself failed — check the reported paths."),
         new("VAL0036", "validation", "VAL", 36, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-requires-attest",
             "A bare stamp cannot clear a stage stale only on a prerequisite content change.", "Read the surfaced upstream diff, then re-author the stage OR record a reviewed-no-impact verdict: `doti cycle review-rebind --target <stage> --attest no-impact`."),
         new("VAL0037", "validation", "VAL", 37, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-ineligible",

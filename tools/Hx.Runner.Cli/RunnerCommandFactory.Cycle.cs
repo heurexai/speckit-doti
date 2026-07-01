@@ -14,7 +14,23 @@ public static partial class RunnerCommandFactory
         AddCycleRefreshPlan(cycleCommand, meta);
         AddCycleRefresh(cycleCommand, meta);
         AddCycleReviewRebind(cycleCommand, meta);
+        AddCycleFinalizeRelease(cycleCommand, meta);
         dotiCommand.Subcommands.Add(cycleCommand);
+    }
+
+    // 039 WI4/FR-032: finalize a cycle wedged at the release stage so the next feature can start.
+    private static void AddCycleFinalizeRelease(Command cycleCommand, CliMeta meta)
+    {
+        Command command = new("finalize-release",
+            "Finalize a cycle wedged at the release stage (e.g. published via dev->main->CI): move the released feature into ReleasedCycles so the next specify can start. Idempotent; fail-closed unless a release tag exists.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<bool> json = CliApp.JsonOption();
+        command.Options.Add(repo);
+        command.Options.Add(json);
+        command.SetAction(parseResult => CliHost.Run(meta, "doti cycle finalize-release",
+            () => RunnerCommands.CycleFinalizeRelease(meta, parseResult.GetValue(repo)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        cycleCommand.Subcommands.Add(command);
     }
 
     private static void AddCycleReviewRebind(Command cycleCommand, CliMeta meta)

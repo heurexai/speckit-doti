@@ -79,12 +79,22 @@ public sealed partial class CycleService
         CycleState state, string nextStage, string? releaseIntent, IReadOnlyList<string>? excludedOwnedPaths = null)
     {
         CycleStage current = _stageModel.Find(state.CurrentStage);
+        // 039 WI1/FR-001: the ENGINE — not the agent — stages the leaving stage's declared produced artifact (scoped,
+        // never `git add -A`), so an authored-but-untracked produced doc is captured by this transition commit instead
+        // of being left orphaned in the working tree (the empty-transition-commit bug).
+        StageProducesArtifact(current, state.Feature);
         TransitionReadiness readiness = ValidateTransitionReadiness(state, current, excludedOwnedPaths);
         if (readiness.Reasons.Count > 0)
         {
             throw new InvalidOperationException(
                 $"Cannot transition from '{state.CurrentStage}' to '{nextStage}': {string.Join("; ", readiness.Reasons)}");
         }
+
+        // 039 WI1/FR-002: fail closed ONLY when the leaving stage declares a `produces` artifact that is neither staged
+        // here nor already committed (a genuine orphan/missing artifact) — NEVER when it is present-and-committed
+        // unchanged (e.g. `clarify` re-declaring `specify`'s committed spec), which transitions as a normal no-change
+        // commit. This narrows the silent `allowEmpty` path to exactly the orphan case (no doc-dance regression).
+        EnsureProducesNotOrphaned(current, state.Feature, readiness.CommitReadiness.Scope);
 
         string message = TransitionCommitMessage(state, nextStage, releaseIntent);
         PendingCycleCommit pending = PreparePendingCommit(
@@ -137,4 +147,56 @@ public sealed partial class CycleService
     private static bool CanCommitReleaseStageRecovery(CycleStage target) =>
         string.Equals(target.Id, "release", StringComparison.OrdinalIgnoreCase)
         && string.Equals(target.Kind, "release", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 039 WI1/FR-001: stage EXACTLY the leaving stage's declared <c>produces</c> path (scoped; never <c>git add -A</c>),
+    /// so the coded transition commits the produced artifact the agent authored rather than relying on the agent to
+    /// pre-stage it. A stage with no declared produces, or a produces file absent from disk, stages nothing (the
+    /// absent case is caught by <see cref="EnsureProducesNotOrphaned"/>).
+    /// </summary>
+    private void StageProducesArtifact(CycleStage stage, string feature)
+    {
+        if (stage.Produces is not { } pattern)
+        {
+            return;
+        }
+
+        string rel = StageModel.ResolveProduces(pattern, feature);
+        string full = Path.GetFullPath(Path.Combine(_repositoryRoot, rel.Replace('/', Path.DirectorySeparatorChar)));
+        if (!File.Exists(full))
+        {
+            return;
+        }
+
+        ProcessRunner.Run(new ToolCommand("git", ["add", "--", rel], _repositoryRoot));
+    }
+
+    /// <summary>
+    /// 039 WI1/FR-002: a declared <c>produces</c> must end up captured by the transition commit — either newly staged
+    /// (by <see cref="StageProducesArtifact"/>) OR already tracked (committed unchanged by a prior transition). Neither
+    /// means the stage claims an artifact it never produced: fail closed. A present-and-committed-unchanged produces is
+    /// NOT an orphan and transitions normally (the same-artifact <c>clarify→plan</c> case).
+    /// </summary>
+    private void EnsureProducesNotOrphaned(CycleStage stage, string feature, CommitScope scope)
+    {
+        if (stage.Produces is not { } pattern)
+        {
+            return;
+        }
+
+        string rel = StageModel.ResolveProduces(pattern, feature);
+        bool staged = scope.StagedPaths.Any(p => string.Equals(p, rel, StringComparison.OrdinalIgnoreCase));
+        if (staged || IsPathTracked(rel))
+        {
+            return;
+        }
+
+        throw new CycleInputException(
+            $"Stage '{stage.Id}' declares produces '{rel}' but it is neither staged nor committed — author the artifact "
+            + $"before transitioning out of '{stage.Id}'.");
+    }
+
+    private bool IsPathTracked(string relPath) =>
+        ProcessRunner.Run(new ToolCommand(
+            "git", ["ls-files", "--error-unmatch", "--", relPath], _repositoryRoot)).ExitCode == 0;
 }

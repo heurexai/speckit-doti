@@ -68,4 +68,23 @@ public sealed partial class CycleEnforcementTests
 
         return r.StandardOutput.Trim();
     }
+
+    private static string GitOut(string dir, params string[] args) =>
+        ProcessRunner.Run(new ToolCommand("git", args, dir)).StandardOutput;
+
+    private static bool IsTracked(string dir, string rel) =>
+        ProcessRunner.Run(new ToolCommand("git", ["ls-files", "--error-unmatch", "--", rel], dir)).ExitCode == 0;
+
+    // InitRepo with a caller-supplied `stages:` block (for the WI1 same-produces regression test); overwrites the
+    // default model and re-commits so `new CycleService(dir)` loads it.
+    private static string InitRepoWithStages(string stagesYaml)
+    {
+        string dir = InitRepo();
+        File.WriteAllText(
+            Path.Combine(dir, ".doti", "workflows", "doti", "workflow.yml"),
+            "schemaVersion: 2\nstages:\n" + stagesYaml);
+        Git(dir, "add", "-A");
+        Git(dir, "commit", "-q", "-m", "model");
+        return dir;
+    }
 }

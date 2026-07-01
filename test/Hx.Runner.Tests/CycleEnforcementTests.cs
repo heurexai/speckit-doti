@@ -141,6 +141,103 @@ public sealed partial class CycleEnforcementTests
     }
 
     [Fact]
+    public void Transition_stagesAndCommitsTheLeavingStagesProducedDoc_evenWhenAuthoredUntracked()
+    {
+        // 039 WI1/FR-001/SC-001: THE live bug. A produced doc authored but left untracked must be committed BY the
+        // coded transition, not orphaned. Pre-fix, the specify->drift-review transition empty-committed and left the
+        // spec untracked (what the 006 agent hit). The engine now stages the leaving stage's produces itself.
+        string dir = InitRepo();
+        try
+        {
+            var service = new CycleService(dir);
+            string spec = Path.Combine(dir, "docs", "specs", "001-f.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(spec)!);
+            File.WriteAllText(spec, "# spec\n"); // authored, UNTRACKED — never git add
+            service.Stamp("specify", "001-f", null);      // initial stamp, no transition
+            service.Stamp("drift-review", "001-f", null); // specify->drift-review transition commits specify's produces
+
+            Assert.True(IsTracked(dir, "docs/specs/001-f.md"), "the produced spec must be committed by the transition, not orphaned");
+            Assert.Contains("docs/specs/001-f.md", GitOut(dir, "show", "--name-only", "--format=", "HEAD"));
+        }
+        finally { ForceDelete(dir); }
+    }
+
+    [Fact]
+    public void Transition_doesNotFailClose_whenTheProducesIsPresentAndAlreadyCommittedUnchanged()
+    {
+        // 039 WI1/FR-002/SC-001: two consecutive stages declaring the SAME produces (specify+clarify -> the spec). The
+        // spec is committed by specify->clarify; the clarify->plan transition (clarify re-declaring the unchanged,
+        // already-committed spec) must transition as a no-content-change commit, NOT fail-close. Guards the 031/#42
+        // doc-dance the arch-review flagged.
+        string dir = InitRepoWithStages(
+            "  - id: specify\n    kind: doc\n    produces: docs/specs/{feature}.md\n    prereqs: []\n"
+            + "  - id: clarify\n    kind: doc\n    produces: docs/specs/{feature}.md\n    prereqs: [specify]\n"
+            + "  - id: plan\n    kind: doc\n    produces: docs/plans/{feature}.md\n    prereqs: [clarify]\n");
+        try
+        {
+            var service = new CycleService(dir);
+            string spec = Path.Combine(dir, "docs", "specs", "001-f.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(spec)!);
+            File.WriteAllText(spec, "# spec\n");
+            service.Stamp("specify", "001-f", null);
+            service.Stamp("clarify", "001-f", null); // specify->clarify commits the spec
+            Assert.True(IsTracked(dir, "docs/specs/001-f.md"));
+
+            service.Stamp("plan", "001-f", null); // clarify->plan: clarify's produces is the present+committed spec — must NOT throw
+        }
+        finally { ForceDelete(dir); }
+    }
+
+    [Fact]
+    public void FinalizeReleasedCycle_failsClosed_whenTheCycleIsNotAtReleaseStage()
+    {
+        // 039 WI4/FR-032: finalize-release only finalizes a cycle that reached release — a mid-cycle stage fails closed.
+        string dir = InitRepo();
+        try
+        {
+            var service = new CycleService(dir);
+            string spec = Path.Combine(dir, "docs", "specs", "001-f.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(spec)!);
+            File.WriteAllText(spec, "# spec\n");
+            service.Stamp("specify", "001-f", null); // at specify, not release
+
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => service.FinalizeReleasedCycle());
+            Assert.Contains("not 'release'", ex.Message);
+        }
+        finally { ForceDelete(dir); }
+    }
+
+    [Fact]
+    public void FinalizeReleasedCycle_isANoOp_whenThereIsNoCycleState()
+    {
+        // 039 WI4: idempotent / safe — a repo with no cycle-state (nothing to finalize) must not throw.
+        string dir = InitRepo();
+        try
+        {
+            new CycleService(dir).FinalizeReleasedCycle(); // must not throw
+        }
+        finally { ForceDelete(dir); }
+    }
+
+    [Fact]
+    public void Transition_failsClosed_whenTheLeavingStageDeclaresAProducesNeverAuthored()
+    {
+        // 039 WI1/FR-002/SC-001: a declared produces that is absent from disk AND uncommitted is a genuine orphan —
+        // fail closed with the named path, instead of a silent empty commit.
+        string dir = InitRepo();
+        try
+        {
+            var service = new CycleService(dir);
+            service.Stamp("specify", "001-f", null); // specify declares produces docs/specs/001-f.md; never authored
+
+            CycleInputException ex = Assert.Throws<CycleInputException>(
+                () => service.Stamp("drift-review", "001-f", null));
+            Assert.Contains("docs/specs/001-f.md", ex.Message);
+        }
+        finally { ForceDelete(dir); }
+    }
+
+    [Fact]
     public void Stamp_FailsClosed_WhenPrerequisitesAreMissing()
     {
         string dir = InitRepo();
