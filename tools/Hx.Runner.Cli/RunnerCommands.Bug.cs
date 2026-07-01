@@ -68,4 +68,37 @@ public static partial class RunnerCommands
         StageOutcome stage = result.Outcome == BugStageOutcome.Pass ? StageOutcome.Pass : StageOutcome.Fail;
         return CliResults.FromStage(meta, command, stage, summary, result);
     }
+
+    // 034 (bug-only-release-doc-commit): thin CLI over BugReleaseDocCommit — the fail-closed gate (a release-ready
+    // bug member must justify the commit) and the precise README.md/CHANGELOG.md staging live in the service.
+    public static CliResult BugReleaseDocs(CliMeta meta, string repo, string bugIdCsv)
+    {
+        string[] bugIds = string.IsNullOrWhiteSpace(bugIdCsv)
+            ? []
+            : bugIdCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        BugReleaseDocCommitOutcome outcome = BugReleaseDocCommit.Commit(repo, bugIds);
+        if (outcome.Status == DotiCommitStatus.Refused)
+        {
+            return CliResults.Fail(meta, "doti bug release-docs", ExitClass.Validation,
+                [Diag.Of(ErrorCodes.Validation_BugReleaseDocsIneligible, outcome.Reason)], data: outcome);
+        }
+
+        if (outcome.Status == DotiCommitStatus.Failed)
+        {
+            // Parity with `doti update`'s 032 D1(c) arm: a self-owned sanctioned commit that failed AFTER the gate
+            // passed leaves the docs staged-but-not-committed — an integrity condition, not a bad-input (Validation) one.
+            return CliResults.Fail(meta, "doti bug release-docs", ExitClass.Integrity,
+                [Diag.Of(ErrorCodes.Integrity_BugReleaseDocsCommitFailed, outcome.Reason ?? "release-documentation commit failed")],
+                data: outcome);
+        }
+
+        string summary = outcome.Status switch
+        {
+            DotiCommitStatus.Committed => $"Committed {outcome.StagedPaths.Count} release-documentation path(s).",
+            DotiCommitStatus.NoChange => "No release-documentation change to commit.",
+            DotiCommitStatus.NonGit => "Target is not a git work tree; release-doc commit skipped.",
+            _ => outcome.Reason ?? "Release-doc commit outcome.",
+        };
+        return CliResults.Ok(meta, "doti bug release-docs", summary, outcome);
+    }
 }

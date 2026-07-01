@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "034-bug-only-release-doc-commit",
+  "boundFixSha256": "599c072f30af54ecf9698a031229a15399ef413a48a7c36bba9ac38e26430c9b",
+  "outcome": "pass",
+  "evidence": "hx gate run --profile normal GREEN: 12 test projects pass, architecture 15/15, sentrux regression=Pass (signal=6501), security no findings, errorcodes render\u002Bcheck green (VAL0041/ITG0016). 7 new BugReleaseDocCommitTests pass: happy-path exact-staging, fail-closed refusal with NO git mutation, unconfirmed-bug still refused, hook-still-blocks-bare-commit, idempotent no-op, non-git skip, dirty-subset-only staging. Verified the fail-closed gate (ReleaseReadyBugMembers\u003E=1) refuses before any git mutation via a live smoke test; HEAD\u002Bworktree untouched on refusal."
+}

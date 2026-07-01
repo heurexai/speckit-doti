@@ -16,3 +16,5 @@ Enforcement (fails closed / no over-claiming):
 ## Next
 
 A `pass` closes the bug mini-cycle. A `fail` returns to `speckit.bug.fix` (or `speckit.bug.assess` if the root cause was wrong).
+
+In a bug-only repo (no numbered feature cycle), a `pass` may make this test-passed bug a release-train member. If a subsequent release run's `release-documentation` gate demands the bug's slug in `README.md`/`CHANGELOG.md`, edit those two files and commit the fix with the sanctioned `hx doti bug release-docs --repo . --bug <NNN-slug>` — never a manual `DOTI_SANCTIONED_COMMIT=1` bypass.
