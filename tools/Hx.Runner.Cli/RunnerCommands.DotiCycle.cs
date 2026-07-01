@@ -83,7 +83,35 @@ public static partial class RunnerCommands
         var service = new CycleService(repo, Hx.Doti.Core.Bug.BugCycleService.ReleaseReadyBugMembers);
         CycleStatusReport report = service.Status();
         IReadOnlyList<CliNextAction> nextActions = WorkflowNextActions(repo, service, report);
+        // 039 WI4/FR-033: no cycle-state is a dead-end. A cycle wedged at release-stage (its local state never
+        // finalized — e.g. a dev→main→CI publish that bypassed MarkReleaseTrainReleased) surfaces the coded recovery.
+        if (service.CanFinalizeReleasedCycle())
+        {
+            nextActions = [.. nextActions, new CliNextAction(
+                "finalize-release",
+                "This released cycle is wedged: its local state was never finalized (a dev→main→CI publish bypasses it). Finalize it so the next feature's specify can start.",
+                "hx doti cycle finalize-release")];
+        }
+
         return CliResults.Ok(meta, "doti cycle status", "Cycle status.", report, nextActions: nextActions);
+    }
+
+    // 039 WI4/FR-032: finalize a cycle wedged at the release stage so the next feature's specify can start. Idempotent;
+    // fail-closed unless the cycle is at release-stage and a release tag exists (there is a shipped release to finalize).
+    public static CliResult CycleFinalizeRelease(CliMeta meta, string repo)
+    {
+        var service = new CycleService(repo, Hx.Doti.Core.Bug.BugCycleService.ReleaseReadyBugMembers);
+        try
+        {
+            CycleReleaseTrain train = service.FinalizeReleasedCycle();
+            return CliResults.Ok(meta, "doti cycle finalize-release",
+                "Finalized the released cycle; the next feature's specify can now start.", train);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return CliResults.Fail(meta, "doti cycle finalize-release", ExitClass.Validation,
+                [Diag.Of(ErrorCodes.Validation_Failed, ex.Message)]);
+        }
     }
 
     public static CliResult CycleCheck(CliMeta meta, string repo, string stage)

@@ -36,7 +36,9 @@ public sealed record LocalReleaseResult(
     // LocalReleaseService is retargeted off vpk (T028).
     string? PackageId = null,
     string? Channel = null,
-    IReadOnlyList<ChannelInstallProof>? ChannelInstallProofs = null);
+    IReadOnlyList<ChannelInstallProof>? ChannelInstallProofs = null,
+    // 039 WI2/FR-030: on a REVERTED release, what the engine rolled back (tag/dir/cycle-state) — null on success.
+    RollbackReport? Rollback = null);
 
 public sealed record LocalReleaseRootDecision(
     string EffectiveEnvironmentVariableName,

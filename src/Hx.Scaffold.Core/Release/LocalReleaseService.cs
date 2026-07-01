@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Hx.Cycle.Core;
 using Hx.Cycle.Core.Documentation;
+using Hx.Runner.Core.Git;
 using Hx.Runner.Core.Packaging;
 using Hx.Runner.Core.Platform;
 using Hx.Scaffold.Core.Configuration;
@@ -62,47 +63,50 @@ public static class LocalReleaseService
         VersionResult version = GitVersionTool.Calculate(repo);
         string sourceCommit = Git(repo, "rev-parse HEAD").Trim();
         string releaseIntent = ResolveReleaseIntent(repo, version.Version, explicitIntent);
-        LocalReleaseTag tag = EnsureReleaseTag(repo, version.Version, releaseIntent, sourceCommit);
         string velopackPackageId = projectName;
         string velopackChannel = ChannelFromRid(rid);
 
-        if (rootDecision.ReleaseRoot is null)
+        // 039 WI2/FR-010..014: from the first durable mutation (the tag) onward, run inside a compensation ledger so
+        // ANY failure automatically reverts the engine's OWN side effects (tag, release-root dir, cycle-state) and
+        // returns a RollbackReport — no half-released state is ever handed back, and no agent cleanup is required.
+        var transaction = new ReleaseTransaction();
+        ReleaseStage stage = ReleaseStage.Validation;
+        try
         {
-            return BuildSkippedResult(
-                request,
-                projectName,
-                version,
-                releaseIntent,
-                tag,
-                rid,
-                sourceCommit,
-                target,
-                rootDecision,
-                persistence,
-                releaseTrain,
-                documentationProof,
-                velopackPackageId,
-                velopackChannel);
-        }
+            stage = ReleaseStage.Tag;
+            Fault(stage);
+            LocalReleaseTag tag = EnsureReleaseTag(repo, version.Version, releaseIntent, sourceCommit);
+            if (tag.Created)
+            {
+                transaction.Record($"delete created tag {tag.Name}", () => GitOptional(repo, $"tag -d {Quote(tag.Name)}"));
+            }
 
-        return BuildAndPublishResult(
-            request,
-            repo,
-            cycle,
-            projectName,
-            version,
-            releaseIntent,
-            tag,
-            rid,
-            sourceCommit,
-            target,
-            rootDecision,
-            persistence,
-            releaseTrain,
-            documentationProof,
-            velopackPackageId,
-            velopackChannel);
+            LocalReleaseResult result = rootDecision.ReleaseRoot is null
+                ? BuildSkippedResult(
+                    request, projectName, version, releaseIntent, tag, rid, sourceCommit, target, rootDecision,
+                    persistence, releaseTrain, documentationProof, velopackPackageId, velopackChannel)
+                : BuildAndPublishResult(
+                    request, repo, cycle, projectName, version, releaseIntent, tag, rid, sourceCommit, target,
+                    rootDecision, persistence, releaseTrain, documentationProof, velopackPackageId, velopackChannel,
+                    transaction, s => stage = s);
+            transaction.Commit();
+            return result;
+        }
+        catch (Exception ex)
+        {
+            RollbackReport rollback = transaction.Rollback(stage, ex.Message);
+            return BuildRevertedResult(
+                request, projectName, version, releaseIntent, rid, sourceCommit, target, rootDecision, persistence,
+                releaseTrain, documentationProof, velopackPackageId, velopackChannel, rollback, ex);
+        }
     }
+
+    // 039 WI2/T014: an internal test seam to force a failure at a chosen release stage WITHOUT running dotnet/network,
+    // so the byte-identical-revert proof (SC-002) is deterministic. [ThreadStatic] for parallel-test isolation.
+    [ThreadStatic]
+    internal static Action<ReleaseStage>? FaultHook;
+
+    private static void Fault(ReleaseStage stage) => FaultHook?.Invoke(stage);
 
     private static LocalReleaseResult BuildSkippedResult(
         LocalReleaseRequest request,
@@ -167,7 +171,9 @@ public static class LocalReleaseService
         CycleReleaseTrain releaseTrain,
         ReleaseDocumentationProof documentationProof,
         string velopackPackageId,
-        string velopackChannel)
+        string velopackChannel,
+        ReleaseTransaction transaction,
+        Action<ReleaseStage> onStage)
     {
         string releaseRoot = Path.GetFullPath(rootDecision.ReleaseRoot!);
         EnsureRootIsSafe(repo, releaseRoot);
@@ -176,6 +182,8 @@ public static class LocalReleaseService
         Directory.CreateDirectory(tempRoot);
         try
         {
+            onStage(ReleaseStage.Pack);
+            Fault(ReleaseStage.Pack);
             ReleaseArtifactBuild artifacts = BuildArtifacts(
                 repo,
                 tempRoot,
@@ -192,12 +200,36 @@ public static class LocalReleaseService
                 velopackPackageId,
                 velopackChannel,
                 releaseTrain);
+            Fault(ReleaseStage.Smoke); // the source-free install smoke runs inside BuildArtifacts; hook after it
 
             string projectRoot = EnsureInside(releaseRoot, Path.Combine(releaseRoot, projectName));
             string versionDir = EnsureInside(releaseRoot, Path.Combine(projectRoot, version.Version));
             string latestDir = EnsureInside(releaseRoot, Path.Combine(projectRoot, "latest"));
+
+            onStage(ReleaseStage.Copy);
+            Fault(ReleaseStage.Copy);
+            // 039 WI2/FR-011: record the release-root dir compensation BEFORE the mutation, so a failure during or after
+            // publish reverts the dir to its exact pre-run baseline (removed if this run created it; restored if it
+            // pre-existed) rather than leaving the "different release identity" leftover that blocked the ergon retry.
+            DirBaseline versionBaseline = CaptureDirBaseline(versionDir);
+            DirBaseline latestBaseline = CaptureDirBaseline(latestDir);
+            transaction.Record(
+                $"restore release dir {versionDir}",
+                () => RestoreDirBaseline(versionDir, versionBaseline),
+                () => DiscardDirBaseline(versionBaseline));
+            transaction.Record(
+                $"restore latest dir {latestDir}",
+                () => RestoreDirBaseline(latestDir, latestBaseline),
+                () => DiscardDirBaseline(latestBaseline));
             PublishLocalCopy(tempRoot, versionDir, latestDir, artifacts.Artifacts, projectName, version.Version, sourceCommit);
 
+            onStage(ReleaseStage.Record);
+            Fault(ReleaseStage.Record);
+            // 039 WI2/FR-011 (BLOCKER-4): cycle-state.json is mutated mid-run by MarkReleaseTrainReleased and is a
+            // FIRST-CLASS ledgered side effect — capture its bytes before, restore on rollback, so a post-mark failure
+            // does not leave a released-with-no-tag state worse than the 031 wedge.
+            byte[]? cycleStateBefore = CaptureCycleState(repo);
+            transaction.Record("restore cycle-state", () => RestoreCycleState(repo, cycleStateBefore));
             cycle.MarkReleaseTrainReleased();
             return new LocalReleaseResult(
                 JsonContractDefaults.SchemaVersion,
@@ -915,5 +947,134 @@ public static class LocalReleaseService
         {
             // Best-effort cleanup; callers still receive the release result/failure that matters.
         }
+    }
+
+    // ---- 039 WI2: compensation helpers (release-root dir baseline + cycle-state bytes) ----
+
+    internal sealed record DirBaseline(bool Existed, string? BackupPath);
+
+    // Capture a release-root <version>/latest dir's pre-run state so a rollback restores it exactly: if it pre-existed,
+    // copy it aside; if absent, the compensation just removes whatever this run created (the common fresh-release case).
+    internal static DirBaseline CaptureDirBaseline(string dir)
+    {
+        if (!Directory.Exists(dir))
+        {
+            return new DirBaseline(false, null);
+        }
+
+        string backup = dir + ".doti-baseline-" + Guid.NewGuid().ToString("N");
+        CopyDirectory(dir, backup);
+        return new DirBaseline(true, backup);
+    }
+
+    internal static void RestoreDirBaseline(string dir, DirBaseline baseline)
+    {
+        TryDelete(dir);
+        if (baseline is { Existed: true, BackupPath: { } backup } && Directory.Exists(backup))
+        {
+            CopyDirectory(backup, dir);
+            TryDelete(backup);
+        }
+    }
+
+    private static void DiscardDirBaseline(DirBaseline baseline)
+    {
+        if (baseline.BackupPath is { } backup)
+        {
+            TryDelete(backup);
+        }
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (string dir in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(dir.Replace(source, destination, StringComparison.Ordinal));
+        }
+
+        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            File.Copy(file, file.Replace(source, destination, StringComparison.Ordinal), overwrite: true);
+        }
+    }
+
+    internal static byte[]? CaptureCycleState(string repo)
+    {
+        string path = Path.Combine(repo, ".doti", "cycle-state.json");
+        return File.Exists(path) ? File.ReadAllBytes(path) : null;
+    }
+
+    internal static void RestoreCycleState(string repo, byte[]? before)
+    {
+        string path = Path.Combine(repo, ".doti", "cycle-state.json");
+        if (before is null)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            return;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, before);
+    }
+
+    // 039 WI2/FR-013/FR-030: the REVERTED-release result — Run returns this (no throw) after an automatic rollback, so
+    // the CLI renders the failed stage + what was rolled back instead of a flattened exception string.
+    private static LocalReleaseResult BuildRevertedResult(
+        LocalReleaseRequest request,
+        string projectName,
+        VersionResult version,
+        string releaseIntent,
+        string rid,
+        string sourceCommit,
+        LocalReleaseTarget target,
+        LocalReleaseRootDecision rootDecision,
+        LocalReleaseEnvironmentPersistence persistence,
+        CycleReleaseTrain releaseTrain,
+        ReleaseDocumentationProof documentationProof,
+        string velopackPackageId,
+        string velopackChannel,
+        RollbackReport rollback,
+        Exception failure)
+    {
+        string residual = rollback.AnyResidual
+            ? " (WITH RESIDUALS: " + string.Join(", ", rollback.Compensations.Where(c => !c.Succeeded).Select(c => c.Action)) + ")"
+            : "";
+        return new LocalReleaseResult(
+            JsonContractDefaults.SchemaVersion,
+            projectName,
+            version.Version,
+            releaseIntent,
+            new LocalReleaseTag("v" + version.Version, sourceCommit, null, Created: false, Existing: false, Message: "(reverted)", PushCommand: ""),
+            version.Source,
+            velopackPackageId,
+            velopackChannel,
+            rid,
+            sourceCommit,
+            target,
+            rootDecision,
+            persistence,
+            LocalCopyProduced: false,
+            SkippedReason: null,
+            VersionDirectory: null,
+            LatestDirectory: null,
+            Artifacts: [],
+            VelopackArtifacts: [],
+            PayloadChecks: [],
+            ReleaseTrain: releaseTrain,
+            DocumentationProof: documentationProof,
+            CommandName: "hx release",
+            CommandVersion: request.CommandVersion,
+            ConfigurationSource: request.Configuration.Source,
+            ConfigurationPath: request.Configuration.SourcePath,
+            ReleaseProduct: ReleaseProductNone,
+            SourceArchiveExcluded: true,
+            Blockers: [$"release failed at stage {rollback.FailedStage}: {failure.Message}; reverted to the pre-release state{residual}"],
+            InstallLocationProof: null,
+            Rollback: rollback);
     }
 }

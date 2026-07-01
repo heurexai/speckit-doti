@@ -33,6 +33,19 @@ public static partial class ScaffoldCommands
                 meta.Version,
                 major ? "major" : minor ? "minor" : "patch"));
 
+            // 039 WI2/FR-030/FR-013: a REVERTED release returns a result carrying the RollbackReport (no throw). Surface
+            // the failed stage + exactly what the engine rolled back; a residual (a compensation that itself failed) is
+            // an Integrity fail, a clean revert a Validation fail — never reported as a successful release.
+            if (result.Rollback is { } rollback)
+            {
+                string rolledBack = string.Join("; ", rollback.Compensations.Select(c =>
+                    $"{c.Action} [{(c.Succeeded ? "ok" : "RESIDUAL: " + c.Detail)}]"));
+                return CliResults.Fail(meta, "release",
+                    rollback.AnyResidual ? ExitClass.Integrity : ExitClass.Validation,
+                    [Diag.Of(ErrorCodes.Integrity_ReleaseReverted,
+                        $"Release reverted at stage {rollback.FailedStage}: {rollback.Reason}. Rolled back: {rolledBack}")]);
+            }
+
             string summary = result.LocalCopyProduced
                 ? $"Release {result.ProjectName} {result.Version} ({result.ReleaseIntent}) tagged {result.Tag.Name} and copied to {result.VersionDirectory} and {result.LatestDirectory}."
                 : $"Release {result.ProjectName} {result.Version} ({result.ReleaseIntent}) tagged {result.Tag.Name}: local copy skipped ({result.SkippedReason}).";
