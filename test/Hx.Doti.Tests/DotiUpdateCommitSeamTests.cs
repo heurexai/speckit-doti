@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Hx.Doti.Core;
+using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 using Xunit;
 
@@ -244,8 +245,10 @@ public sealed class DotiUpdateCommitSeamTests
     {
         string hooks = Path.Combine(repo, ".git", "hooks");
         Directory.CreateDirectory(hooks);
-        File.WriteAllText(Path.Combine(hooks, "pre-commit"),
+        string hookPath = Path.Combine(hooks, "pre-commit");
+        File.WriteAllText(hookPath,
             "#!/bin/sh\nif [ \"$DOTI_SANCTIONED_COMMIT\" = \"1\" ]; then exit 0; fi\nexit 1\n");
+        ExecutableFileMode.EnsureExecutable(hookPath);
     }
 
     // 032 D1(b): a pre-commit hook that captures `git worktree list --porcelain` to `captureFile` at the EXACT
@@ -256,12 +259,14 @@ public sealed class DotiUpdateCommitSeamTests
     {
         string hooks = Path.Combine(repo, ".git", "hooks");
         Directory.CreateDirectory(hooks);
+        string hookPath = Path.Combine(hooks, "pre-commit");
         string posixCapturePath = captureFile.Replace('\\', '/');
-        File.WriteAllText(Path.Combine(hooks, "pre-commit"),
+        File.WriteAllText(hookPath,
             "#!/bin/sh\n"
             + $"git worktree list --porcelain > \"{posixCapturePath}\" 2>&1\n"
             + "if [ \"$DOTI_SANCTIONED_COMMIT\" = \"1\" ]; then exit 0; fi\n"
             + "exit 1\n");
+        ExecutableFileMode.EnsureExecutable(hookPath);
     }
 
     // 032 D1(d): a pre-commit hook that fails with the "index.lock" transient-lock signature on its FIRST invocation
@@ -272,8 +277,9 @@ public sealed class DotiUpdateCommitSeamTests
     {
         string hooks = Path.Combine(repo, ".git", "hooks");
         Directory.CreateDirectory(hooks);
+        string hookPath = Path.Combine(hooks, "pre-commit");
         string posixCounterPath = attemptCounterFile.Replace('\\', '/');
-        File.WriteAllText(Path.Combine(hooks, "pre-commit"),
+        File.WriteAllText(hookPath,
             "#!/bin/sh\n"
             + $"COUNTER=\"{posixCounterPath}\"\n"
             + "if [ -f \"$COUNTER\" ]; then N=$(cat \"$COUNTER\"); else N=0; fi\n"
@@ -285,6 +291,7 @@ public sealed class DotiUpdateCommitSeamTests
             + "  exit 1\n"
             + "fi\n"
             + "exit 0\n");
+        ExecutableFileMode.EnsureExecutable(hookPath);
     }
 
     private static void Cleanup(string source, string repo)
