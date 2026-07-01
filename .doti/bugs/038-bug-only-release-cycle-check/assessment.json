@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "038-bug-only-release-cycle-check",
+  "verdict": "confirmed",
+  "severity": "high",
+  "remediation": "CycleService.Check: the 033 bug-only tolerance in BuildReleaseTrain (a null cycle-state yields an empty feature half \u002B consults the injected bug members) was never extended to the Check() chokepoint \u2014 the release-train block there is guarded by \u0027state is not null\u0027, so a bug-only repo never reaches it and the transitive-prerequisite loop marks specify..drift-review \u0027missing\u0027. Add a release-scoped null-state branch that delegates readiness ENTIRELY to the bug-aware release train (BuildReleaseTrain(null)): a valid train (\u003E=1 test-passed, unreleased bug) passes with a stand-in \u0027ready\u0027 result; an empty/invalid one fails closed on the train\u0027s own blocker. Scoped to target.Id==\u0027release\u0027 only, so feature-stage checks are unchanged. Proven on the real ergon repo (bugs 004\u002B005) \u2014 the check now passes without fabricating a cycle-state.",
+  "summary": "hx doti cycle check --stage release is not bug-only-aware: on a repo with no .doti/cycle-state.json it marks all 8 feature stages \u0027missing\u0027 and fails, a false blocker that misleads agents into fabricating a feature cycle for a bug-only release."
+}

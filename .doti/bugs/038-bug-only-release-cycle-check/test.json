@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "038-bug-only-release-cycle-check",
+  "boundFixSha256": "69543636fe073473baa287fec50bfc736af32610a91697246d9f89e8767f2b5e",
+  "outcome": "pass",
+  "evidence": "10/10 BugOnlyReleasePathTests (incl. 4 new: valid-train passes without feature stamps; no-releasable-bug fails closed; feature-stage check is release-scoped only; release-STAMP guard fabricates no cycle-state). Full Hx.Cycle.Tests 150/150 and Hx.Runner.Tests 260/260 (one Runner test repurposed off the now-bug-only-aware release stage onto a feature stage). End-to-end on the REAL ergon repo (bugs 004\u002B005): hx doti cycle check --stage release returns passed:true, releaseTrain.valid:true, both bugs included, no .doti/cycle-state.json written. The Stamp write-path hole (cycle stamp --stage release fabricating a feature cycle on a bug-only repo) was found by an adversarial Opus 3-lens review of the fix \u2014 a hole the 149\u002B260 green unit tests missed \u2014 and is now guarded \u002B regression-tested. Release-profile gate green."
+}

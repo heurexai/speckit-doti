@@ -119,13 +119,20 @@ public sealed partial class CycleEnforcementTests
     [Fact]
     public void Check_FailsClosed_WhenPrerequisitesAreMissing()
     {
+        // A FEATURE-stage check on a repo with no cycle-state fails closed with its prerequisites reported "missing".
+        // Uses drift-review (a feature stage) deliberately: `release` is now bug-only-aware (038) and no longer reports
+        // phantom feature-stamp "missing" results on a null-state repo — it delegates to the bug release train instead
+        // (see BugOnlyReleasePathTests for the release-stage null-state path, which still fails closed on the train's
+        // own blocker). The generic "missing prerequisite → fail closed" property is unchanged for feature stages.
         string dir = InitRepo();
         try
         {
-            CycleCheckReport report = new CycleService(dir).Check("release");
+            CycleCheckReport report = new CycleService(dir).Check("drift-review");
             Assert.False(report.Passed);
             Assert.Contains(report.Prerequisites, p => p.Stage == "specify" && p.Status == "missing");
-            Assert.Contains(report.Prerequisites, p => p.Stage == "drift-review" && p.Status == "missing");
+            // The InitRepo model is specify -> drift-review -> release; drift-review's only prerequisite is specify.
+            // No bug-only release-train stand-in appears for a feature-stage check (038 is release-scoped).
+            Assert.DoesNotContain(report.Prerequisites, p => p.Stage == "release-train");
         }
         finally
         {

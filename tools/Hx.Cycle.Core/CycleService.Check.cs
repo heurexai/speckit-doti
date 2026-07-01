@@ -60,6 +60,20 @@ public sealed partial class CycleService
             return completedReport!;
         }
 
+        // 038 (bug-only-release-cycle-check): a bug-only repo has NO .doti/cycle-state.json, so `state` is null. Without
+        // this branch the transitive-prerequisite loop below marks every feature stage (specify..drift-review) "missing"
+        // — a FALSE blocker that has misled agents into fabricating a feature cycle (the exact 033/034/037 anti-pattern).
+        // The 033 bug-only tolerance (BuildReleaseTrain admits a null state + consults the injected bug members) was
+        // never extended to THIS chokepoint: the release-train block at the end of Check is guarded by `state is not
+        // null`, so a bug-only repo never reaches it. For a bug-only RELEASE, delegate readiness ENTIRELY to the
+        // bug-aware release train — the same evaluation GetReleaseTrain/MarkReleaseTrainReleased already trust — instead
+        // of feature prerequisites a bug-only repo neither has nor should fabricate. A valid bug-only train (>=1
+        // test-passed, unreleased bug) passes; an empty/invalid one fails closed on the train's own blocker.
+        if (state is null && string.Equals(target.Id, "release", StringComparison.OrdinalIgnoreCase))
+        {
+            return BugOnlyReleaseCheck(target, recovery.Report);
+        }
+
         string identity = FreshnessIdentity(state, excludedOwnedPaths);
         var evaluator = new FreshnessEvaluator(_repositoryRoot, _stageModel);
 
@@ -84,6 +98,27 @@ public sealed partial class CycleService
 
         bool passed = results.All(r => r.Ok);
         return new CycleCheckReport(JsonContractDefaults.SchemaVersion, target.Id, passed, results, state?.Completion, recovery.Report, releaseTrain);
+    }
+
+    /// <summary>
+    /// 038: readiness of a bug-only RELEASE (a repo with no <c>.doti/cycle-state.json</c>) IS the bug-aware release
+    /// train — there are no feature-cycle prerequisites to check, and fabricating them is the 033/034/037 anti-pattern.
+    /// Delegates to <see cref="BuildReleaseTrain"/> with the null state (its 033 tolerance yields an empty feature half
+    /// and consults the injected bug members): a valid train (>=1 test-passed, unreleased bug) passes with a single
+    /// stand-in "ready" result; an invalid/empty one fails closed, surfacing the train's own blockers (e.g. "no
+    /// completed unreleased ... ready for release") — a genuinely-empty repo is still rejected.
+    /// </summary>
+    private CycleCheckReport BugOnlyReleaseCheck(CycleStage target, CycleRecoveryReport recoveryReport)
+    {
+        CycleReleaseTrain train = BuildReleaseTrain(null);
+        List<StagePrereqResult> results = train.Valid
+            ? [new StagePrereqResult("release-train", "ready", true,
+                "bug-only release: a valid bug release train stands in for feature-cycle prerequisites")]
+            : train.Blockers
+                .Select(blocker => new StagePrereqResult("release-train", "invalid", false, blocker))
+                .ToList();
+        return new CycleCheckReport(
+            JsonContractDefaults.SchemaVersion, target.Id, train.Valid, results, null, recoveryReport, train);
     }
 
     /// <summary>The change-set identity used for prerequisite-FRESHNESS evaluation: the live <c>base..HEAD ∪ working
