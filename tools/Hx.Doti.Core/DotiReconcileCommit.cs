@@ -1,19 +1,15 @@
-using Hx.Cycle.Core;
-using Hx.Runner.Core.Process;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Doti.Core;
 
 /// <summary>
 /// 031 T006 (FR-007/008/009/010/011, D4): the self-owned, sanctioned reconcile commit. After a SUCCESSFUL reconcile
-/// in a GIT work tree, it stages EXACTLY the managed-asset paths the reconcile touched (never <c>git add -A</c>) —
-/// minus every <c>.new</c> merge-helper and minus gitignored runtime state — and makes ONE commit the coded path
-/// OWNS: it sets <see cref="PrecommitGuard.SentinelEnvVar"/>=1 in the child <c>git commit</c> environment so the
-/// insurance pre-commit hook permits it, exactly as the workflow-transition and release paths already do. No staged
-/// change → NO commit (idempotent re-run). A non-git target → skip with no error (parity with the hook's non-git
-/// skip). <c>--no-commit</c> → skip, leaving the reconciled changes in the working tree. Shells <c>git</c> through the
-/// existing <see cref="ProcessRunner"/>/<see cref="ToolCommand"/> (the same pattern as
-/// <see cref="Hx.Doti.Core.Bug.BugReleaseGit"/> / <c>GitRefs</c>).
+/// in a GIT work tree, it stages the managed-asset paths the reconcile touched (never <c>git add -A</c>) and makes ONE
+/// commit the coded path OWNS. The staging + pathspec-scoped commit + sentinel + lock-retry mechanics live in the
+/// shared <see cref="SanctionedGitCommit"/> (035) so this and <see cref="Hx.Doti.Core.Bug.BugReleaseDocCommit"/>
+/// cannot drift; this type owns only the reconcile-specific candidate set (<see cref="TouchedPaths(DotiInstallResult)"/>),
+/// the <c>--no-commit</c>/non-git pre-checks, and the auto message. No staged change → NO commit (idempotent re-run);
+/// a non-git target → skip with no error; <c>--no-commit</c> → skip, leaving the reconciled changes in the working tree.
 /// </summary>
 public static class DotiReconcileCommit
 {
@@ -39,81 +35,27 @@ public static class DotiReconcileCommit
         }
 
         string root = Path.GetFullPath(repoRoot);
-        if (!IsInsideWorkTree(root))
+        if (!SanctionedGitCommit.IsInsideWorkTree(root))
         {
             return new DotiReconcileCommitOutcome(
                 DotiCommitStatus.NonGit, null, [], "target is not a git work tree; reconcile applied, commit skipped.");
         }
 
         IReadOnlyList<string> candidates = NormalizeCandidates(touchedPaths);
-        IReadOnlyList<string> stageable = ExcludeIgnored(root, candidates);
-        if (stageable.Count == 0)
-        {
-            return NoChange();
-        }
-
-        ProcessRunResult add = Git(root, ["add", "--", .. stageable]);
-        if (add.ExitCode != 0)
-        {
-            return new DotiReconcileCommitOutcome(
-                DotiCommitStatus.Failed, null, [], "git add failed: " + Prefer(add.StandardError, add.StandardOutput));
-        }
-
-        IReadOnlyList<string> staged = StagedPaths(root);
-        if (staged.Count == 0)
-        {
-            return NoChange();
-        }
-
         string message = BuildMessage(beforeVersion, afterVersion, prunedPaths);
-        ProcessRunResult result = CommitWithRetry(root, message);
-        if (result.ExitCode != 0)
+        SanctionedGitCommit.Result result = SanctionedGitCommit.Commit(root, candidates, message);
+        return result.Status switch
         {
-            return new DotiReconcileCommitOutcome(
-                DotiCommitStatus.Failed, null, staged, "git commit failed: " + Prefer(result.StandardError, result.StandardOutput));
-        }
-
-        return new DotiReconcileCommitOutcome(DotiCommitStatus.Committed, HeadSha(root), staged, null);
-    }
-
-    // 032 D1(d): a sanctioned reconcile commit can race a concurrent git lock holder (the worktree teardown's own
-    // `.git/worktrees` bookkeeping, an editor's git plugin, a co-running `git gc`, etc.) and fail with a transient
-    // lock-contention error that a short retry resolves. Up to TWO retries (three attempts total) with a brief
-    // backoff between them; a NON-transient failure (anything else — a real conflict, a hook rejection, missing
-    // identity) is returned immediately on the first attempt, never masked behind a retry loop.
-    private const int MaxCommitAttempts = 3;
-    private static readonly TimeSpan CommitRetryBackoff = TimeSpan.FromMilliseconds(200);
-
-    private static ProcessRunResult CommitWithRetry(string root, string message)
-    {
-        var env = new Dictionary<string, string> { [PrecommitGuard.SentinelEnvVar] = "1" };
-        ProcessRunResult result = Git(root, ["commit", "-m", message], env);
-        for (int attempt = 2; attempt <= MaxCommitAttempts && result.ExitCode != 0 && IsTransientLockFailure(result); attempt++)
-        {
-            Thread.Sleep(CommitRetryBackoff);
-            result = Git(root, ["commit", "-m", message], env);
-        }
-
-        return result;
-    }
-
-    // The transient-lock signatures git reports when another process briefly holds `.git/index.lock` or a ref lock —
-    // NEVER a real failure (a hook rejection, "nothing to commit", missing user identity, etc.), which must surface
-    // immediately rather than be retried into a misleadingly-delayed report.
-    private static bool IsTransientLockFailure(ProcessRunResult result)
-    {
-        string combined = (result.StandardError + "\n" + result.StandardOutput);
-        return combined.Contains("index.lock", StringComparison.OrdinalIgnoreCase)
-            || combined.Contains("cannot lock ref", StringComparison.OrdinalIgnoreCase)
-            || (combined.Contains("unable to create", StringComparison.OrdinalIgnoreCase)
-                && combined.Contains(".lock", StringComparison.OrdinalIgnoreCase));
+            DotiCommitStatus.NoChange => NoChange(),
+            _ => new DotiReconcileCommitOutcome(result.Status, result.Sha, result.Staged, result.Reason),
+        };
     }
 
     /// <summary>
     /// 031 D4/FR-008: the exact managed-asset paths a reconcile touched and the self-commit stages —
-    /// <c>Installed ∪ Removed ∪ Rendered</c>, de-duped and MINUS every <c>.new</c> merge-helper. (Gitignored runtime
-    /// state is dropped later by <see cref="ExcludeIgnored"/> against the real repo.) This is the precise set; the
-    /// commit NEVER uses <c>git add -A</c>, so an operator's unrelated working-tree changes are never staged.
+    /// <c>Installed ∪ Removed ∪ Rendered</c>, de-duped and MINUS every <c>.new</c> merge-helper. (An unstageable path —
+    /// a gitignored runtime path, or an untracked orphan — is skipped by <see cref="SanctionedGitCommit"/> at stage
+    /// time.) The commit NEVER uses <c>git add -A</c>, so an operator's unrelated working-tree changes are never staged.
     /// </summary>
     public static IReadOnlyList<string> TouchedPaths(DotiInstallResult install)
     {
@@ -133,28 +75,7 @@ public static class DotiReconcileCommit
             .Where(c => c.Effect is "installed" or "removed")
             .Select(c => c.Path));
 
-    private static IReadOnlyList<string> Dedupe(IEnumerable<string> all)
-    {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var ordered = new List<string>();
-        foreach (string raw in all)
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                continue;
-            }
-
-            string path = raw.Replace('\\', '/').TrimEnd('/');
-            if (path.EndsWith(".new", StringComparison.OrdinalIgnoreCase) || !seen.Add(path))
-            {
-                continue;
-            }
-
-            ordered.Add(path);
-        }
-
-        return ordered;
-    }
+    private static IReadOnlyList<string> Dedupe(IEnumerable<string> all) => NormalizeCandidates([.. all]);
 
     /// <summary>
     /// The auto-commit message: a <c>chore(doti):</c> headline naming the version move, a before→after line, and a
@@ -185,8 +106,8 @@ public static class DotiReconcileCommit
     private static DotiReconcileCommitOutcome NoChange() =>
         new(DotiCommitStatus.NoChange, null, [], "no managed-asset change to commit.");
 
-    // De-dupe, normalize to forward slashes, and drop any leftover .new (the caller already excludes them; this is a
-    // defensive second fence so a .new can never be staged) and empty entries.
+    // De-dupe, normalize to forward slashes, and drop any leftover .new (a defensive fence so a .new can never be
+    // staged) and empty entries. This is the "already normalized" contract SanctionedGitCommit.Commit expects.
     private static IReadOnlyList<string> NormalizeCandidates(IReadOnlyList<string> touchedPaths)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -209,66 +130,4 @@ public static class DotiReconcileCommit
 
         return ordered;
     }
-
-    // FR-008: drop gitignored runtime state so the precise staging never adds an ignored path. `git check-ignore`
-    // returns the subset of the candidates that ARE ignored; everything else is stageable. A non-zero exit with empty
-    // output means "none ignored" (git returns 1 when no path matches), so an empty stdout keeps all candidates.
-    private static IReadOnlyList<string> ExcludeIgnored(string root, IReadOnlyList<string> candidates)
-    {
-        if (candidates.Count == 0)
-        {
-            return candidates;
-        }
-
-        ProcessRunResult result = Git(root, ["check-ignore", "--", .. candidates]);
-        var ignored = new HashSet<string>(
-            result.StandardOutput
-                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Trim().Replace('\\', '/').TrimEnd('/')),
-            StringComparer.OrdinalIgnoreCase);
-        return ignored.Count == 0
-            ? candidates
-            : candidates.Where(p => !ignored.Contains(p)).ToList();
-    }
-
-    private static IReadOnlyList<string> StagedPaths(string root)
-    {
-        ProcessRunResult result = Git(root, ["diff", "--cached", "--name-only"]);
-        return result.ExitCode != 0
-            ? []
-            : result.StandardOutput
-                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Trim().Replace('\\', '/'))
-                .Where(p => p.Length > 0)
-                .ToList();
-    }
-
-    private static bool IsInsideWorkTree(string root)
-    {
-        ProcessRunResult result = Git(root, ["rev-parse", "--is-inside-work-tree"]);
-        return result.ExitCode == 0 && result.StandardOutput.Trim().Equals("true", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string? HeadSha(string root)
-    {
-        ProcessRunResult result = Git(root, ["rev-parse", "HEAD"]);
-        return result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.StandardOutput)
-            ? result.StandardOutput.Trim()
-            : null;
-    }
-
-    private static ProcessRunResult Git(string root, IReadOnlyList<string> args, IReadOnlyDictionary<string, string>? env = null)
-    {
-        try
-        {
-            return ProcessRunner.Run(new ToolCommand("git", args, root, env));
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            return new ProcessRunResult(127, string.Empty, ex.Message);
-        }
-    }
-
-    private static string Prefer(string primary, string fallback) =>
-        string.IsNullOrWhiteSpace(primary) ? fallback.Trim() : primary.Trim();
 }

@@ -130,13 +130,32 @@ public static class BugCycleService
         var members = new List<CycleReleaseTrainFeature>();
         foreach (string dir in Directory.EnumerateDirectories(bugsDir).OrderBy(d => d, StringComparer.Ordinal))
         {
-            if (ReleaseReadyBugMember(Path.GetFileName(dir), dir) is { } member && !isReleased(dir))
+            if (TryReleaseReadyBugMember(Path.GetFileName(dir), dir) is { } member && !isReleased(dir))
             {
                 members.Add(member);
             }
         }
 
         return members;
+    }
+
+    /// <summary>
+    /// Bug 035 Fix I: <see cref="ReleaseReadyBugMember"/> parses each record with <c>JsonDocument.Parse</c>/
+    /// <c>JsonSerializer.Deserialize</c>, which THROW on truncated/invalid JSON. Without this fault isolation, one
+    /// corrupt bug record propagates out of <c>GetReleaseTrain</c> and turns every release-train command into an
+    /// opaque INT0001 for the whole repo. Treat an unparseable or locked record as fail-closed NOT a member (skipped)
+    /// instead — a single bad file must never crash the enumeration of every other, valid bug record.
+    /// </summary>
+    private static CycleReleaseTrainFeature? TryReleaseReadyBugMember(string bugId, string dir)
+    {
+        try
+        {
+            return ReleaseReadyBugMember(bugId, dir);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Validate one bug dir's assess→fix→test proof chain; returns an <c>included</c> member only when the test
@@ -157,8 +176,12 @@ public static class BugCycleService
         bool confirmed = string.Equals(assessment?.Verdict, BugVerdict.Confirmed, StringComparison.OrdinalIgnoreCase);
         bool fixBound = fix is not null
             && string.Equals(fix.BoundAssessmentSha256, HashJson(assessmentPath), StringComparison.OrdinalIgnoreCase);
+        // Bug 035 Fix H: the Test() WRITE guard downgrades an evidence-free pass, but a hand-edited test.json can
+        // bypass that writer and claim Outcome=pass with blank Evidence. Re-check evidence at this release trust
+        // boundary too, mirroring the write guard, so a forged/edited record cannot buy release-readiness.
         bool testPassed = test is not null
             && string.Equals(test.Outcome, BugStageOutcome.Pass, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(test.Evidence)
             && string.Equals(test.BoundFixSha256, HashJson(fixPath), StringComparison.OrdinalIgnoreCase);
         if (!confirmed || !fixBound || !testPassed)
         {

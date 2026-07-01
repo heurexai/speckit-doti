@@ -13,7 +13,16 @@ namespace Hx.Doti.Core.Bug;
 /// </summary>
 internal static class BugReleaseGit
 {
-    /// <summary>The newest <c>v*</c> release tag (semver-descending), or null when the repo has cut no release yet.</summary>
+    /// <summary>
+    /// The newest <c>v*</c> release tag in the repo (semver-descending), or null when no such release exists yet.
+    /// NOTE (bug 035 J(a), DEFERRED): this is intentionally NOT constrained to <c>--merged HEAD</c>. In this project's
+    /// dev→main flow the release tag is cut on the MAIN merge-commit, which is a DESCENDANT of the dev working branch —
+    /// so <c>--merged HEAD</c> from dev sees NONE of the recent release tags (it drops back to an ancient reachable
+    /// one) and would treat every shipped bug as unreleased, breaking the normal path. The reviewer's fork-topology
+    /// edge (a side-branch higher-semver tag governing exclusion) is a rare, off-normal-path case whose
+    /// <c>--merged HEAD</c> "fix" is incompatible with tags-on-merge-commits and is deferred. <see cref="IsReleased"/>
+    /// still verifies the bug's fix commit is reachable FROM this tag, so a bug not under the tag is unreleased.
+    /// </summary>
     internal static string? LatestReleaseTag(string repoRoot)
     {
         ProcessRunResult result = ProcessRunner.Run(
@@ -27,10 +36,20 @@ internal static class BugReleaseGit
     }
 
     /// <summary>True iff the bug's fix commit is reachable from <paramref name="latestTag"/> (already shipped). No tag
-    /// (no release yet) or an uncommitted bug record (brand-new) → false (unreleased).</summary>
+    /// (no release yet), an uncommitted bug record (brand-new), or a WORKING-TREE-DIRTY record (a re-opened shipped
+    /// bug being re-fixed) → false (unreleased).</summary>
     internal static bool IsReleased(string repoRoot, string bugDir, string? latestTag)
     {
         if (string.IsNullOrWhiteSpace(latestTag))
+        {
+            return false;
+        }
+
+        // Bug 035 Fix J(b): FixCommit only looks at COMMITTED history, so a shipped bug that was re-opened (its
+        // record dirtied in the working tree by a fresh assess/fix/test) still resolves to the OLD tagged commit and
+        // is wrongly excluded as "already released" — the re-opened work never gets a chance to join a new train.
+        // A dirty record is fail-closed treated as unreleased so the re-fix is never silently dropped.
+        if (IsWorkingTreeDirty(repoRoot, bugDir))
         {
             return false;
         }
@@ -54,5 +73,15 @@ internal static class BugReleaseGit
             new ToolCommand("git", ["log", "-1", "--format=%H", "--", pathspec], repoRoot));
         string sha = result.StandardOutput.Trim();
         return result.ExitCode == 0 && !string.IsNullOrWhiteSpace(sha) ? sha : null;
+    }
+
+    /// <summary>True iff the bug record dir has uncommitted (staged or unstaged) changes. A git error is treated as
+    /// "not dirty" so it falls through to the existing committed-history check rather than blocking on a tool fault.</summary>
+    private static bool IsWorkingTreeDirty(string repoRoot, string bugDir)
+    {
+        string pathspec = Path.GetRelativePath(Path.GetFullPath(repoRoot), bugDir).Replace('\\', '/');
+        ProcessRunResult result = ProcessRunner.Run(
+            new ToolCommand("git", ["status", "--porcelain", "--", pathspec], repoRoot));
+        return result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.StandardOutput);
     }
 }

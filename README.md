@@ -274,6 +274,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 > A bug-only release train can now **commit** the release-documentation fix its own `release-documentation` gate demands, through a new sanctioned **`hx doti bug release-docs`** — fail-closed gated on a confirmed, fix-bound, test-passed bug member (it refuses before any git mutation otherwise), staging **exactly** `README.md`+`CHANGELOG.md` (never `git add -A`) with the insurance-hook sentinel + the `032` lock-retry, so an operator never hand-wrangles a `DOTI_SANCTIONED_COMMIT=1` bypass. `033` opened the bug-only release *path* but left this last release-doc commit with no coded home — no workflow-transition or release path committed it — shipped in `034-bug-only-release-doc-commit`.
 
+> The `hx doti update` / release / sanctioned-commit subsystem was hardened against a whole **class** of edge bugs an adversarial Opus review surfaced: a sanctioned commit now commits an **explicit pathspec** (never the whole index, so a file the operator already staged is never swept in) and **skips** any single unstageable candidate (a gitignored path, an untracked orphan) instead of failing the commit; `doti install`'s failed commit no longer swallows to exit-0; and the `release-documentation` gate matches a member slug as a bounded token, not a substring. Both commit paths share one `SanctionedGitCommit` so they can't drift — shipped in `035-commit-update-release-hardening`.
+
 ---
 
 ## Distribution and release model

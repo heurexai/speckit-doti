@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "035-commit-update-release-hardening",
+  "verdict": "confirmed",
+  "severity": "high",
+  "remediation": "Root fixes: (A) pathspec-scope both sanctioned commits (DotiReconcileCommit\u002BBugReleaseDocCommit) to the StagedPaths readback so a bare git commit no longer sweeps pre-staged operator work; (B) keep non-stageable paths out of commit candidates \u2014 exclude gitignored .doti/templates at the source in MaterializeRepoTemplates \u002B filter \u0027removed\u0027 candidates to git-tracked paths so an untracked orphan can\u0027t fail git add; reset-on-add-failure; (C) surface a failed self-commit in doti install (mirror the 032 update Integrity arm; shared helper); (D) give dry-run a read-only staging preflight so commit-stage failures are previewable; (E) update-all buckets from one effective per-repo disposition (no updated\u002Bfailed double-count); (F) route git add through the same transient-lock retry as commit; (G) release-doc slug match uses a bounded-token match not substring Contains; (H) re-check test-evidence in ReleaseReadyBugMember not only on write; (I) fault-isolate a malformed bug-record JSON as not-a-member instead of throwing INT0001; (J) key shipped-ness on a HEAD-reachable tag \u002B committed proof. Plus regression tests for each (pre-staged file, gitignored .doti/templates, untracked orphan, install swallow, dry-run preflight, slug bounded-match, test-honesty re-check).",
+  "summary": "Adversarial Opus sweep of the update/release/sanctioned-commit subsystem: 16 verified bugs (2 blocker/4 high/6 medium/4 low) in one root-cause class the release-by-release drip kept exposing."
+}

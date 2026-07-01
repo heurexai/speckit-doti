@@ -43,14 +43,17 @@ public static class DotiBatchUpdater
             }
         }
 
-        int updated = results.Count(r => r.Status is DotiUpdateStatus.Updated or DotiUpdateStatus.DryRun);
-        int current = results.Count(r => r.Status == DotiUpdateStatus.AlreadyCurrent);
-        // 032 D1(c): a repo whose reconcile succeeded but whose self-owned commit failed (DotiCommitStatus.Failed —
-        // "reported, never silently swallowed") must count as a batch failure too, else update-all reported ok:true
-        // while a repo's changes sat staged-but-uncommitted.
-        int failed = results.Count(r =>
+        // 032 D1(c) + 035 (E): a repo whose reconcile succeeded but whose self-owned commit failed
+        // (DotiCommitStatus.Failed — "reported, never silently swallowed") is FAILED, not updated. Compute the single
+        // effective per-repo disposition FIRST so the buckets are mutually exclusive — otherwise such a repo is
+        // counted in BOTH `updated` and `failed`, and Updated+AlreadyCurrent+Failed exceeds Total (a self-contradicting
+        // summary).
+        bool RepoFailed(DotiUpdateOutcome r) =>
             r.Status is DotiUpdateStatus.Failed or DotiUpdateStatus.GitRequired or DotiUpdateStatus.NotARepo
-            || r.Commit?.Status == DotiCommitStatus.Failed);
+            || r.Commit?.Status == DotiCommitStatus.Failed;
+        int failed = results.Count(RepoFailed);
+        int updated = results.Count(r => !RepoFailed(r) && r.Status is DotiUpdateStatus.Updated or DotiUpdateStatus.DryRun);
+        int current = results.Count(r => !RepoFailed(r) && r.Status == DotiUpdateStatus.AlreadyCurrent);
         return new DotiUpdateAllSummary(
             JsonContractDefaults.SchemaVersion, fullRoot, installedToolVersion, dryRun,
             results.Count, updated, current, failed, results);

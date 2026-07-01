@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Text;
+using System.Text.RegularExpressions;
 using Hx.Tooling.Contracts;
 
 namespace Hx.Cycle.Core.Documentation;
@@ -42,7 +44,7 @@ public static class ReleaseDocumentationInspector
 
             string text = File.ReadAllText(full);
             string[] missing = features
-                .Where(feature => !text.Contains(feature, StringComparison.OrdinalIgnoreCase))
+                .Where(feature => !SlugPattern(feature).IsMatch(text))
                 .ToArray();
             if (required && missing.Length > 0)
             {
@@ -118,4 +120,16 @@ public static class ReleaseDocumentationInspector
     private static bool IsRequiredReleaseSurface(string relativePath) =>
         string.Equals(relativePath, "README.md", StringComparison.OrdinalIgnoreCase)
         || string.Equals(relativePath, "CHANGELOG.md", StringComparison.OrdinalIgnoreCase);
+
+    // Bug 035 Fix G: a raw `text.Contains(slug)` is a substring match — a short/numeric-prefixed slug like `032-x` is
+    // satisfied by an unrelated `1032-x`. Match the slug as a BOUNDED TOKEN instead: no slug-id char (letter/digit/
+    // hyphen) immediately before or after the match, so `1032-x` cannot satisfy `032-x`, but the slug stand-alone, in
+    // a heading (`## 032-foo`), in a bullet (`- **032-foo**`), or mid-sentence still matches. Compiled once per
+    // distinct slug and cached — the release-train slug set is small and stable within one inspection run.
+    private static readonly ConcurrentDictionary<string, Regex> SlugPatternCache = new(StringComparer.Ordinal);
+
+    private static Regex SlugPattern(string slug) =>
+        SlugPatternCache.GetOrAdd(slug, static s => new Regex(
+            "(?<![A-Za-z0-9-])" + Regex.Escape(s) + "(?![A-Za-z0-9-])",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
 }

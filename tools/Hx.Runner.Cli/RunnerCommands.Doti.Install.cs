@@ -69,6 +69,18 @@ public static partial class RunnerCommands
             beforeVersion: null, afterVersion: RepoPayloadStore.ReadPayloadVersion(target),
             prunedPaths: result.Removed.Select(e => e.Path.Replace('\\', '/')).ToList(), commit: !noCommit);
 
+        // 035 (C): surface a FAILED self-commit — mirror `doti update`'s 032 D1(c) Integrity arm. The reconcile
+        // succeeded but the commit did not (assets staged-but-uncommitted), so this must be ok:false/non-zero, not
+        // swallowed under the Pass render outcome (the swallow the update command already guarded against, but install
+        // — which shares the same commit primitive — did not).
+        if (commitOutcome.Status == DotiCommitStatus.Failed)
+        {
+            return CliResults.Fail(meta, "doti install", ExitClass.Integrity,
+                [Diag.Of(ErrorCodes.Integrity_DotiUpdateFailed, commitOutcome.Reason ?? "reconcile commit failed", target: target)],
+                $"Doti install into {target} reconciled but the self-owned commit failed.",
+                new { install = result, hook, source = origin, commit = commitOutcome });
+        }
+
         string hookSummary = hook is null ? " Hook skipped because the target is not a Git repo." : " Hook armed.";
         string pathSummary =
             $" Classification: {result.Classification}; installed={result.Installed.Count}, preserved={result.Preserved.Count}, removed={result.Removed.Count}, skipped={result.Skipped.Count}, blocked={result.Blocked.Count}.";
