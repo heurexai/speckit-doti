@@ -63,11 +63,13 @@ public static class ErrorCodes
     public const string Validation_DotiVersionUnknown = "VAL0034";
     public const string Validation_GitRequired = "VAL0035";
     public const string Integrity_DotiUpdateFailed = "ITG0015";
+    public const string Integrity_BugReleaseDocsCommitFailed = "ITG0016";
     public const string Validation_CycleReviewRebindRequiresAttest = "VAL0036";
     public const string Validation_CycleReviewRebindIneligible = "VAL0037";
     public const string Validation_CycleReviewRebindNotStale = "VAL0038";
     public const string Validation_SetupConfigInvalid = "VAL0039";
     public const string Validation_DotiPayloadSourceUnresolved = "VAL0040";
+    public const string Validation_BugReleaseDocsIneligible = "VAL0041";
 
     /// <summary>The full manifest — code metadata used by <see cref="Diag"/> to build diagnostics.</summary>
     public static readonly IReadOnlyList<ErrorCodeEntry> All =
@@ -180,6 +182,8 @@ public static class ErrorCodes
             "Git is required for this command but was unavailable.", "Install Git and run inside a Git repository; `hx doti update`/`update-all` apply changes in a git worktree."),
         new("ITG0015", "integrity", "ITG", 15, Severity.Error, ExitClass.Integrity, "integrity.doti-update-failed",
             "A Doti repository update failed.", "See the per-repo reason (for example a dirty worktree or a git error) and re-run after resolving it."),
+        new("ITG0016", "integrity", "ITG", 16, Severity.Error, ExitClass.Integrity, "integrity.bug-release-docs-commit-failed",
+            "The sanctioned bug release-documentation commit failed after the gate passed.", "See the git reason (for example an index lock or a git error); the release-documentation fix is staged but not committed. Resolve it and re-run `hx doti bug release-docs`."),
         new("VAL0036", "validation", "VAL", 36, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-requires-attest",
             "A bare stamp cannot clear a stage stale only on a prerequisite content change.", "Read the surfaced upstream diff, then re-author the stage OR record a reviewed-no-impact verdict: `doti cycle review-rebind --target <stage> --attest no-impact`."),
         new("VAL0037", "validation", "VAL", 37, Severity.Error, ExitClass.Validation, "validation.cycle-review-rebind-ineligible",
@@ -190,5 +194,7 @@ public static class ErrorCodes
             "The supplied setup configuration is invalid.", "Fix the named field(s) in the --config / .doti/setup.json (schemaVersion must be 1; agents are a subset of claude/codex; nextVersion is a 3-part SemVer; values carry no XML metacharacters or path traversal), then re-run. No files are created from an invalid config."),
         new("VAL0040", "validation", "VAL", 40, Severity.Error, ExitClass.Validation, "validation.doti-payload-source-unresolved",
             "No version-stamped Doti payload source could be resolved for the reconcile.", "Run `hx doti install`/`update`/`update-all` from an installed hx (its payload ships beside the executable), or from inside a Doti source checkout (a `.doti/core/skills.json` ancestor); the command fails closed rather than stamp from a non-payload source."),
+        new("VAL0041", "validation", "VAL", 41, Severity.Error, ExitClass.Validation, "validation.bug-release-docs-ineligible",
+            "No release-ready bug member justifies a release-documentation commit.", "Complete a confirmed, fix-bound, test-passed /doti-bug mini-cycle (`hx doti bug assess`/`fix`/`test`) before running `hx doti bug release-docs`; it refuses before any git mutation otherwise."),
     ];
 }

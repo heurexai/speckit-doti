@@ -111,6 +111,7 @@ public static partial class RunnerCommandFactory
         bug.Subcommands.Add(BugAssessCommand(meta));
         bug.Subcommands.Add(BugFixCommand(meta));
         bug.Subcommands.Add(BugTestCommand(meta));
+        bug.Subcommands.Add(BugReleaseDocsCommand(meta));
         dotiCommand.Subcommands.Add(bug);
     }
 
@@ -173,6 +174,27 @@ public static partial class RunnerCommandFactory
         command.SetAction(parseResult => CliHost.Run(meta, "doti bug test",
             () => RunnerCommands.BugTest(meta, parseResult.GetValue(repo)!, parseResult.GetValue(bugId)!,
                 parseResult.GetValue(outcome)!, parseResult.GetValue(evidence)!),
+            forceJson: CliApp.ForceJson(parseResult, json)));
+        return command;
+    }
+
+    // 034 (bug-only-release-doc-commit): the sanctioned, GATED commit for the release-documentation fix
+    // (README.md/CHANGELOG.md) a bug-only release train demands — the only coded path, so an operator never wrangles
+    // a manual DOTI_SANCTIONED_COMMIT=1 bypass.
+    private static Command BugReleaseDocsCommand(CliMeta meta)
+    {
+        Command command = new("release-docs",
+            "Sanctioned, GATED commit of the release-documentation fix (README.md/CHANGELOG.md) a bug-only release train's release-documentation gate demands. Refuses before any git mutation unless at least one release-ready bug member (a confirmed, fix-bound, test-passed /doti-bug mini-cycle) justifies it.");
+        Option<string> repo = new("--repo") { Description = "Repository root.", DefaultValueFactory = _ => "." };
+        Option<string> bugId = new("--bug") { Description = "Bug id(s) the release-doc edit covers (comma-separated; optional — names the commit message).", DefaultValueFactory = _ => "" };
+        Option<bool> json = CliApp.JsonOption();
+        foreach (Option option in new Option[] { repo, bugId, json })
+        {
+            command.Options.Add(option);
+        }
+
+        command.SetAction(parseResult => CliHost.Run(meta, "doti bug release-docs",
+            () => RunnerCommands.BugReleaseDocs(meta, parseResult.GetValue(repo)!, parseResult.GetValue(bugId)!),
             forceJson: CliApp.ForceJson(parseResult, json)));
         return command;
     }

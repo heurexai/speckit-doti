@@ -272,6 +272,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 > A confirmed bug-fix-only mini-cycle (a passing `/doti-bug`, no numbered feature cycle and so no `.doti/cycle-state.json`) is now releasable as a **patch** — the release train tolerates the missing cycle-state so the bug-release bridge runs, with no fabricated feature cycle and no feature stamp — shipped in `033-bug-only-release-path`.
 
+> A bug-only release train can now **commit** the release-documentation fix its own `release-documentation` gate demands, through a new sanctioned **`hx doti bug release-docs`** — fail-closed gated on a confirmed, fix-bound, test-passed bug member (it refuses before any git mutation otherwise), staging **exactly** `README.md`+`CHANGELOG.md` (never `git add -A`) with the insurance-hook sentinel + the `032` lock-retry, so an operator never hand-wrangles a `DOTI_SANCTIONED_COMMIT=1` bypass. `033` opened the bug-only release *path* but left this last release-doc commit with no coded home — no workflow-transition or release path committed it — shipped in `034-bug-only-release-doc-commit`.
+
 ---
 
 ## Distribution and release model

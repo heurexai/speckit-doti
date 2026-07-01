@@ -75,6 +75,9 @@ public static class DotiCommitStatus
     public const string NonGit = "non-git";        // target is not a git work tree — reconcile applied, commit skipped
     public const string Disabled = "disabled";     // --no-commit — reconciled changes left in the working tree
     public const string Failed = "failed";         // git staging/commit failed (reported, never silently swallowed)
+    // 034 (bug-only-release-doc-commit): a fail-closed GATE refusal — distinct from Failed (a git-level error). The
+    // command refused BEFORE any git mutation because no release-ready bug member justified the commit.
+    public const string Refused = "refused";
 }
 
 /// <summary>
@@ -86,6 +89,20 @@ public sealed record DotiReconcileCommitOutcome(
     string Status,
     string? Sha,
     IReadOnlyList<string> StagedPaths,
+    string? Reason);
+
+/// <summary>
+/// 034 (bug-only-release-doc-commit): the outcome of <c>Hx.Doti.Core.Bug.BugReleaseDocCommit.Commit</c> — the
+/// sanctioned, GATED commit for the release-documentation fix (README.md/CHANGELOG.md) a bug-only release train
+/// demands. <see cref="EligibleBugMembers"/> names the release-ready bug member(s) that justified proceeding (empty
+/// on a <see cref="DotiCommitStatus.Refused"/> or <see cref="DotiCommitStatus.NonGit"/> outcome, since the gate never
+/// ran or found nothing).
+/// </summary>
+public sealed record BugReleaseDocCommitOutcome(
+    string Status,
+    string? Sha,
+    IReadOnlyList<string> StagedPaths,
+    IReadOnlyList<CycleReleaseTrainFeature> EligibleBugMembers,
     string? Reason);
 
 /// <summary>022: the per-repo update outcome status.</summary>

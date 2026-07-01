@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "bugId": "034-bug-only-release-doc-commit",
+  "boundAssessmentSha256": "84929fdabb140fb354e2057b4806993c57511abf3fa16f16a6cee24b05eade00",
+  "summary": "Add sanctioned \u0027hx doti bug release-docs\u0027 (BugReleaseDocCommit): fail-closed gated on a release-ready bug member (ReleaseReadyBugMembers \u003E=1), stages exactly README.md\u002BCHANGELOG.md (never git add -A), commits with the PrecommitGuard sentinel \u002B 032 lock-retry; a post-gate commit failure classifies as Integrity (ITG0016) for parity with doti update. Prunes the stale doti-cycle-commit spec mirage.",
+  "changedPaths": [
+    "tools/Hx.Doti.Core/Bug/BugReleaseDocCommit.cs",
+    "tools/Hx.Runner.Cli/RunnerCommands.Bug.cs",
+    "tools/Hx.Runner.Cli/RunnerCommandFactory.Doti.cs",
+    "tools/Hx.Tooling.Contracts/DotiVersionContracts.cs",
+    "errorcodes/registry.json",
+    "tools/Hx.Cli.Kernel/ErrorCodes.g.cs",
+    ".doti/core/templates/commands/doti-bug.md",
+    ".doti/core/skills.json",
+    "extensions/bug/commands/speckit.bug.test.md",
+    "test/Hx.Doti.Tests/BugReleaseDocCommitTests.cs",
+    "docs/specs/cycle-completion-and-repo-update.md"
+  ]
+}
