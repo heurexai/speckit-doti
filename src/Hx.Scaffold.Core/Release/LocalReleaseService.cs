@@ -409,7 +409,7 @@ public static class LocalReleaseService
             Channel: DistributionChannelId.GlobalTool, Version: packageVersion, PackageId: packageId);
 
         (LocalReleaseInstallLocationProof install, ChannelInstallProof channel) =
-            SmokeInstalledGlobalTool(tempRoot, fileName, packageId, packageVersion);
+            SmokeInstalledGlobalTool(tempRoot, fileName, packageId, packageVersion, target.ExecutableName);
         return new GlobalToolChannelResult(artifact, packageId, packageVersion, install, channel);
     }
 
@@ -417,7 +417,7 @@ public static class LocalReleaseService
     // command path. Recorded, not release-blocking: an environmental install failure is advisory; a command failure
     // is a recorded fail with blockers. (The fuller `new` + `doti install` smoke is the CI release/store workflow.)
     private static (LocalReleaseInstallLocationProof Install, ChannelInstallProof Channel) SmokeInstalledGlobalTool(
-        string tempRoot, string nupkgFileName, string packageId, string packageVersion)
+        string tempRoot, string nupkgFileName, string packageId, string packageVersion, string executableName)
     {
         string toolPath = Path.Combine(tempRoot, "tool-smoke");
         (int installExit, string installOut) = ProcessRunner.Run(
@@ -434,18 +434,31 @@ public static class LocalReleaseService
                 new ChannelInstallProof(DistributionChannelId.GlobalTool, "advisory", null, [], reason));
         }
 
-        string hx = Path.Combine(toolPath, OperatingSystem.IsWindows() ? "hx.exe" : "hx");
-        (string Label, (int ExitCode, string Output) Result)[] runs = new[] { "--help", "version --json", "prereq check --json" }
-            .Select(args => ($"hx {args}", ProcessRunner.Run(hx, args, toolPath, ProcessRunner.NestedDotnetEnv())))
+        // 0.18.5: run the TARGET'S declared executable (never a hardcoded `hx`). A vendored hx releases the scaffolded
+        // repo's OWN product (e.g. `ergon`), so the installed command is `executableName`, not `hx` — the old hardcode
+        // failed the smoke for EVERY non-hx product (its whole reason for existing). The UNIVERSAL source-free proof
+        // is that the installed command runs (`--help` exit 0); only hx's OWN release additionally proves the
+        // hx-specific source-free payload resolution (`version --json` → channel=global-tool/mode=installed) +
+        // `prereq check`, which a non-hx scaffolded product need not implement.
+        bool isHx = string.Equals(executableName, "hx", StringComparison.OrdinalIgnoreCase);
+        string[] commandArgs = isHx ? ["--help", "version --json", "prereq check --json"] : ["--help"];
+        string launcher = Path.Combine(toolPath, executableName);
+        (string Label, (int ExitCode, string Output) Result)[] runs = commandArgs
+            .Select(args => ($"{executableName} {args}", RunInstalledTool(toolPath, executableName, args)))
             .ToArray();
 
-        string versionOutput = runs.Single(r => r.Label == "hx version --json").Result.Output;
-        bool channelReported = versionOutput.Contains(DistributionChannelId.GlobalTool, StringComparison.Ordinal)
-            && versionOutput.Contains(CommandMode.Installed, StringComparison.Ordinal);
         List<string> blockers = runs.Where(r => r.Result.ExitCode != 0)
             .Select(r => $"{r.Label} exited {r.Result.ExitCode}: {ProcessRunner.Tail(r.Result.Output)}")
             .ToList();
-        if (!channelReported)
+
+        // Only hx's own release asserts the hx-specific payload resolution; a non-hx product's proof is simply that
+        // the installed command runs (captured in `blockers` above).
+        string primaryLabel = isHx ? "hx version --json" : $"{executableName} --help";
+        string primaryOutput = runs.Single(r => r.Label == primaryLabel).Result.Output;
+        bool channelReported = isHx
+            && primaryOutput.Contains(DistributionChannelId.GlobalTool, StringComparison.Ordinal)
+            && primaryOutput.Contains(CommandMode.Installed, StringComparison.Ordinal);
+        if (isHx && !channelReported)
         {
             blockers.Add("version --json did not report channel=global-tool / mode=installed");
         }
@@ -456,10 +469,20 @@ public static class LocalReleaseService
             : [];
         return (
             new LocalReleaseInstallLocationProof(
-                outcome, nupkgFileName, toolPath, hx, "hx version --json",
-                PayloadRoot.Sha256OfText(versionOutput), payloadChecks, blockers),
-            new ChannelInstallProof(DistributionChannelId.GlobalTool, outcome, hx, runs.Select(r => r.Label).ToArray(), blockers));
+                outcome, nupkgFileName, toolPath, launcher, primaryLabel,
+                PayloadRoot.Sha256OfText(primaryOutput), payloadChecks, blockers),
+            new ChannelInstallProof(DistributionChannelId.GlobalTool, outcome, launcher, runs.Select(r => r.Label).ToArray(), blockers));
     }
+
+    // Run the tool `dotnet tool install --tool-path` placed in <paramref name="toolPath"/>, regardless of whether it
+    // emitted an apphost (`<command>.exe`, e.g. hx's anchored pack) or a framework-dependent shim (`<command>.cmd` on
+    // Windows, the generic scaffolded-product case — which Process.Start cannot exec directly). On Windows,
+    // `cmd /c <command>` with the tool-path as the working directory lets the shell resolve whichever launcher exists
+    // via PATHEXT; on Unix the bare `<command>` launcher is directly executable.
+    private static (int ExitCode, string Output) RunInstalledTool(string toolPath, string command, string args) =>
+        OperatingSystem.IsWindows()
+            ? ProcessRunner.Run("cmd.exe", $"/c {command} {args}", toolPath, ProcessRunner.NestedDotnetEnv())
+            : ProcessRunner.Run(Path.Combine(toolPath, command), args, toolPath, ProcessRunner.NestedDotnetEnv());
 
     // 007 T028: a NuGet package file is "{PackageId}.{Version}.nupkg"; the version starts at the first dot followed
     // by a digit. (PackageId segments are never numeric-leading, so this split is unambiguous.)

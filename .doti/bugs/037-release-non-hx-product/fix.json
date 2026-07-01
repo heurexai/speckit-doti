@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "bugId": "037-release-non-hx-product",
+  "boundAssessmentSha256": "83833e978fd2b2223e9e4b3fbc497dbf39aedc5127b62e5f879fb32cf8082b97",
+  "summary": "LocalReleaseService smoke now runs the target\u0027s declared executableName via cmd /c \u003Ccmd\u003E (tool-path as CWD, resolving the .exe apphost OR the framework-dependent .cmd shim), with hx-only version/prereq/channel assertions gated to hx; CycleService.MarkReleaseTrainReleased short-circuits the bug-only (null-state) case BEFORE re-validation so a release\u0027s own just-tagged bug no longer self-excludes into an empty/invalid train (the fail-closed for a genuinely-empty release stays the pre-tag release-start check).",
+  "changedPaths": [
+    "src/Hx.Scaffold.Core/Release/LocalReleaseService.cs",
+    "tools/Hx.Cycle.Core/CycleService.ReleaseTrain.cs",
+    "test/Hx.Cycle.Tests/BugOnlyReleasePathTests.cs"
+  ]
+}
