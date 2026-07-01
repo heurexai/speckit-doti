@@ -95,16 +95,25 @@ public sealed class BugOnlyReleasePathTests
     }
 
     [Fact]
-    public void MarkReleaseTrainReleased_onAnInvalidBugOnlyTrain_throwsAndWritesNothing()
+    public void MarkReleaseTrainReleased_onABugOnlyRelease_doesNotReValidateAfterTag_soItNeverSelfExcludes()
     {
+        // 037 (release-non-hx-product / bug-only self-reference): MarkReleaseTrainReleased runs in the release flow
+        // AFTER the release tag is created — at which point a bug-only release's OWN bug is reachable-from-tag
+        // (correctly "released"), so a re-built bug-only train is empty. It must NOT re-validate + throw here (that
+        // would fail the very release that is succeeding). The fail-closed for a genuinely-empty release is the
+        // release-START GetReleaseTrain check (see NoCycleState_andNoBugMembers_stillFailsClosed), which runs BEFORE
+        // the tag. Marking is a no-op for a bug-only repo (BugReleaseGit self-maintains shipped status via the tag), so
+        // it writes no cycle-state and does not throw even when the post-tag provider reports no members.
         string dir = NewTempDir();
         try
         {
-            CycleService service = ServiceWithNoCycleState(dir, bugMembers: _ => []);
+            CycleService service = ServiceWithNoCycleState(dir, bugMembers: _ => []); // models the post-tag state
 
-            Assert.Throws<InvalidOperationException>(() => service.MarkReleaseTrainReleased());
+            service.MarkReleaseTrainReleased(); // must NOT throw (pre-037 this threw, failing a succeeding release)
 
-            Assert.False(new CycleStateStore(dir).Exists);
+            Assert.False(
+                new CycleStateStore(dir).Exists,
+                "a bug-only release marks nothing — BugReleaseGit self-maintains shipped status via the release tag.");
         }
         finally { Directory.Delete(dir, true); }
     }

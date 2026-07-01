@@ -278,6 +278,8 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 > A fast-follow to the 035 hardening (found by **verifying** a real consumer update, not shipping blind): the sanctioned-commit pathspec is now **directory-aware**, so an `hx doti update` that touches a whole managed subtree (`.doti/core`, …) commits its files cleanly instead of leaving some staged — while still never sweeping an operator's out-of-tree pre-staged work. Shipped in `036-reconcile-dir-candidate-commit`.
 
+> `hx release` now correctly releases a **non-hx scaffolded product** (the whole point of the `.doti/release.json` vendored-release path): the source-free install smoke runs the target's *own* declared executable — resolving whichever launcher `dotnet tool install` emits (an apphost `.exe` or a framework-dependent `.cmd`) — instead of a hardcoded `hx.exe`, and a bug-only release no longer self-excludes its own bug after tagging. Proven end-to-end against a real generated repo. Shipped in `037-release-non-hx-product`.
+
 ---
 
 ## Distribution and release model

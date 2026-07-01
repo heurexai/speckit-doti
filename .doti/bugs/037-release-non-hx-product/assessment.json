@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bugId": "037-release-non-hx-product",
+  "verdict": "confirmed",
+  "severity": "high",
+  "remediation": "(1) LocalReleaseService.SmokeInstalledGlobalTool hardcoded running hx.exe; run the TARGET\u0027s declared executableName instead (skip hx-only version/prereq/channel assertions for a non-hx product \u2014 a --help exit 0 is the universal source-free proof). (2) dotnet tool install emits a .cmd shim (not .exe) for a framework-dependent product; run the installed tool via cmd /c \u003Ccommand\u003E with the tool-path as CWD so PATHEXT resolves either shim (Process.Start cannot exec a .cmd). (3) CycleService.MarkReleaseTrainReleased re-validated the release train AFTER the release tag was created, so a bug-only release\u0027s own bug became reachable-from-tag (released) and the train went empty/invalid \u2014 throwing on the succeeding release; short-circuit the state-null (bug-only) case BEFORE re-validation (the train was already validated at release start). Follow-up noted: a failed release after tag creation leaves a leftover tag that poisons the next run (tag atomicity).",
+  "summary": "hx release could not release a NON-hx scaffolded product (e.g. ergon) \u2014 three coupled bugs, none exercised because speckit-doti only ever releases itself (hx). Proven fixed by running hx release end-to-end against the real ergon repo."
+}

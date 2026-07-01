@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "037-release-non-hx-product",
+  "boundFixSha256": "e6f5e3d2e0e7b41c2f3016e673250aded0aebcdf33210d870fba1faadd82b197",
+  "outcome": "pass",
+  "evidence": "END-TO-END: ran the FIXED hx release (local tool-path build) against the REAL ergon repo (a non-hx scaffolded product, command \u0027ergon\u0027) \u2192 outcome success, smoke=pass, tagged v0.1.2, artifacts copied \u2014 the exact path that was failing. Unit: Hx.Cycle.Tests 146/146 (incl. the updated bug-only self-reference test) \u002B Hx.Runner.Tests 260/260, no regression. Reproduced \u002B confirmed the .cmd-vs-.exe shim \u002B the post-tag self-exclusion."
+}

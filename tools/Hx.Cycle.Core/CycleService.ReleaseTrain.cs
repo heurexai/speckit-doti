@@ -24,16 +24,22 @@ public sealed partial class CycleService
     public CycleReleaseTrain MarkReleaseTrainReleased()
     {
         CycleState? state = _store.Read();
+        if (state is null)
+        {
+            // 0.18.5 (bug-only-release self-reference): a bug-only release has NO cycle state to update —
+            // BugReleaseGit self-maintains a bug's shipped status via the release tag. Crucially, do NOT re-validate
+            // the train here: this runs AFTER the release tag was created, so the just-released bugs are now
+            // reachable-from-tag (correctly "released") and a re-built bug-only train would be empty/invalid —
+            // throwing on the very release that is succeeding. The train was already validated at release start,
+            // before the tag existed; there is nothing to persist. (A feature release below still re-validates + marks.)
+            return BuildReleaseTrain(state);
+        }
+
         CycleReleaseTrain train = BuildReleaseTrain(state);
         if (!train.Valid)
         {
             throw new InvalidOperationException(
                 "Release train is invalid: " + string.Join("; ", train.Blockers));
-        }
-
-        if (state is null)
-        {
-            return train; // bug-only release: no cycle state to update; BugReleaseGit self-maintains shipped status.
         }
 
         IReadOnlyList<CycleCompletionRecord> included = CompletionRecordsForRelease(state);
