@@ -13,6 +13,20 @@ public enum GitWorktreeChangeKind
 }
 
 /// <summary>
+/// 032 D1(a): one cleanup attempt's outcome for a single leaked temp worktree path, surfaced instead of the prior
+/// bare <c>catch{}</c> swallow so a stuck leak is diagnosable rather than silently retried forever.
+/// </summary>
+public sealed record GitWorktreePruneEntry(string Path, bool Removed, string? Reason);
+
+/// <summary>032 D1(a): the aggregate result of one <see cref="GitWorktree.PruneLeakedTemps"/> sweep.</summary>
+public sealed record GitWorktreePruneResult(IReadOnlyList<GitWorktreePruneEntry> Entries)
+{
+    public int RemovedCount => Entries.Count(e => e.Removed);
+
+    public bool AnyFailed => Entries.Any(e => !e.Removed);
+}
+
+/// <summary>
 /// 022 T041 (FR-013/014): an isolated git worktree at the source repo's HEAD for safe, previewable mutation
 /// (operator decision Q2). A mutating action runs inside the worktree; <see cref="CaptureChanges"/> reports the
 /// resulting change set (<c>git status --porcelain</c> — tracked edits + untracked-but-not-ignored new files, so
@@ -31,6 +45,16 @@ public sealed class GitWorktree : IDisposable
     public string SourceRepoRoot { get; }
 
     public string WorktreePath { get; }
+
+    // 032 D1(a): the exact temp-dir name prefix `Create` uses (below). `PruneLeakedTemps` sweeps ONLY this tool's own
+    // prefix — never a blind sweep of Path.GetTempPath() — so an operator's unrelated temp content is never touched.
+    private const string TempDirPrefix = "hx-doti-worktree-";
+
+    // 032 D1(a): a candidate younger than this is NEVER swept, regardless of live/husk status — it is far more
+    // likely to be a concurrently-running `hx doti update`'s own brand-new worktree (mid-reconcile) than a genuine
+    // leak from a crashed/abandoned PRIOR process. A worktree-scoped reconcile completes in low seconds; ten minutes
+    // is a wide safety margin before something is treated as "prior" rather than "in flight right now."
+    private static readonly TimeSpan MinLeakAge = TimeSpan.FromMinutes(10);
 
     /// <summary>Fail hard (FR-014) when git is unavailable or <paramref name="repoRoot"/> is not a git work tree.</summary>
     public static void EnsureGitAvailable(string repoRoot)
@@ -55,7 +79,7 @@ public sealed class GitWorktree : IDisposable
     {
         EnsureGitAvailable(repoRoot);
         string root = Path.GetFullPath(repoRoot);
-        string worktreePath = Path.Combine(Path.GetTempPath(), "hx-doti-worktree-" + Guid.NewGuid().ToString("n"));
+        string worktreePath = Path.Combine(Path.GetTempPath(), TempDirPrefix + Guid.NewGuid().ToString("n"));
         ProcessRunResult add = TryGit(root, "worktree", "add", "--detach", "--quiet", worktreePath, "HEAD");
         if (add.ExitCode != 0)
         {
@@ -134,20 +158,119 @@ public sealed class GitWorktree : IDisposable
 
     public void Dispose()
     {
-        try
+        RemoveWorktreeOrHusk(WorktreePath);
+        TryGit(SourceRepoRoot, "worktree", "prune");
+    }
+
+    /// <summary>
+    /// 032 D1(a): sweep <see cref="Path.GetTempPath"/> for THIS TOOL'S OWN prior <c>hx-doti-worktree-*</c> entries
+    /// (the <see cref="TempDirPrefix"/> <see cref="Create"/> uses) and remove each one — never a blind prune of the
+    /// temp dir, never an operator-created worktree, and never anything younger than <see cref="MinLeakAge"/> (which
+    /// excludes a concurrently-running invocation's own brand-new, still-in-flight worktree — see that field's
+    /// remarks). Each remaining candidate is handled by <see cref="RemoveWorktreeOrHusk"/>, which distinguishes a
+    /// genuine husk (directory present, registration deleted out-of-band — git exits 128 "not a git
+    /// repository"/"not a working tree") from a still-LIVE registered worktree (possibly owned by a different repo):
+    /// only the former is ever directory-deleted; the latter is left alone rather than risk corrupting someone
+    /// else's in-flight worktree. A single trailing <c>git worktree prune</c> drops any now-stale registrations.
+    /// Every attempt is INSTRUMENTED (returned), never a bare swallow — call before <see cref="Create"/> so a prior
+    /// run's leak cannot collide with this run's commit.
+    /// </summary>
+    public static GitWorktreePruneResult PruneLeakedTemps(string repoRoot)
+    {
+        string root = Path.GetFullPath(repoRoot);
+        string tempRoot = Path.GetTempPath();
+        var entries = new List<GitWorktreePruneEntry>();
+        if (!Directory.Exists(tempRoot))
         {
-            TryGit(SourceRepoRoot, "worktree", "remove", "--force", WorktreePath);
-        }
-        catch
-        {
-            // best-effort cleanup; a leaked temp worktree is reclaimed by `git worktree prune` / the OS temp sweep.
+            return new GitWorktreePruneResult(entries);
         }
 
-        if (Directory.Exists(WorktreePath))
+        DateTime now = DateTime.UtcNow;
+        foreach (string candidate in Directory.EnumerateDirectories(tempRoot, TempDirPrefix + "*"))
         {
-            try { Directory.Delete(WorktreePath, recursive: true); }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
+            if (now - Directory.GetCreationTimeUtc(candidate) < MinLeakAge)
+            {
+                continue; // too young to be a "prior" leak — almost certainly a concurrently in-flight worktree.
+            }
+
+            entries.Add(RemoveWorktreeOrHusk(candidate));
+        }
+
+        if (entries.Count > 0)
+        {
+            TryGit(root, "worktree", "prune");
+        }
+
+        return new GitWorktreePruneResult(entries);
+    }
+
+    /// <summary>
+    /// Remove one candidate worktree path SAFELY. The CALLER's own repo is deliberately NEVER assumed to be the
+    /// path's actual owning repo, because <see cref="PruneLeakedTemps"/> sweeps system-wide and a candidate may
+    /// legitimately be registered against a DIFFERENT repo (or still be a live, in-use worktree of a
+    /// concurrently-running process) — force-removing or directory-deleting a live worktree out from under its owner
+    /// would corrupt that other process's work.
+    /// <list type="number">
+    /// <item>Ask the candidate itself who owns it: <c>git -C &lt;path&gt; rev-parse --git-common-dir</c>. This FAILS
+    /// (exit 128, "not a git repository") exactly when the path has no valid worktree registration anywhere — the
+    /// husk case (directory present, <c>.git/worktrees/&lt;name&gt;</c> registration deleted out-of-band) — so a
+    /// failure here is the safe, unambiguous signal to delete the directory directly.</item>
+    /// <item>When ownership resolves, the candidate is a LIVE, currently-registered worktree (possibly of another
+    /// repo or process). Run <c>git worktree remove --force</c> FROM ITS TRUE OWNING REPO — the only way the remove
+    /// is git-recognized as valid.</item>
+    /// <item>If that still fails (e.g. genuinely concurrent use), the candidate is left ALONE — never
+    /// directory-deleted — and the failure is instrumented rather than silently forcing a corrupting delete.</item>
+    /// </list>
+    /// </summary>
+    private static GitWorktreePruneEntry RemoveWorktreeOrHusk(string worktreePath)
+    {
+        if (!Directory.Exists(worktreePath))
+        {
+            return new GitWorktreePruneEntry(worktreePath, Removed: true, Reason: null);
+        }
+
+        ProcessRunResult owner = TryGit(worktreePath, "rev-parse", "--git-common-dir");
+        if (owner.ExitCode != 0)
+        {
+            // No resolvable registration anywhere — a genuine husk (or never a worktree). Safe to delete directly.
+            return DeleteHuskDirectory(worktreePath, "git worktree remove failed; husk directory deleted directly");
+        }
+
+        // A LIVE, currently-registered worktree. Resolve its TRUE owning repo (the parent of --git-common-dir, which
+        // is that repo's `.git`) and remove it from there — repoRoot is never assumed to be the owner.
+        string ownerGitDir = owner.StandardOutput.Trim();
+        string ownerRepoRoot = Path.GetFullPath(Path.Combine(worktreePath, ownerGitDir, "..")).TrimEnd(
+            Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        ProcessRunResult remove = TryGit(ownerRepoRoot, "worktree", "remove", "--force", worktreePath);
+        if (remove.ExitCode == 0 && !Directory.Exists(worktreePath))
+        {
+            return new GitWorktreePruneEntry(worktreePath, Removed: true, Reason: null);
+        }
+
+        if (!Directory.Exists(worktreePath))
+        {
+            return new GitWorktreePruneEntry(worktreePath, Removed: true, Reason: null);
+        }
+
+        // Still registered and still present after a remove attempt from its OWN owning repo: it is genuinely in use
+        // right now (a concurrent process, a lock, etc.) — leave it alone. Force-deleting here would corrupt the
+        // owner's in-flight work; report the failure instead of masking it as a successful prune.
+        return new GitWorktreePruneEntry(worktreePath, Removed: false,
+            Reason: "git worktree remove failed (" + Prefer(remove.StandardError, remove.StandardOutput)
+                + ") and the worktree is still live (owned by " + ownerRepoRoot + "); left in place");
+    }
+
+    private static GitWorktreePruneEntry DeleteHuskDirectory(string worktreePath, string reasonOnSuccess)
+    {
+        try
+        {
+            Directory.Delete(worktreePath, recursive: true);
+            return new GitWorktreePruneEntry(worktreePath, Removed: true, Reason: reasonOnSuccess);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new GitWorktreePruneEntry(worktreePath, Removed: false,
+                Reason: "husk directory could not be deleted: " + ex.Message);
         }
     }
 

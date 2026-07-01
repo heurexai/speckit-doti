@@ -66,10 +66,7 @@ public static class DotiReconcileCommit
         }
 
         string message = BuildMessage(beforeVersion, afterVersion, prunedPaths);
-        ProcessRunResult result = Git(
-            root,
-            ["commit", "-m", message],
-            new Dictionary<string, string> { [PrecommitGuard.SentinelEnvVar] = "1" });
+        ProcessRunResult result = CommitWithRetry(root, message);
         if (result.ExitCode != 0)
         {
             return new DotiReconcileCommitOutcome(
@@ -77,6 +74,39 @@ public static class DotiReconcileCommit
         }
 
         return new DotiReconcileCommitOutcome(DotiCommitStatus.Committed, HeadSha(root), staged, null);
+    }
+
+    // 032 D1(d): a sanctioned reconcile commit can race a concurrent git lock holder (the worktree teardown's own
+    // `.git/worktrees` bookkeeping, an editor's git plugin, a co-running `git gc`, etc.) and fail with a transient
+    // lock-contention error that a short retry resolves. Up to TWO retries (three attempts total) with a brief
+    // backoff between them; a NON-transient failure (anything else — a real conflict, a hook rejection, missing
+    // identity) is returned immediately on the first attempt, never masked behind a retry loop.
+    private const int MaxCommitAttempts = 3;
+    private static readonly TimeSpan CommitRetryBackoff = TimeSpan.FromMilliseconds(200);
+
+    private static ProcessRunResult CommitWithRetry(string root, string message)
+    {
+        var env = new Dictionary<string, string> { [PrecommitGuard.SentinelEnvVar] = "1" };
+        ProcessRunResult result = Git(root, ["commit", "-m", message], env);
+        for (int attempt = 2; attempt <= MaxCommitAttempts && result.ExitCode != 0 && IsTransientLockFailure(result); attempt++)
+        {
+            Thread.Sleep(CommitRetryBackoff);
+            result = Git(root, ["commit", "-m", message], env);
+        }
+
+        return result;
+    }
+
+    // The transient-lock signatures git reports when another process briefly holds `.git/index.lock` or a ref lock —
+    // NEVER a real failure (a hook rejection, "nothing to commit", missing user identity, etc.), which must surface
+    // immediately rather than be retried into a misleadingly-delayed report.
+    private static bool IsTransientLockFailure(ProcessRunResult result)
+    {
+        string combined = (result.StandardError + "\n" + result.StandardOutput);
+        return combined.Contains("index.lock", StringComparison.OrdinalIgnoreCase)
+            || combined.Contains("cannot lock ref", StringComparison.OrdinalIgnoreCase)
+            || (combined.Contains("unable to create", StringComparison.OrdinalIgnoreCase)
+                && combined.Contains(".lock", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

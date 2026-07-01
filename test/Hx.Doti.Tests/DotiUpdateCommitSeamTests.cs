@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Hx.Doti.Core;
+using Hx.Runner.Core.Tools;
 using Hx.Tooling.Contracts;
 using Xunit;
 
@@ -88,6 +89,85 @@ public sealed class DotiUpdateCommitSeamTests
         finally { Cleanup(source, repo); }
     }
 
+    /// <summary>
+    /// 032 D1(b): the self-commit must run AFTER the worktree's `.git/worktrees` registration is fully torn down —
+    /// the worktree-leak/commit-race this bug fixes. Proven by a pre-commit hook that captures `git worktree list
+    /// --porcelain` to a side file the MOMENT the sanctioned `git commit` actually runs; on the OLD order (commit
+    /// inside the worktree's still-registered lifetime) that capture would show TWO worktrees (the main repo +
+    /// the still-registered worktree); on the FIXED order it shows exactly ONE (the main repo only).
+    /// </summary>
+    [Fact]
+    public void Worktree_is_no_longer_registered_when_the_self_commit_runs()
+    {
+        string source = DotiVersionTestSupport.NewSource("2.0.0");
+        string repo = NewInstalledGitRepo(source, "1.0.0");
+        string captureFile = Path.Combine(Path.GetTempPath(), "hx-worktree-capture-" + Guid.NewGuid().ToString("n") + ".txt");
+        try
+        {
+            ArmWorktreeObservingHook(repo, captureFile);
+
+            DotiUpdateOutcome outcome = DotiWorktreeUpdate.Run(
+                source, repo, DotiAgentTarget.All, "2.0.0", force: false, dryRun: false,
+                commit: true, sourceOrigin: "bundled");
+
+            Assert.Equal(DotiUpdateStatus.Updated, outcome.Status);
+            Assert.Equal(DotiCommitStatus.Committed, outcome.Commit!.Status);
+            Assert.True(File.Exists(captureFile), "the pre-commit hook must have run and captured the worktree listing");
+
+            string captured = File.ReadAllText(captureFile);
+            int worktreeEntries = captured
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Count(line => line.StartsWith("worktree ", StringComparison.Ordinal));
+            Assert.Equal(1, worktreeEntries); // ONLY the main repo — the run's own worktree was already torn down.
+        }
+        finally
+        {
+            Cleanup(source, repo);
+            if (File.Exists(captureFile))
+            {
+                File.Delete(captureFile);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 032 D1(d): a TRANSIENT lock failure (stderr carries the "index.lock" signature
+    /// <see cref="DotiReconcileCommit"/> recognizes) on the FIRST commit attempt is retried; the SECOND attempt
+    /// succeeds (the hook only fails once), proving the retry-then-succeed path — not just "retries exist" but that
+    /// a transient failure does not become a permanently reported <see cref="DotiCommitStatus.Failed"/>.
+    /// </summary>
+    [Fact]
+    public void A_transient_lock_failure_is_retried_and_the_commit_ultimately_succeeds()
+    {
+        string source = DotiVersionTestSupport.NewSource("2.0.0");
+        string repo = NewInstalledGitRepo(source, "1.0.0");
+        string attemptCounterFile = Path.Combine(Path.GetTempPath(), "hx-lock-attempts-" + Guid.NewGuid().ToString("n") + ".txt");
+        try
+        {
+            ArmFlakyLockHook(repo, attemptCounterFile);
+
+            DotiUpdateOutcome outcome = DotiWorktreeUpdate.Run(
+                source, repo, DotiAgentTarget.All, "2.0.0", force: false, dryRun: false,
+                commit: true, sourceOrigin: "bundled");
+
+            Assert.Equal(DotiUpdateStatus.Updated, outcome.Status);
+            Assert.Equal(DotiCommitStatus.Committed, outcome.Commit!.Status);
+            Assert.NotNull(outcome.Commit.Sha);
+            // The hook ran (and failed) at least once before the retry succeeded.
+            Assert.True(File.Exists(attemptCounterFile));
+            int attempts = int.Parse(File.ReadAllText(attemptCounterFile).Trim());
+            Assert.True(attempts >= 2, $"expected at least 2 commit attempts (one failure + one success), saw {attempts}");
+        }
+        finally
+        {
+            Cleanup(source, repo);
+            if (File.Exists(attemptCounterFile))
+            {
+                File.Delete(attemptCounterFile);
+            }
+        }
+    }
+
     [Fact]
     public void Update_all_applies_the_same_commit_behavior_per_repo()
     {
@@ -165,8 +245,53 @@ public sealed class DotiUpdateCommitSeamTests
     {
         string hooks = Path.Combine(repo, ".git", "hooks");
         Directory.CreateDirectory(hooks);
-        File.WriteAllText(Path.Combine(hooks, "pre-commit"),
+        string hookPath = Path.Combine(hooks, "pre-commit");
+        File.WriteAllText(hookPath,
             "#!/bin/sh\nif [ \"$DOTI_SANCTIONED_COMMIT\" = \"1\" ]; then exit 0; fi\nexit 1\n");
+        ExecutableFileMode.EnsureExecutable(hookPath);
+    }
+
+    // 032 D1(b): a pre-commit hook that captures `git worktree list --porcelain` to `captureFile` at the EXACT
+    // moment the sanctioned `git commit` runs (the hook fires after staging, before the commit object is written) —
+    // proving (or disproving) that the run's own worktree registration is already gone by then. Forward-slash the
+    // path for POSIX `sh` portability (the hook shell runs under Git Bash on Windows).
+    private static void ArmWorktreeObservingHook(string repo, string captureFile)
+    {
+        string hooks = Path.Combine(repo, ".git", "hooks");
+        Directory.CreateDirectory(hooks);
+        string hookPath = Path.Combine(hooks, "pre-commit");
+        string posixCapturePath = captureFile.Replace('\\', '/');
+        File.WriteAllText(hookPath,
+            "#!/bin/sh\n"
+            + $"git worktree list --porcelain > \"{posixCapturePath}\" 2>&1\n"
+            + "if [ \"$DOTI_SANCTIONED_COMMIT\" = \"1\" ]; then exit 0; fi\n"
+            + "exit 1\n");
+        ExecutableFileMode.EnsureExecutable(hookPath);
+    }
+
+    // 032 D1(d): a pre-commit hook that fails with the "index.lock" transient-lock signature on its FIRST invocation
+    // (incrementing a counter file each time it runs) and succeeds on every subsequent one — modeling a real,
+    // momentary `.git/index.lock` collision that clears itself, which DotiReconcileCommit.Commit's retry-with-backoff
+    // is meant to ride out. Still gated on the sanctioned env var so an UNSANCTIONED commit is never let through.
+    private static void ArmFlakyLockHook(string repo, string attemptCounterFile)
+    {
+        string hooks = Path.Combine(repo, ".git", "hooks");
+        Directory.CreateDirectory(hooks);
+        string hookPath = Path.Combine(hooks, "pre-commit");
+        string posixCounterPath = attemptCounterFile.Replace('\\', '/');
+        File.WriteAllText(hookPath,
+            "#!/bin/sh\n"
+            + $"COUNTER=\"{posixCounterPath}\"\n"
+            + "if [ -f \"$COUNTER\" ]; then N=$(cat \"$COUNTER\"); else N=0; fi\n"
+            + "N=$((N + 1))\n"
+            + "echo \"$N\" > \"$COUNTER\"\n"
+            + "if [ \"$DOTI_SANCTIONED_COMMIT\" != \"1\" ]; then exit 1; fi\n"
+            + "if [ \"$N\" -eq 1 ]; then\n"
+            + "  echo \"fatal: Unable to create '$(pwd)/.git/index.lock': File exists.\" >&2\n"
+            + "  exit 1\n"
+            + "fi\n"
+            + "exit 0\n");
+        ExecutableFileMode.EnsureExecutable(hookPath);
     }
 
     private static void Cleanup(string source, string repo)

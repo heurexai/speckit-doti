@@ -17,6 +17,12 @@ public static class DotiInstaller
 {
     private static readonly string[] StaticDotiSubdirectories = ["core", "profiles", "templates", "memory", "workflows", "integrations"];
 
+    // 032 D2(e): the vendored-tool dirs ManagedAssetScanner.DotiSourcePaths already scans into managed-assets.json
+    // (category DotiSource) but that, until now, no consumer loop ever reconciled — `tools/{sub}/bin/` (the
+    // gitignored, network-fetched exe) is excluded the same way the scanner excludes it, so a reconcile never
+    // touches the binary; only the manifest/license/config/grammar files are managed.
+    private static readonly string[] StaticToolSubdirectories = ["gitleaks", "sentrux", "gitversion"];
+
     public static DotiInstallResult Install(
         string payloadRoot,
         string targetRepoRoot,
@@ -71,17 +77,20 @@ public static class DotiInstaller
                 continue;
             }
 
-            string from = Path.Combine(payloadRoot, ".doti", sub);
-            if (Directory.Exists(from))
-            {
-                int installedCount = ReconcileManagedTree(
-                    payloadRoot, targetRepoRoot, from, managed, force, installed, preserved, skipped, blocked, mergePending);
-                copied.Add($".doti/{sub}");
-                if (installedCount > 0)
-                {
-                    installed.Add(new DotiInstallPathEffect($".doti/{sub}", "managed Doti static asset set installed"));
-                }
-            }
+            ReconcileStaticSubdirectory(payloadRoot, targetRepoRoot, ".doti", sub, managed, force,
+                copied, installed, preserved, skipped, blocked, mergePending,
+                "managed Doti static asset set installed");
+        }
+
+        // 032 D2(e): the SAME conflict-aware reconcile for the vendored-tool dirs ManagedAssetScanner already scans
+        // into managed-assets.json (category DotiSource) — gitleaks/sentrux/gitversion — closing the gap where a
+        // stale vendored-tool manifest was recorded-managed but never actually reconciled (the ergon Sentrux v0.5.11
+        // incident). `bin/` (the gitignored, network-fetched exe) is excluded by ReconcileToolSubdirectory exactly as
+        // ManagedAssetScanner already excludes it from the baseline.
+        foreach (string sub in StaticToolSubdirectories)
+        {
+            ReconcileToolSubdirectory(payloadRoot, targetRepoRoot, sub, managed, force,
+                copied, installed, preserved, skipped, blocked, mergePending);
         }
 
         // 2. Render agent context + skills + root entrypoints from .doti/core.
@@ -584,11 +593,119 @@ public static class DotiInstaller
     }
 
     /// <summary>
-    /// 007 T030 (FR-015, SC-007/018): reconcile one bundled <c>.doti</c> subtree into the target. Every managed write
-    /// routes through <see cref="ResolveInside"/> (fail-closed on escape). A managed asset the operator MODIFIED (per
-    /// the baseline) or a pre-existing file with no baseline entry is preserved and the bundled version is staged as a
-    /// <c>.new</c> sidecar; an operator-DELETED managed asset is not resurrected without <paramref name="force"/>; a
-    /// modified template/skill blocks unless forced; clean / new files are installed. Returns the install count.
+    /// Reconcile one <c>.doti/{sub}</c> static subdirectory (the original 007 T030 loop body, extracted so the 032
+    /// D2(e) <c>tools/{sub}</c> pass can share the copied/installed bookkeeping shape without duplicating it).
+    /// </summary>
+    private static void ReconcileStaticSubdirectory(
+        string payloadRoot,
+        string targetRepoRoot,
+        string topLevel,
+        string sub,
+        IReadOnlyDictionary<string, ManagedAssetStatus> managed,
+        bool force,
+        List<string> copied,
+        List<DotiInstallPathEffect> installed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> skipped,
+        List<DotiInstallPathEffect> blocked,
+        List<DotiInstallPathEffect> mergePending,
+        string installedReason)
+    {
+        string from = Path.Combine(payloadRoot, topLevel, sub);
+        if (!Directory.Exists(from))
+        {
+            return;
+        }
+
+        int installedCount = ReconcileManagedTree(
+            payloadRoot, targetRepoRoot, from, managed, force, installed, preserved, skipped, blocked, mergePending);
+        string rel = $"{topLevel}/{sub}";
+        copied.Add(rel);
+        if (installedCount > 0)
+        {
+            installed.Add(new DotiInstallPathEffect(rel, installedReason));
+        }
+    }
+
+    /// <summary>
+    /// 032 D2(e): reconcile one vendored-tool dir (<c>tools/gitleaks</c>|<c>sentrux</c>|<c>gitversion</c>) — the
+    /// manifest/license/config/grammar files <see cref="ManagedAssets.ManagedAssetScanner.DotiSourcePaths"/> already
+    /// scans into the baseline (category <c>doti-source</c>) but which, before this fix, no reconcile loop ever
+    /// touched. Reuses the SAME <see cref="ReconcileManagedTree"/> preserve/<c>.new</c>/force machinery the
+    /// <c>.doti</c> loop uses (the <c>managed-replace-preserve-live-config</c> policy
+    /// <see cref="ManagedAssets.ManagedAssetScanner"/> already assigns every <c>doti-source</c> asset). <c>bin/</c>
+    /// (the gitignored, per-RID, network-fetched executable) is walked SEPARATELY from a filtered file list rather
+    /// than handed to <see cref="ReconcileManagedTree"/>'s <c>AllDirectories</c> walk, so the binary is never staged,
+    /// preserved, or sidecar'd — it stays exclusively <c>hx tools fetch</c>'s concern (FR offline/deterministic
+    /// update — see <see cref="DotiUpdater"/>'s D2(g) advisory).
+    /// </summary>
+    private static void ReconcileToolSubdirectory(
+        string payloadRoot,
+        string targetRepoRoot,
+        string sub,
+        IReadOnlyDictionary<string, ManagedAssetStatus> managed,
+        bool force,
+        List<string> copied,
+        List<DotiInstallPathEffect> installed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> skipped,
+        List<DotiInstallPathEffect> blocked,
+        List<DotiInstallPathEffect> mergePending)
+    {
+        string from = Path.Combine(payloadRoot, "tools", sub);
+        if (!Directory.Exists(from))
+        {
+            return;
+        }
+
+        int installedCount = ReconcileManagedToolFiles(
+            payloadRoot, targetRepoRoot, from, managed, force, installed, preserved, skipped, blocked, mergePending);
+        string rel = $"tools/{sub}";
+        copied.Add(rel);
+        if (installedCount > 0)
+        {
+            installed.Add(new DotiInstallPathEffect(rel, "managed vendored-tool asset set installed"));
+        }
+    }
+
+    /// <summary>
+    /// 032 D2(e): like <see cref="ReconcileManagedTree"/>'s file enumeration, but filters out every path under a
+    /// <c>bin/</c> segment BEFORE reconciling — the one behavioral difference from the <c>.doti</c> loop, required
+    /// because a vendored-tool dir's <c>bin/{rid}/{tool}.exe</c> must never be staged/preserved/sidecar'd (it is
+    /// gitignored and fetched separately, never a Doti-managed asset).
+    /// </summary>
+    private static int ReconcileManagedToolFiles(
+        string payloadRoot,
+        string targetRepoRoot,
+        string sourceDir,
+        IReadOnlyDictionary<string, ManagedAssetStatus> managed,
+        bool force,
+        List<DotiInstallPathEffect> installed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> skipped,
+        List<DotiInstallPathEffect> blocked,
+        List<DotiInstallPathEffect> mergePending)
+    {
+        int installedCount = 0;
+        foreach (string sourceFile in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+        {
+            string relFromPayload = Path.GetRelativePath(payloadRoot, sourceFile).Replace('\\', '/');
+            if (relFromPayload.Contains("/bin/", StringComparison.OrdinalIgnoreCase))
+            {
+                continue; // the gitignored, per-RID vendored executable — never a managed reconcile target.
+            }
+
+            installedCount += ReconcileManagedFile(
+                payloadRoot, targetRepoRoot, sourceFile, managed, force, installed, preserved, skipped, blocked, mergePending);
+        }
+
+        return installedCount;
+    }
+
+    /// <summary>
+    /// 007 T030 (FR-015, SC-007/018): reconcile one bundled <c>.doti/{sub}</c> managed subtree into the target by
+    /// applying <see cref="ReconcileManagedFile"/> to every file under <paramref name="sourceDir"/>. Returns the
+    /// install count.
     /// </summary>
     private static int ReconcileManagedTree(
         string payloadRoot,
@@ -602,48 +719,73 @@ public static class DotiInstaller
         List<DotiInstallPathEffect> blocked,
         List<DotiInstallPathEffect> mergePending)
     {
-        string payloadDoti = Path.Combine(payloadRoot, ".doti");
         int installedCount = 0;
         foreach (string sourceFile in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
         {
-            string rel = ".doti/" + Path.GetRelativePath(payloadDoti, sourceFile).Replace('\\', '/');
-            string dest = ResolveInside(targetRepoRoot, rel);
-            bool exists = File.Exists(dest);
-            managed.TryGetValue(rel, out ManagedAssetStatus? status);
-
-            if (status?.State == ManagedAssetState.Modified && !force)
-            {
-                if (status.UpdateConflictPolicy == "managed-replace-preserve-live-config")
-                {
-                    PreserveWithSidecar(targetRepoRoot, rel, sourceFile, preserved, mergePending,
-                        "operator-modified managed asset preserved");
-                    continue;
-                }
-
-                blocked.Add(new DotiInstallPathEffect(rel, "modified managed template/skill blocked; rerun with --force to overwrite"));
-                continue;
-            }
-
-            if (status?.State == ManagedAssetState.Missing && !force)
-            {
-                skipped.Add(new DotiInstallPathEffect(rel, "operator-deleted managed asset not resurrected without --force"));
-                continue;
-            }
-
-            if (status is null && exists)
-            {
-                // Pre-existing operator/foreign content with no managed baseline (brownfield): never blind-overwrite.
-                PreserveWithSidecar(targetRepoRoot, rel, sourceFile, preserved, mergePending,
-                    "pre-existing operator content preserved");
-                continue;
-            }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-            File.Copy(sourceFile, dest, overwrite: true);
-            installedCount++;
+            installedCount += ReconcileManagedFile(
+                payloadRoot, targetRepoRoot, sourceFile, managed, force, installed, preserved, skipped, blocked, mergePending);
         }
 
         return installedCount;
+    }
+
+    /// <summary>
+    /// 007 T030 (FR-015, SC-007/018) + 032 D2(e): the conflict-aware reconcile decision for ONE managed file —
+    /// shared by the <c>.doti/{sub}</c> tree walk (<see cref="ReconcileManagedTree"/>) and the <c>tools/{sub}</c>
+    /// vendored-tool walk (<see cref="ReconcileManagedToolFiles"/>), so there is exactly one customization scheme.
+    /// Every managed write routes through <see cref="ResolveInside"/> (fail-closed on escape). A managed asset the
+    /// operator MODIFIED (per the baseline) or a pre-existing file with no baseline entry is preserved and the
+    /// bundled version is staged as a <c>.new</c> sidecar; an operator-DELETED managed asset is not resurrected
+    /// without <paramref name="force"/>; a modified template/skill blocks unless forced; clean / new files are
+    /// installed. Returns 1 when installed, else 0.
+    /// </summary>
+    private static int ReconcileManagedFile(
+        string payloadRoot,
+        string targetRepoRoot,
+        string sourceFile,
+        IReadOnlyDictionary<string, ManagedAssetStatus> managed,
+        bool force,
+        List<DotiInstallPathEffect> installed,
+        List<DotiInstallPathEffect> preserved,
+        List<DotiInstallPathEffect> skipped,
+        List<DotiInstallPathEffect> blocked,
+        List<DotiInstallPathEffect> mergePending)
+    {
+        string rel = Path.GetRelativePath(payloadRoot, sourceFile).Replace('\\', '/');
+        string dest = ResolveInside(targetRepoRoot, rel);
+        bool exists = File.Exists(dest);
+        managed.TryGetValue(rel, out ManagedAssetStatus? status);
+
+        if (status?.State == ManagedAssetState.Modified && !force)
+        {
+            if (status.UpdateConflictPolicy == "managed-replace-preserve-live-config")
+            {
+                PreserveWithSidecar(targetRepoRoot, rel, sourceFile, preserved, mergePending,
+                    "operator-modified managed asset preserved");
+                return 0;
+            }
+
+            blocked.Add(new DotiInstallPathEffect(rel, "modified managed template/skill blocked; rerun with --force to overwrite"));
+            return 0;
+        }
+
+        if (status?.State == ManagedAssetState.Missing && !force)
+        {
+            skipped.Add(new DotiInstallPathEffect(rel, "operator-deleted managed asset not resurrected without --force"));
+            return 0;
+        }
+
+        if (status is null && exists)
+        {
+            // Pre-existing operator/foreign content with no managed baseline (brownfield): never blind-overwrite.
+            PreserveWithSidecar(targetRepoRoot, rel, sourceFile, preserved, mergePending,
+                "pre-existing operator content preserved");
+            return 0;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+        File.Copy(sourceFile, dest, overwrite: true);
+        return 1;
     }
 
     /// <summary>

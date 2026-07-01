@@ -40,6 +40,13 @@ public static partial class RunnerCommands
             DotiUpdateStatus.Failed => CliResults.Fail(meta, "doti update", ExitClass.Integrity,
                 [Diag.Of(ErrorCodes.Integrity_DotiUpdateFailed, outcome.Reason ?? "update failed", target: outcome.RepoPath)],
                 $"Doti update of {outcome.RepoPath} failed.", outcome),
+            // 032 D1(c): the reconcile succeeded but the self-owned commit did not — DotiCommitStatus.Failed is
+            // documented as "reported, never silently swallowed" (DotiVersionContracts.cs); without this arm a
+            // failed commit fell through to the Ok branch below and reported ok:true/exit 0 with the changes only
+            // staged, not committed. Mirrors the DotiUpdateStatus.Failed arm above (same Integrity code).
+            _ when outcome.Commit?.Status == DotiCommitStatus.Failed => CliResults.Fail(meta, "doti update", ExitClass.Integrity,
+                [Diag.Of(ErrorCodes.Integrity_DotiUpdateFailed, outcome.Commit!.Reason ?? "commit failed", target: outcome.RepoPath)],
+                $"Doti update of {outcome.RepoPath} reconciled but the self-owned commit failed.", outcome),
             _ => CliResults.Ok(meta, "doti update", UpdateSummary(outcome), outcome),
         };
     }
@@ -71,6 +78,14 @@ public static partial class RunnerCommands
     // self-owned commit outcome in the human summary (the --json envelope carries the structured fields).
     private static void AppendUpdateDetails(DotiUpdateOutcome o, List<string> lines)
     {
+        // 032 D2(g): the no-baseline degrade warning and the vendored-tool-manifest-updated advisory both ride
+        // DotiUpdateOutcome.Reason on the success path — surface it here so `hx tools fetch --tool <tool>` is
+        // actually visible in the default text output, not buried in --json only.
+        if (!string.IsNullOrWhiteSpace(o.Reason))
+        {
+            lines.Add($"  {o.Reason}");
+        }
+
         if (o.Pruned is { Count: > 0 } pruned)
         {
             lines.Add($"  pruned {pruned.Count} orphaned managed asset(s) the render no longer targets.");

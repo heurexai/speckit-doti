@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "033-bug-only-release-path",
+  "boundFixSha256": "4ef692e3b382f50da72a3676bba5eec127fbdb18ab71584c273811eb82c7503f",
+  "outcome": "pass",
+  "evidence": "gate run --profile normal GREEN over the combined 032\u002B033 tree (build/test/sentrux/architecture/hygiene/gitleaks all pass). Hx.Cycle.Tests 142/142 incl. 6 new BugOnlyReleasePathTests (positive: no cycle-state \u002B 1 confirmed bug member -\u003E GetReleaseTrain Valid; negative: no cycle-state \u002B no bug -\u003E fails closed; regression: 4 ReleaseTrainBridgeTests unchanged; round-trip: CycleStateStore.Exists==false throughout mark-released) \u002B Hx.Runner.Tests release-train subset 7/7 (feature paths unaffected) \u002B Hx.Architecture.Tests 15/15 (no Cycle-\u003EDoti edge, function-size budget holds)."
+}

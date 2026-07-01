@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "bugId": "032-doti-update-worktree-leak",
+  "boundAssessmentSha256": "5f96a7d3d6981a38c73b4884a21324fbf21d2d8d52540dce0cb11b002e637a9d",
+  "summary": "Fixed hx doti update worktree-leak/commit-race/silent-swallow (commit-after-dispose via RunWorktreeScoped; surface Commit.Failed as ok:false/non-zero/Integrity for update\u002Bupdate-all; ownership-aware leaked-temp sweep\u002Bprune with a 10-min age floor; retry-on-transient-lock) \u002B the vendored-tool reconcile/parity gap (tools/{gitleaks,sentrux,gitversion} now reconciled by update \u002B checked by payload check with a \u0027run hx tools fetch\u0027 advisory; exe stays offline-fetched).",
+  "changedPaths": [
+    "tools/Hx.Doti.Core/DotiBatchUpdater.cs",
+    "tools/Hx.Doti.Core/DotiInstaller.cs",
+    "tools/Hx.Doti.Core/DotiPayloadParityChecker.cs",
+    "tools/Hx.Doti.Core/DotiReconcileCommit.cs",
+    "tools/Hx.Doti.Core/DotiUpdater.cs",
+    "tools/Hx.Doti.Core/DotiWorktreeUpdate.cs",
+    "tools/Hx.Doti.Core/Hx.Doti.Core.csproj",
+    "tools/Hx.Runner.Cli/RunnerCommands.Doti.Update.cs",
+    "tools/Hx.Runner.Core/Git/GitWorktree.cs",
+    "test/Hx.Doti.Tests/DotiUpdateCommitSeamTests.cs",
+    "test/Hx.Doti.Tests/DotiVersionTestSupport.cs",
+    "test/Hx.Doti.Tests/DotiVendoredToolReconcileTests.cs",
+    "test/Hx.Runner.Tests/DotiSelfContainedCommandTests.cs",
+    "test/Hx.Runner.Tests/GitWorktreeTests.cs"
+  ]
+}

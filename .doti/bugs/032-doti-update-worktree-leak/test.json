@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "bugId": "032-doti-update-worktree-leak",
+  "boundFixSha256": "17f4102c08d8772217fab43f33e0f5bd4d6f5c2b63ec74e03808186875acb871",
+  "outcome": "pass",
+  "evidence": "gate run --profile normal GREEN (build 0/0, test, sentrux, architecture, hygiene, gitleaks all pass over the change-set). Hx.Doti.Tests 197/197 (11 new), Hx.Runner.Tests 260/260 (5 new) \u002B green collateral (arch 15/15, cycle 136/136, scaffold 126/126, gate 21/21). Deterministic regression per defect (worktree-not-registered-at-commit; Commit.Failed-\u003Eok:false for update\u002Bupdate-all; leaked-orphan\u002Bhusk sweep with fresh-worktree-untouched; retry-on-lock; tools/-reconcile stale-\u003Epayload \u002B operator-edit-preserved-with-.new \u002B bin/-byte-unchanged; payload-check vendored-tool drift; advisory-on-genuine-change-only) \u2014 each verified to fail when its fix is reverted; re-ran 11x, no flakiness."
+}
