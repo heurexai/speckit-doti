@@ -8,6 +8,12 @@ public static class DotiPayloadParityChecker
 {
     private static readonly string[] StaticDotiSubdirectories = ["core", "profiles", "templates", "memory", "workflows", "integrations"];
 
+    // 032 D2(f): the vendored-tool dirs the 032 D2(e) DotiInstaller reconcile now ALSO reconciles into the temp
+    // install, so the parity check can compare them the same way it compares the static .doti subdirectories —
+    // closing the gap where a stale tools/sentrux manifest was recorded-managed but never CHECKED (the silently
+    // broken gate this bug traces to).
+    private static readonly string[] StaticToolSubdirectories = ["gitleaks", "sentrux", "gitversion"];
+
     public static DotiPayloadCheckResult Check(string sourceRepoRoot)
     {
         string source = Path.GetFullPath(sourceRepoRoot);
@@ -17,6 +23,7 @@ public static class DotiPayloadParityChecker
             DotiInstaller.Install(source, temp, DotiAgentTarget.All, "payload-check", force: true);
             List<DotiPayloadFileStatus> files = [];
             files.AddRange(CheckStaticFiles(source, temp));
+            files.AddRange(CheckToolFiles(source, temp));
             files.AddRange(CheckRenderedFiles(source, temp));
             files.AddRange(CheckSurplusSkillDirs(source));
             string[] drifted = files
@@ -66,6 +73,41 @@ public static class DotiPayloadParityChecker
                 string relative = Path.GetRelativePath(source, sourceFile).Replace('\\', '/');
                 string installed = Path.Combine(target, relative.Replace('/', Path.DirectorySeparatorChar));
                 yield return CompareFile(sourceFile, installed, relative, relative, "static-doti");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 032 D2(f): validate the vendored-tool dirs (<c>tools/gitleaks</c>|<c>sentrux</c>|<c>gitversion</c>) the 032
+    /// D2(e) install reconcile now installs — manifest/license/config/grammar files, MINUS <c>bin/</c> (the
+    /// gitignored, network-fetched executable is never a parity-checked managed asset; it is verified separately by
+    /// <c>SentruxManifestValidator</c>/the tool-fetch hash check). A stale/missing manifest or grammar fails
+    /// <c>payload check</c> with <c>kind: "vendored-tool"</c>, closing the gap where a stale Sentrux version was
+    /// recorded-managed but never actually CHECKED. Internal (not private): <see cref="Check"/> is a fresh-install
+    /// SELF-consistency check (a copy from a source always reproduces it exactly, by construction), so the test seam
+    /// exercises this comparison directly against hand-built source/target fixtures (see the
+    /// <c>InternalsVisibleTo</c> grant in the project file).
+    /// </summary>
+    internal static IEnumerable<DotiPayloadFileStatus> CheckToolFiles(string source, string target)
+    {
+        foreach (string subdirectory in StaticToolSubdirectories)
+        {
+            string sourceRoot = Path.Combine(source, "tools", subdirectory);
+            if (!Directory.Exists(sourceRoot))
+            {
+                continue;
+            }
+
+            foreach (string sourceFile in Directory.EnumerateFiles(sourceRoot, "*", SearchOption.AllDirectories))
+            {
+                string relative = Path.GetRelativePath(source, sourceFile).Replace('\\', '/');
+                if (relative.Contains("/bin/", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue; // the gitignored, per-RID vendored executable — never a parity-checked target.
+                }
+
+                string installed = Path.Combine(target, relative.Replace('/', Path.DirectorySeparatorChar));
+                yield return CompareFile(sourceFile, installed, relative, relative, "vendored-tool");
             }
         }
     }

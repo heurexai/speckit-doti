@@ -268,6 +268,10 @@ Use `--json` for the machine envelope. Use `--help-mode plain`, `--plain-help`, 
 
 > Reconciliation is also agent-gated and self-describing: when an upstream changes, the engine surfaces the diff and the agent records an explicit re-author or `cycle review-rebind --attest no-impact` verdict (recorded + decaying) — a bare `stamp` of an upstream-changed stage refuses, closing the agent-rubber-stamp hole the engine alone could not. And the workflow's next-step commands are generated from one code model (`DotiActionModel`), never a hand-maintained list that can drift — the §1 *self-describing automation* invariant. Shipped in `028-agent-gated-reconcile`.
 
+> `hx doti update` is worktree-safe and never silently swallows a failed self-commit: the reconcile's temp worktree is disposed **before** the commit (no shared-`.git` lock race), a failed commit surfaces as `ok:false`/non-zero (not buried under "Updated"), leaked `hx-doti-worktree-*` temps are pruned ownership-aware (a concurrent run's live worktree is never killed), and the vendored structural tools (`tools/{sentrux,gitleaks,gitversion}`) are reconciled + parity-checked so a doti version bump can no longer leave a repo on a stale Sentrux with a silently-broken gate — shipped in `032-doti-update-worktree-leak`.
+
+> A confirmed bug-fix-only mini-cycle (a passing `/doti-bug`, no numbered feature cycle and so no `.doti/cycle-state.json`) is now releasable as a **patch** — the release train tolerates the missing cycle-state so the bug-release bridge runs, with no fabricated feature cycle and no feature stamp — shipped in `033-bug-only-release-path`.
+
 ---
 
 ## Distribution and release model

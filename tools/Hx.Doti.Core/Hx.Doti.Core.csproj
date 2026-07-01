@@ -13,4 +13,13 @@
     <ProjectReference Include="..\Hx.Cycle.Core\Hx.Cycle.Core.csproj" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- 032 D2(f): DotiPayloadParityChecker.Check is a SELF-consistency check (a fresh install FROM a source always
+         exactly reproduces that source — by construction, force=true + a brand-new temp target never preserves or
+         diverges), so it cannot exercise a genuine "stale vendored-tool manifest" comparison through the public API
+         alone. The tests use the internal CheckToolFiles(source, target) seam directly with two HAND-CONSTRUCTED
+         directories to exercise the comparison/drift-reporting logic deterministically, mirroring the existing
+         CycleService(repo, store, stageModel) seam precedent in Hx.Cycle.Core. -->
+    <InternalsVisibleTo Include="Hx.Doti.Tests" />
+  </ItemGroup>
 </Project>

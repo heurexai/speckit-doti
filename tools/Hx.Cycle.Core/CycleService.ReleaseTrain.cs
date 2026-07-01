@@ -5,25 +5,35 @@ namespace Hx.Cycle.Core;
 
 public sealed partial class CycleService
 {
-    public CycleReleaseTrain GetReleaseTrain()
-    {
-        CycleState state = _store.Read()
-            ?? throw new InvalidOperationException(
-                $"No cycle state at {CycleStateStore.RelativePath}; complete a Doti cycle before release.");
+    /// <summary>
+    /// 033 (bug-only-release-path): a bug-fix-only repo (a confirmed, test-passed <c>/doti-bug</c> mini-cycle and NO
+    /// numbered feature cycle, so NO <c>.doti/cycle-state.json</c>) must still be releasable. A missing cycle state is
+    /// no longer fatal here — it falls through to <see cref="BuildReleaseTrain"/> with a null state, which yields an
+    /// empty feature half while <c>_bugReleaseMembers</c> (the only half that ever needed state) is still consulted. A
+    /// repo with neither a feature nor a bug member still fails closed via the existing "no completed unreleased
+    /// feature cycles" blocker (now also bug-aware).
+    /// </summary>
+    public CycleReleaseTrain GetReleaseTrain() => BuildReleaseTrain(_store.Read());
 
-        return BuildReleaseTrain(state);
-    }
-
+    /// <summary>
+    /// 033: tolerates the same null cycle state as <see cref="GetReleaseTrain"/>. A bug-only train needs no cycle-state
+    /// write to record as released — <c>BugReleaseGit.IsReleased</c> self-maintains a bug's shipped status via
+    /// git-tag-reachability over its fix commit, so once the release tag lands the bug drops out of the NEXT train on
+    /// its own. Marking is therefore a clean no-op when there was no prior cycle state to update.
+    /// </summary>
     public CycleReleaseTrain MarkReleaseTrainReleased()
     {
-        CycleState state = _store.Read()
-            ?? throw new InvalidOperationException(
-                $"No cycle state at {CycleStateStore.RelativePath}; complete a Doti cycle before release.");
+        CycleState? state = _store.Read();
         CycleReleaseTrain train = BuildReleaseTrain(state);
         if (!train.Valid)
         {
             throw new InvalidOperationException(
                 "Release train is invalid: " + string.Join("; ", train.Blockers));
+        }
+
+        if (state is null)
+        {
+            return train; // bug-only release: no cycle state to update; BugReleaseGit self-maintains shipped status.
         }
 
         IReadOnlyList<CycleCompletionRecord> included = CompletionRecordsForRelease(state);
@@ -35,11 +45,12 @@ public sealed partial class CycleService
         return train;
     }
 
-    private CycleReleaseTrain BuildReleaseTrain(CycleState state)
+    private CycleReleaseTrain BuildReleaseTrain(CycleState? state)
     {
-        IReadOnlyList<CycleCompletionRecord> completions = CompletionRecordsForRelease(state);
+        IReadOnlyList<CycleCompletionRecord> completions =
+            state is null ? [] : CompletionRecordsForRelease(state);
         var featureMembers = completions
-            .Select(completion => FeatureForCompletion(state, completion))
+            .Select(completion => FeatureForCompletion(state!, completion))
             .ToArray();
 
         // 030 (bug-release-bridge): a test-passed /doti-bug mini-cycle is ALSO a releasable member — a bug-fix-only

@@ -41,6 +41,12 @@ public static class DotiUpdater
                 sourceOrigin, [], []);
         }
 
+        // 032 D2(g): snapshot each vendored-tool manifest's bytes BEFORE the reconcile — install.Installed records a
+        // "tools/{sub}" entry on EVERY call (clean files are still copied, the same pre-existing characteristic the
+        // .doti loop already has), so it cannot signal "this tool's content genuinely changed." A direct
+        // before/after byte comparison of the manifest is the correct, narrow signal.
+        IReadOnlyDictionary<string, byte[]?> manifestsBefore = ReadVendoredToolManifests(root);
+
         DotiInstallResult install;
         try
         {
@@ -64,11 +70,77 @@ public static class DotiUpdater
         string status = string.Equals(before, after, StringComparison.Ordinal)
             ? DotiUpdateStatus.AlreadyCurrent
             : DotiUpdateStatus.Updated;
-        string? reason = noBaseline
-            ? "No managed-asset baseline was present; reconciled forward with operator content preserved as .new sidecars."
-            : null;
+        string? reason = CombineReasons(
+            noBaseline
+                ? "No managed-asset baseline was present; reconciled forward with operator content preserved as .new sidecars."
+                : null,
+            ToolAdvisory(root, manifestsBefore));
         return Outcome(root, status, before, after, installedToolVersion, beforeRelation, afterRelation,
             Customizations(install), Changes(install), reason, sourceOrigin, Pruned(install), MergePending(install));
+    }
+
+    // 032 D2(g): the manifest filename per vendored tool — the file whose bytes changing is the authoritative
+    // "this tool moved to a new release" signal (the grammar/license/config files move in lockstep with it, but the
+    // manifest is the single canonical version record per SentruxManifestValidator/the gitleaks/gitversion analogs).
+    private static readonly IReadOnlyDictionary<string, string> VendoredToolManifestFileNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["gitleaks"] = "gitleaks.version.json",
+        ["sentrux"] = "sentrux.version.json",
+        ["gitversion"] = "gitversion.version.json",
+    };
+
+    private static IReadOnlyDictionary<string, byte[]?> ReadVendoredToolManifests(string root)
+    {
+        var snapshot = new Dictionary<string, byte[]?>(StringComparer.OrdinalIgnoreCase);
+        foreach ((string tool, string fileName) in VendoredToolManifestFileNames)
+        {
+            string path = Path.Combine(root, "tools", tool, fileName);
+            snapshot[tool] = File.Exists(path) ? File.ReadAllBytes(path) : null;
+        }
+
+        return snapshot;
+    }
+
+    // 032 D2(g): when a tools/{sub} reconcile genuinely changed a vendored-tool manifest's bytes (a real release
+    // move, not just "the dir was reconciled" — see the before/after snapshot above), surface a per-tool advisory
+    // naming the exact `hx tools fetch` command to refresh the binary. Update NEVER auto-fetches the exe itself —
+    // install/update must stay offline/deterministic (DotiPayloadParityChecker spins a no-network temp install);
+    // SentruxManifestValidator.Verify already fail-closes with a clear stale-binary error if the manifest moved but
+    // the exe has not been re-fetched yet, replacing the old cryptic "Could not read baseline".
+    private static string? ToolAdvisory(string root, IReadOnlyDictionary<string, byte[]?> manifestsBefore)
+    {
+        string[] changedTools = manifestsBefore
+            .Where(kv => !BytesEqual(kv.Value, ReadManifestNow(root, kv.Key)))
+            .Select(kv => kv.Key)
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return changedTools.Length == 0
+            ? null
+            : string.Join(" ", changedTools.Select(tool =>
+                $"vendored tool manifest updated ({tool}) — run `hx tools fetch --tool {tool}` to refresh the binary."));
+    }
+
+    private static byte[]? ReadManifestNow(string root, string tool)
+    {
+        string path = Path.Combine(root, "tools", tool, VendoredToolManifestFileNames[tool]);
+        return File.Exists(path) ? File.ReadAllBytes(path) : null;
+    }
+
+    private static bool BytesEqual(byte[]? a, byte[]? b)
+    {
+        if (a is null || b is null)
+        {
+            return a is null && b is null;
+        }
+
+        return a.AsSpan().SequenceEqual(b);
+    }
+
+    private static string? CombineReasons(params string?[] parts)
+    {
+        string[] present = parts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!).ToArray();
+        return present.Length == 0 ? null : string.Join(" ", present);
     }
 
     // FR-009/010: the operator customizations the reconcile preserved (or blocked without --force) — kept + reported.

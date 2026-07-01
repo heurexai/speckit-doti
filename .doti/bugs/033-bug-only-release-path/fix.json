@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "bugId": "033-bug-only-release-path",
+  "boundAssessmentSha256": "166a3c4cad8aca312007a9a552f7109e49131267f999cd437e1fab0888157df4",
+  "summary": "Relaxed CycleService.GetReleaseTrain/MarkReleaseTrainReleased to tolerate a null .doti/cycle-state.json (BuildReleaseTrain\u0027s state is now CycleState?; feature-half empty on null, bug-half always consulted; no synthetic state written - BugReleaseGit self-maintains via tag-reachability). A confirmed bug-fix-only mini-cycle now releases as patch via gate --profile release \u002B hx release with NO feature stamp (stamp guard correctly left untouched - the release path never calls Stamp). A truly empty repo still fails closed.",
+  "changedPaths": [
+    "tools/Hx.Cycle.Core/CycleService.ReleaseTrain.cs",
+    "test/Hx.Cycle.Tests/BugOnlyReleasePathTests.cs"
+  ]
+}
